@@ -49,42 +49,41 @@ namespace Android.Tool
 
 
 		public static FileInfo FindAdb(DirectoryInfo androidHome = null)
-		{
-			var results = new List<FileInfo>();
-
-			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
-			var ext = isWindows ? ".exe" : "";
-			var home = FindHome(androidHome)?.FirstOrDefault();
-
-			if (home?.Exists ?? false)
-			{
-				var adb = Path.Combine(home.FullName, "platform-tools", "adb" + ext);
-				if (File.Exists(adb))
-					return new FileInfo(adb);
-			}
-
-			return null;
-		}
+			=> FindTool(androidHome, "adb", ".exe", "platform-tools");
 
 		public static FileInfo FindSdkManager(DirectoryInfo androidHome = null)
+			=> FindTool(androidHome, "sdkmanager", ".exe", "tools", "bin");
+
+		public static FileInfo FindAvdManager(DirectoryInfo androidHome = null)
+			=> FindTool(androidHome, "avdmanager", ".exe", "tools", "bin");
+
+		public static FileInfo FindEmulator(DirectoryInfo androidHome = null)
+			=> FindTool(androidHome, "emulator", "emulator", ".exe");
+
+		static FileInfo FindTool(DirectoryInfo androidHome, string toolName, string windowsExtension, params string[] pathSegments)
 		{
 			var results = new List<FileInfo>();
 
 			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-			var ext = isWindows ? ".exe" : "";
+			var ext = isWindows ? windowsExtension : string.Empty;
 			var home = AndroidSdk.FindHome(androidHome)?.FirstOrDefault();
 
 			if (home?.Exists ?? false)
 			{
-				var sdkManager = Path.Combine(home.FullName, "tools", "bin", "sdkmanager" + ext);
+				var allSegments = new List<string>();
+				allSegments.Add(home.FullName);
+				allSegments.AddRange(pathSegments);
+				allSegments.Add(toolName + ext);
 
-				if (File.Exists(sdkManager))
-					return new FileInfo(sdkManager);
+				var tool = Path.Combine(allSegments.ToArray());
+
+				if (File.Exists(tool))
+					return new FileInfo(tool);
 			}
 
 			return null;
 		}
+	
 	}
 }

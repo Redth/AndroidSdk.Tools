@@ -8,7 +8,7 @@ namespace Android.Tool.Adb
 	/// <summary>
 	/// Android Device
 	/// </summary>
-	public class AdbDeviceInfo
+	public class AdbDevice
 	{
 		/// <summary>
 		/// Gets or sets the serial.

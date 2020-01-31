@@ -49,8 +49,14 @@ namespace Android.Tool
 			}
 		}
 
+		public int ExitCode
+			=> process.HasExited ? process.ExitCode : -1;
+
 		public bool HasExited
 			=> process?.HasExited ?? false;
+
+		public void Kill()
+			=> process?.Kill();
 
 		public void StandardInputWrite(string input)
 		{

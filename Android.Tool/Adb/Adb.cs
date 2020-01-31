@@ -9,40 +9,37 @@ namespace Android.Tool.Adb
 {
 	public partial class Adb
 	{
-		public Adb(AdbOptions settings)
+		public Adb(DirectoryInfo androidSdkHome, string adbSerial)
 		{
-			Options = settings;
 			runner = new AdbRunner();
+			AndroidSdkHome = androidSdkHome;
+			AdbSerial = adbSerial;
 		}
 
 		public Adb(DirectoryInfo androidSdkHome)
-			: this(new AdbOptions { AndroidSdkHome = androidSdkHome })
+			: this(androidSdkHome, null)
 		{
 		}
-
-		public Adb(DirectoryInfo androidSdkHome, string deviceSerial)
-			: this(new AdbOptions { AndroidSdkHome = androidSdkHome, Serial = deviceSerial })
-		{
-		}
-
 
 		public Adb(string androidSdkHome)
-		: this(new AdbOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome) })
+			: this(new DirectoryInfo(androidSdkHome), null)
 		{
 		}
 
-		public Adb(string androidSdkHome, string deviceSerial)
-		: this(new AdbOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome), Serial = deviceSerial })
+		public Adb(string androidSdkHome, string adbSerial)
+			: this(new DirectoryInfo(androidSdkHome), adbSerial)
 		{
 		}
 
-		public AdbOptions Options { get; set; }
+		public DirectoryInfo AndroidSdkHome { get; set; }
+
+		public string AdbSerial { get; set; }
 
 		AdbRunner runner;
 
-		public List<AdbDeviceInfo> GetDevices()
+		public List<AdbDevice> GetDevices()
 		{
-			var devices = new List<AdbDeviceInfo>();
+			var devices = new List<AdbDevice>();
 
 			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
@@ -50,7 +47,7 @@ namespace Android.Tool.Adb
 			builder.Append("devices");
 			builder.Append("-l");
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			if (r.StandardOutput.Count > 1)
 			{
@@ -58,7 +55,7 @@ namespace Android.Tool.Adb
 				{
 					var parts = Regex.Split(line, "\\s+");
 
-					var d = new AdbDeviceInfo
+					var d = new AdbDevice
 					{
 						Serial = parts[0].Trim()
 					};
@@ -107,7 +104,7 @@ namespace Android.Tool.Adb
 
 			builder.Append("kill-server");
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public void StartServer()
@@ -117,7 +114,7 @@ namespace Android.Tool.Adb
 
 			builder.Append("start-server");
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public void Connect(string deviceIp, int port = 5555)
@@ -128,7 +125,7 @@ namespace Android.Tool.Adb
 			builder.Append("connect");
 			builder.Append(deviceIp + ":" + port);
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public void Disconnect(string deviceIp = null, int? port = null)
@@ -140,7 +137,7 @@ namespace Android.Tool.Adb
 			if (!string.IsNullOrEmpty(deviceIp))
 				builder.Append(deviceIp + ":" + (port ?? 5555));
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public void Install(FileInfo apkFile)
@@ -149,12 +146,12 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("install");
 			builder.Append(apkFile.FullName);
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public void WaitFor(AdbTransport transport = AdbTransport.Any, AdbState state = AdbState.Device)
@@ -164,7 +161,7 @@ namespace Android.Tool.Adb
 			//  state: device, recovery, sideload, bootloader
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			var x = "wait-for";
 			if (transport == AdbTransport.Local)
@@ -190,7 +187,7 @@ namespace Android.Tool.Adb
 
 			builder.Append(x);
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public void Uninstall(string packageName, bool keepDataAndCacheDirs = false)
@@ -199,14 +196,14 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("uninstall");
 			if (keepDataAndCacheDirs)
 				builder.Append("-k");
 			builder.Append(packageName);
 
-			runner.RunAdb(Options, builder);
+			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
 		public bool EmuKill()
@@ -215,12 +212,12 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("emu");
 			builder.Append("kill");
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return r.StandardOutput.Any(o => o.ToLowerInvariant().Contains("stopping emulator"));
 		}
@@ -241,13 +238,13 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("pull");
 			builder.AppendQuoted(remoteSrc);
 			builder.AppendQuoted(localDest);
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return r.Success;
 		}
@@ -267,13 +264,13 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("pull");
 			builder.AppendQuoted(localSrc);
 			builder.AppendQuoted(remoteDest);
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 			return r.Success;
 		}
 
@@ -283,11 +280,11 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("bugreport");
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return r.StandardOutput;
 		}
@@ -303,7 +300,7 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("logcat");
 
@@ -355,7 +352,7 @@ namespace Android.Tool.Adb
 
 			}
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return r.StandardOutput;
 		}
@@ -365,11 +362,11 @@ namespace Android.Tool.Adb
 			// adb version
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("version");
 			var output = new List<string>();
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
@@ -380,11 +377,11 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("get-serialno");
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
@@ -395,52 +392,46 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("get-state");
 
-			var r = runner.RunAdb(Options, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
 
 
-		public List<string> Shell(string shellCommand, AdbOptions settings = null)
+		public List<string> Shell(string shellCommand)
 		{
-			if (settings == null)
-				settings = new AdbOptions();
-
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(settings.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("shell");
 			builder.Append(shellCommand);
 
 			var output = new List<string>();
 			
-			var r = runner.RunAdb(settings, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder);
 
 			return r.StandardOutput;
 		}
 
 
-		public void ScreenCapture(FileInfo saveToLocalFile, AdbOptions settings = null)
+		public void ScreenCapture(FileInfo saveToLocalFile)
 		{
-			if (settings == null)
-				settings = new AdbOptions();
-
 			//adb shell screencap / sdcard / screen.png
 			var guid = Guid.NewGuid().ToString();
 			var remoteFile = "/sdcard/" + guid + ".png";
 
-			Shell("screencap " + remoteFile, settings);
+			Shell("screencap " + remoteFile);
 
 			Pull(new FileInfo(remoteFile), saveToLocalFile);
 
-			Shell("rm " + remoteFile, settings);
+			Shell("rm " + remoteFile);
 		}
 
 		public void ScreenRecord(FileInfo saveToLocalFile, System.Threading.CancellationToken? recordingCancelToken = null, TimeSpan? timeLimit = null, int? bitrateMbps = null, int? width = null, int? height = null, bool rotate = false, bool logVerbose = false)
@@ -454,7 +445,7 @@ namespace Android.Tool.Adb
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Options.Serial, builder);
+			runner.AddSerial(AdbSerial, builder);
 
 			builder.Append("shell");
 			builder.Append("screenrecord");
@@ -486,9 +477,9 @@ namespace Android.Tool.Adb
 			builder.Append(remoteFile);
 
 			if (recordingCancelToken.HasValue)
-				runner.RunAdb(Options, builder, recordingCancelToken.Value);
+				runner.RunAdb(AndroidSdkHome, builder, recordingCancelToken.Value);
 			else
-				runner.RunAdb(Options, builder);
+				runner.RunAdb(AndroidSdkHome, builder);
 
 			Pull(new FileInfo(remoteFile), saveToLocalFile);
 
@@ -497,11 +488,11 @@ namespace Android.Tool.Adb
 
 		public string GetAvdName()
 		{
-			if (!Options.Serial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
+			if (string.IsNullOrEmpty(AdbSerial) || !AdbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
 				throw new InvalidDataException("Serial must be an emulator starting with `emulator-`");
 
 			int port = 5554;
-			if (!int.TryParse(Options.Serial.Substring(9), out port))
+			if (!int.TryParse(AdbSerial.Substring(9), out port))
 				return null;
 
 			var tcpClient = new System.Net.Sockets.TcpClient("127.0.0.1", port);

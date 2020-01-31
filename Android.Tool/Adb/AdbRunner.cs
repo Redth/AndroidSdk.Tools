@@ -19,12 +19,12 @@ namespace Android.Tool.Adb
 			}
 		}
 
-		internal ProcessResult RunAdb(AdbOptions options, ProcessArgumentBuilder builder)
-			=> RunAdb(options, builder, System.Threading.CancellationToken.None);
+		internal ProcessResult RunAdb(DirectoryInfo androidSdkHome, ProcessArgumentBuilder builder)
+			=> RunAdb(androidSdkHome, builder, System.Threading.CancellationToken.None);
 
-		internal ProcessResult RunAdb(AdbOptions options, ProcessArgumentBuilder builder, System.Threading.CancellationToken cancelToken)
+		internal ProcessResult RunAdb(DirectoryInfo androidSdkHome, ProcessArgumentBuilder builder, System.Threading.CancellationToken cancelToken)
 		{
-			var adbToolPath = AndroidSdk.FindAdb(options?.AndroidSdkHome);
+			var adbToolPath = AndroidSdk.FindAdb(androidSdkHome);
 			if (adbToolPath == null || !File.Exists(adbToolPath.FullName))
 				throw new FileNotFoundException("Could not find adb", adbToolPath?.FullName);
 
