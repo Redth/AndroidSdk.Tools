@@ -4,7 +4,7 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public class SdkDownloader
 	{

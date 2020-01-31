@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	class Program
 	{

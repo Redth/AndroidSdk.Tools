@@ -6,7 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public partial class SdkManager
 	{

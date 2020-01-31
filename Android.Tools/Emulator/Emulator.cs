@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public partial class Emulator
 	{

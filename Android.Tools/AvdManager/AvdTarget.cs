@@ -1,4 +1,4 @@
-﻿namespace Android.Tool
+﻿namespace Android.Tools
 {
 	public partial class AvdManager
 	{

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public partial class Emulator
 	{

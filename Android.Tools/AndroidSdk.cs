@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public static class AndroidSdk
 	{

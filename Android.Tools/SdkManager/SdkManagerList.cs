@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public partial class SdkManager
 	{

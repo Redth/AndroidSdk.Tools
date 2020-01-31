@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public partial class Adb
 	{

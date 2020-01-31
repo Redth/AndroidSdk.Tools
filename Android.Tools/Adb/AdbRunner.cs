@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	internal class AdbRunner
 	{

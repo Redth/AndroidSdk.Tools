@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	internal class ProcessRunner
 	{

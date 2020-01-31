@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	public partial class ActivityManager
 	{

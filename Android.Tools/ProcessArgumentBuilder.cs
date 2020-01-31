@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Android.Tool
+namespace Android.Tools
 {
 	internal class ProcessArgumentBuilder
 	{
