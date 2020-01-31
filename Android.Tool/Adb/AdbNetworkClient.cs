@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Android.Tool.Adb
 {
-	internal static class AdbNetworkClient
+	public partial class Adb
 	{
 		internal static string GetAvdName(string deviceSerial)
 		{

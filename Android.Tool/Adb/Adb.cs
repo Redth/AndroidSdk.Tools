@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Android.Tool.Adb
 {
-	partial class Adb
+	public partial class Adb
 	{
 		public Adb(AdbToolSettings settings)
 		{

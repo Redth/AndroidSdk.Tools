@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Android.Tool.Adb
 {
-	partial class PackageManager
+	public partial class PackageManager
 	{
 		public PackageManager(AdbToolSettings settings)
 		{
