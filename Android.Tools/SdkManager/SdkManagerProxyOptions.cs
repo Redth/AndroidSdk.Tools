@@ -4,30 +4,11 @@ namespace Android.Tools
 {
 	public partial class SdkManager
 	{
-
 		/// <summary>
 		/// Android SDK Manager tool settings.
 		/// </summary>
-		public class SdkManagerOptions
+		public class SdkManagerProxyOptions
 		{
-			/// <summary>
-			/// Gets or sets the Android SDK root path.
-			/// </summary>
-			/// <value>The sdk root.</value>
-			public DirectoryInfo AndroidSdkHome { get; set; }
-
-			/// <summary>
-			/// Gets or sets the release channel.
-			/// </summary>
-			/// <value>The channel.</value>
-			public SdkChannel Channel { get; set; } = SdkChannel.Stable;
-
-			/// <summary>
-			/// Gets or sets a value indicating whether or not to include obsoleted packages.
-			/// </summary>
-			/// <value><c>true</c> if include obsoleted packages; otherwise, <c>false</c>.</value>
-			public bool IncludeObsolete { get; set; } = false;
-
 			/// <summary>
 			/// Gets or sets a value indicating whether HTTPS should be used.
 			/// </summary>

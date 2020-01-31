@@ -5,6 +5,9 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace Android.Tools
 {
@@ -16,30 +19,132 @@ namespace Android.Tools
 		readonly Regex rxListVers = new Regex("\\s+Version:\\s+(?<ver>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListLoc = new Regex("\\s+Installed Location:\\s+(?<loc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 
-		public SdkManager()
-			: this(new SdkManagerOptions())
+		public SdkManager(string androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
+			: this(androidSdkHome == null ? (DirectoryInfo)null : new DirectoryInfo(androidSdkHome), channel, skipVersionCheck, includeObsolete, proxy)
 		{ }
+
+		public SdkManager(DirectoryInfo androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
+		{
+			AndroidSdkHome = androidSdkHome;
+			Proxy = proxy ?? new SdkManagerProxyOptions();
+			SkipVersionCheck = skipVersionCheck;
+		}
+
+		public SdkManagerProxyOptions Proxy { get; set; }
 		
-		public SdkManager(SdkManagerOptions options)
-		{
-			Options = options;
-		}
+		public DirectoryInfo AndroidSdkHome { get; set; }
 
-		public SdkManager(DirectoryInfo androidSdkHome)
-			: this(new SdkManagerOptions { AndroidSdkHome = androidSdkHome })
-		{
-		}
+		public bool SkipVersionCheck { get; set; }
 
-		public SdkManager(string androidSdkHome)
-		: this(new SdkManagerOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome) })
-		{
-		}
+		public SdkChannel Channel { get; set; } = SdkChannel.Stable;
 
-		public SdkManagerOptions Options { get; set; }
+		public bool IncludeObsolete { get; set; }
+
+		const string REPOSITORY_URL_BASE = "https://dl.google.com/android/repository/";
+		const string REPOSITORY_URL = REPOSITORY_URL_BASE + "repository2-1.xml";
+		const string REPOSITORY_SDK_PATTERN = REPOSITORY_URL_BASE + "tools_r{0}.{1}.{2}-{3}.zip";
+
+		/// <summary>
+		/// Downloads the Android SDK
+		/// </summary>
+		/// <param name="context">The context.</param>
+		/// <param name="destinationDirectory">Destination directory, or ./tools/androidsdk if none is specified.</param>
+		/// <param name="specificVersion">Specific version, or latest if none is specified.</param>
+		public void DownloadSdk(DirectoryInfo destinationDirectory = null, Version specificVersion = null, Action<int> progressHandler = null)
+		{
+			if (destinationDirectory == null)
+				destinationDirectory = AndroidSdkHome;
+
+			if (destinationDirectory == null || !destinationDirectory.Exists)
+				throw new DirectoryNotFoundException("Android SDK Not Found");
+
+			var http = new HttpClient();
+			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
+			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
+			http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
+			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
+
+			if (specificVersion == null)
+			{
+				try
+				{
+					var data = http.GetStringAsync(REPOSITORY_URL).Result;
+
+					var xdoc = new System.Xml.XmlDocument();
+					xdoc.LoadXml(data);
+
+					var revNode = xdoc.SelectSingleNode("//remotePackage[@path='tools']/revision");
+
+					var strVer = revNode.SelectSingleNode("major")?.InnerText + "." + revNode.SelectSingleNode("minor").InnerText + "." + revNode.SelectSingleNode("micro").InnerText;
+
+					specificVersion = Version.Parse(strVer);
+				}
+				catch
+				{
+					specificVersion = new Version(25, 2, 5);
+				}
+			}
+
+			string platformStr;
+
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				platformStr = "windows";
+			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				platformStr = "macosx";
+			else
+				platformStr = "linux";
+
+			var sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, specificVersion.Major, specificVersion.Minor, specificVersion.Build, platformStr);
+
+			var toolsDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "tools"));
+			if (!toolsDir.Exists)
+				toolsDir.Create();
+
+			var sdkDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "tools", "androidsdk"));
+			if (!sdkDir.Exists)
+				sdkDir.Create();
+
+			var sdkZipFile = new FileInfo(Path.Combine(destinationDirectory.FullName, "tools", "androidsdk.zip"));
+
+			if (sdkZipFile.Exists)
+				sdkZipFile.Delete();
+
+			var buffer = new byte[4096];
+
+			var resp = http.GetAsync(sdkUrl).Result;
+
+			resp.EnsureSuccessStatusCode();
+
+			var contentLength = resp.Content.Headers.ContentLength;
+
+			using (var httpStream = resp.Content.ReadAsStreamAsync().Result)
+			using (var fileStream = File.Create(sdkZipFile.FullName))
+			{
+				var totalRead = 0;
+				int prevProgress = 0;
+
+				int read = 0;
+				while ((read = httpStream.Read(buffer, 0, buffer.Length)) > 0)
+				{
+					fileStream.Write(buffer, 0, read);
+
+					totalRead += read;
+
+					int progress = (int)(((double)totalRead / (double)contentLength) * 100d);
+
+					if (progress > prevProgress)
+						progressHandler?.Invoke(progress);
+
+					prevProgress = progress;
+				}
+			}
+
+			ZipFile.ExtractToDirectory(sdkZipFile.FullName, sdkDir.FullName);
+		}
 
 		public bool IsUpToDate()
 		{
-			if (Options.SkipVersionCheck)
+			if (SkipVersionCheck)
 				return true;
 
 			var builder = new ProcessArgumentBuilder();
@@ -55,7 +160,7 @@ namespace Android.Tools
 
 		internal void CheckSdkManagerVersion ()
 		{
-			if (Options.SkipVersionCheck)
+			if (SkipVersionCheck)
 				return;
 			
 			if (!IsUpToDate())
@@ -163,8 +268,13 @@ namespace Android.Tools
 			return result;
 		}
 
+		public bool Install(params string[] packages)
+			=> InstallOrUninstall(true, packages);
 
-		public bool InstallOrUninstall(bool install, IEnumerable<string> packages)
+		public bool Uninstall(params string[] packages)
+			=> InstallOrUninstall(false, packages);
+
+		internal bool InstallOrUninstall(bool install, IEnumerable<string> packages)
 		{
 			CheckSdkManagerVersion();
 
@@ -202,7 +312,7 @@ namespace Android.Tools
 
 		public bool UpdateAll()
 		{
-			var sdkManager = AndroidSdk.FindSdkManager(Options?.AndroidSdkHome);
+			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
 
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
@@ -230,7 +340,7 @@ namespace Android.Tools
 
 		List<string> RunWithAccept(ProcessArgumentBuilder builder, TimeSpan timeout)
 		{
-			var sdkManager = AndroidSdk.FindSdkManager(Options?.AndroidSdkHome);
+			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
 
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
@@ -254,7 +364,7 @@ namespace Android.Tools
 
 		List<string> Run(ProcessArgumentBuilder builder)
 		{
-			var sdkManager = AndroidSdk.FindSdkManager(Options?.AndroidSdkHome);
+			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
 
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
@@ -270,27 +380,27 @@ namespace Android.Tools
 		{
 			builder.Append("--verbose");
 
-			if (Options.Channel != SdkChannel.Stable)
-				builder.Append("--channel=" + (int)Options.Channel);
+			if (Channel != SdkChannel.Stable)
+				builder.Append("--channel=" + (int)Channel);
 
-			if (Options.AndroidSdkHome != null && Options.AndroidSdkHome.Exists)
-				builder.Append($"--sdk_root=\"{Options.AndroidSdkHome.FullName}\"");
+			if (AndroidSdkHome?.Exists ?? false)
+				builder.Append($"--sdk_root=\"{AndroidSdkHome.FullName}\"");
 
-			if (Options.IncludeObsolete)
+			if (IncludeObsolete)
 				builder.Append("--include_obsolete");
 
-			if (Options.NoHttps)
+			if (Proxy?.NoHttps ?? false)
 				builder.Append("--no_https");
 
-			if (Options.ProxyType != SdkManagerProxyType.None)
+			if ((Proxy?.ProxyType ?? SdkManagerProxyType.None) != SdkManagerProxyType.None)
 			{
-				builder.Append($"--proxy={Options.ProxyType.ToString().ToLower()}");
+				builder.Append($"--proxy={Proxy.ProxyType.ToString().ToLower()}");
 
-				if (!string.IsNullOrEmpty(Options.ProxyHost))
-					builder.Append($"--proxy_host=\"{Options.ProxyHost}\"");
+				if (!string.IsNullOrEmpty(Proxy.ProxyHost))
+					builder.Append($"--proxy_host=\"{Proxy.ProxyHost}\"");
 
-				if (Options.ProxyPort > 0)
-					builder.Append($"--proxy_port=\"{Options.ProxyPort}\"");
+				if (Proxy.ProxyPort > 0)
+					builder.Append($"--proxy_port=\"{Proxy.ProxyPort}\"");
 			}
 		}
 	}
