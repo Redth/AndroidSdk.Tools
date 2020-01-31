@@ -7,7 +7,7 @@ namespace Android.Tool.Adb
 	/// <summary>
 	/// Options for Instrumentation
 	/// </summary>
-	public class AmInstrumentOptions
+	public class ActivityManagerInstrumentOptions
 	{
 		//-r: Print raw results(otherwise decode report_key_streamresult). Use with[-e perf true] to generate raw output for performance measurements.
 		/// <summary>

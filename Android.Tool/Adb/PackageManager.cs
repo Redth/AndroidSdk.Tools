@@ -8,35 +8,35 @@ namespace Android.Tool.Adb
 {
 	public partial class PackageManager
 	{
-		public PackageManager(AdbToolSettings settings)
+		public PackageManager(AdbOptions options)
 		{
-			runner = new AdbToolRunner();
-			Settings = settings;
+			Options = options;
+			runner = new AdbRunner();
 		}
 
 		public PackageManager(DirectoryInfo androidSdkHome)
-			: this(new AdbToolSettings { AndroidSdkRoot = androidSdkHome })
+			: this(new AdbOptions { AndroidSdkHome = androidSdkHome })
 		{
 		}
 
 		public PackageManager(DirectoryInfo androidSdkHome, string deviceSerial)
-			: this(new AdbToolSettings { AndroidSdkRoot = androidSdkHome, Serial = deviceSerial })
+			: this(new AdbOptions { AndroidSdkHome = androidSdkHome, Serial = deviceSerial })
 		{
 		}
 
 
 		public PackageManager(string androidSdkHome)
-		: this(new AdbToolSettings { AndroidSdkRoot = new DirectoryInfo(androidSdkHome) })
+		: this(new AdbOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome) })
 		{
 		}
 
 		public PackageManager(string androidSdkHome, string deviceSerial)
-		: this(new AdbToolSettings { AndroidSdkRoot = new DirectoryInfo(androidSdkHome), Serial = deviceSerial })
+		: this(new AdbOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome), Serial = deviceSerial })
 		{
 		}
 
-		public AdbToolSettings Settings { get; set; }
-		readonly AdbToolRunner runner;
+		public AdbOptions Options { get; set; }
+		AdbRunner runner;
 
 		public List<AdbPackageListInfo> ListPackages(bool includeUninstalled = false, PackageListState showState = PackageListState.All, PackageSourceType showSource = PackageSourceType.All)
 		{
@@ -44,7 +44,7 @@ namespace Android.Tool.Adb
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -67,13 +67,12 @@ namespace Android.Tool.Adb
 			if (includeUninstalled)
 				builder.Append("-u");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
 			var results = new List<AdbPackageListInfo>();
 
 			const string rxPackageListInfo = "^package:(?<path>.*?)=(?<package>.*?)\\s+installer=(?<installer>.*?)$";
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
 
@@ -99,7 +98,7 @@ namespace Android.Tool.Adb
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -107,13 +106,12 @@ namespace Android.Tool.Adb
 			builder.Append("list");
 			builder.Append("permission-groups");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
 			var results = new List<string>();
 
 			const string rxPackageListInfo = "^permission group:(?<group>.*?)$";
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
 
@@ -131,7 +129,7 @@ namespace Android.Tool.Adb
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -146,15 +144,14 @@ namespace Android.Tool.Adb
 			if (onlyUserVisible)
 				builder.Append("-u");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
 			var results = new List<AdbPermissionGroupInfo>();
 
 			AdbPermissionGroupInfo currentGroup = null;
 			AdbPermissionInfo currentPerm = null;
 
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				if (string.IsNullOrWhiteSpace(line) || line.StartsWith("All Permissions:", StringComparison.OrdinalIgnoreCase))
 					continue;
@@ -227,7 +224,7 @@ namespace Android.Tool.Adb
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -235,13 +232,12 @@ namespace Android.Tool.Adb
 			builder.Append("list");
 			builder.Append("features");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
 			var results = new List<string>();
 
 			const string rxPackageListInfo = "^feature:(?<feature>.*?)$";
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
 
@@ -259,7 +255,7 @@ namespace Android.Tool.Adb
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -267,13 +263,12 @@ namespace Android.Tool.Adb
 			builder.Append("list");
 			builder.Append("libraries");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
 			var results = new List<string>();
 
 			const string rxPackageListInfo = "^library:(?<lib>.*?)$";
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
 
@@ -292,7 +287,7 @@ namespace Android.Tool.Adb
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -300,11 +295,10 @@ namespace Android.Tool.Adb
 			builder.Append("path");
 			builder.Append(packageName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
 			const string rxPackageListInfo = "^package:(?<path>.*?)$";
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
 
@@ -332,7 +326,7 @@ namespace Android.Tool.Adb
 			// install[options] path
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -356,8 +350,7 @@ namespace Android.Tool.Adb
 
 			builder.AppendQuoted(pathOnDevice.FullName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 
@@ -366,7 +359,7 @@ namespace Android.Tool.Adb
 		//	// uninstall [options] package
 		//	var builder = new ProcessArgumentBuilder();
 
-		//	AddSerial(Settings.Serial, builder);
+		//	runner.AddSerial(Settings.Serial, builder);
 
 		//	builder.Append("shell");
 		//	builder.Append("pm");
@@ -387,7 +380,7 @@ namespace Android.Tool.Adb
 			// clear package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -395,8 +388,7 @@ namespace Android.Tool.Adb
 			builder.Append("clear");
 			builder.Append(packageName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void Enable(string packageOrComponent)
@@ -404,7 +396,7 @@ namespace Android.Tool.Adb
 			// clear package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -412,8 +404,7 @@ namespace Android.Tool.Adb
 			builder.Append("enable");
 			builder.Append(packageOrComponent);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void Disable(string packageOrComponent)
@@ -421,7 +412,7 @@ namespace Android.Tool.Adb
 			// clear package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -429,8 +420,7 @@ namespace Android.Tool.Adb
 			builder.Append("disable");
 			builder.Append(packageOrComponent);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void DisableUser(string packageOrComponent, string forUser = null)
@@ -438,7 +428,7 @@ namespace Android.Tool.Adb
 			// disable-user [options] package_or_component
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -453,8 +443,7 @@ namespace Android.Tool.Adb
 
 			builder.Append(packageOrComponent);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void Grant(string packageName, string permission)
@@ -462,7 +451,7 @@ namespace Android.Tool.Adb
 			// grant package_name permission
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -471,8 +460,7 @@ namespace Android.Tool.Adb
 			builder.Append(packageName);
 			builder.Append(permission);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void Revoke(string packageName, string permission)
@@ -480,7 +468,7 @@ namespace Android.Tool.Adb
 			// revoke package_name permission
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -489,8 +477,7 @@ namespace Android.Tool.Adb
 			builder.Append(packageName);
 			builder.Append(permission);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void SetInstallLocation(AdbInstallLocation location)
@@ -498,7 +485,7 @@ namespace Android.Tool.Adb
 			// set-install-location location
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -506,8 +493,7 @@ namespace Android.Tool.Adb
 			builder.Append("set-install-location");
 			builder.Append(((int)location).ToString());
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public AdbInstallLocation GetInstallLocation()
@@ -515,17 +501,16 @@ namespace Android.Tool.Adb
 			// set-install-location location
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
 
 			builder.Append("get-install-location");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
-			var o = string.Join(Environment.NewLine, output);
+			var o = string.Join(Environment.NewLine, r.StandardOutput);
 
 			if (o.Contains("[internal]"))
 				return AdbInstallLocation.Internal;
@@ -541,7 +526,7 @@ namespace Android.Tool.Adb
 			// set-permission-enforced permission [true|false]
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -550,8 +535,7 @@ namespace Android.Tool.Adb
 			builder.Append(permission);
 			builder.Append(enforced ? "true" : "false");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void TrimCaches(string desiredFreeSpace)
@@ -559,7 +543,7 @@ namespace Android.Tool.Adb
 			// trim-caches desired_free_space
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -567,8 +551,7 @@ namespace Android.Tool.Adb
 			builder.Append("trim-caches");
 			builder.Append(desiredFreeSpace);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void CreateUser(string userName)
@@ -576,7 +559,7 @@ namespace Android.Tool.Adb
 			// create-user user_name
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -584,8 +567,7 @@ namespace Android.Tool.Adb
 			builder.Append("create-user");
 			builder.Append(userName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void RemoveUser(string userId)
@@ -593,7 +575,7 @@ namespace Android.Tool.Adb
 			// remove-user user_id
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
@@ -601,8 +583,7 @@ namespace Android.Tool.Adb
 			builder.Append("remove-user");
 			builder.Append(userId);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public int GetMaxUsers()
@@ -610,17 +591,16 @@ namespace Android.Tool.Adb
 			// get-max-users
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("pm");
 
 			builder.Append("get-max-users");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
-			var o = output.FirstOrDefault() ?? string.Empty;
+			var o = r.StandardOutput.FirstOrDefault() ?? string.Empty;
 
 			if (o.StartsWith("Maximum supported users:", StringComparison.OrdinalIgnoreCase))
 			{

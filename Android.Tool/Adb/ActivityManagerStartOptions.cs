@@ -6,7 +6,7 @@ namespace Android.Tool.Adb
 	/// <summary>
 	/// Activity Manager Start Options
 	/// </summary>
-	public class AmStartOptions
+	public class ActivityManagerStartOptions
 	{
 		//-D: Enable debugging.
 		/// <summary>

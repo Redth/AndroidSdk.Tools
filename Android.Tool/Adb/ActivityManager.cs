@@ -9,45 +9,45 @@ namespace Android.Tool.Adb
 {
 	public class ActivityManager
 	{
-		public ActivityManager(AdbToolSettings settings)
+		public ActivityManager(AdbOptions options)
 		{
-			runner = new AdbToolRunner();
-			Settings = settings;
+			runner = new AdbRunner();
+			Options = options;
 		}
 
 		public ActivityManager(DirectoryInfo androidSdkHome)
-			: this(new AdbToolSettings { AndroidSdkRoot = androidSdkHome })
+			: this(new AdbOptions { AndroidSdkHome = androidSdkHome })
 		{
 		}
 
 		public ActivityManager(DirectoryInfo androidSdkHome, string deviceSerial)
-			: this(new AdbToolSettings { AndroidSdkRoot = androidSdkHome, Serial = deviceSerial })
+			: this(new AdbOptions { AndroidSdkHome = androidSdkHome, Serial = deviceSerial })
 		{
 		}
 
 
 		public ActivityManager(string androidSdkHome)
-		: this(new AdbToolSettings { AndroidSdkRoot = new DirectoryInfo(androidSdkHome) })
+		: this(new AdbOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome) })
 		{
 		}
 
 		public ActivityManager(string androidSdkHome, string deviceSerial)
-		: this(new AdbToolSettings { AndroidSdkRoot = new DirectoryInfo(androidSdkHome), Serial = deviceSerial })
+		: this(new AdbOptions { AndroidSdkHome = new DirectoryInfo(androidSdkHome), Serial = deviceSerial })
 		{
 		}
 
-		public AdbToolSettings Settings { get; set; }
-		readonly AdbToolRunner runner;
+		public AdbOptions Options { get; set; }
+		readonly AdbRunner runner;
 
-		public bool StartActivity(string adbIntentArguments, AmStartOptions options = null)
+		public bool StartActivity(string adbIntentArguments, ActivityManagerStartOptions options = null)
 		{
 			if (options == null)
-				options = new AmStartOptions();
+				options = new ActivityManagerStartOptions();
 
 			// start [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -83,10 +83,9 @@ namespace Android.Tool.Adb
 
 			builder.Append(adbIntentArguments);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
-			return output.Any(l => l.StartsWith("Starting:", StringComparison.OrdinalIgnoreCase));
+			return r.StandardOutput.Any(l => l.StartsWith("Starting:", StringComparison.OrdinalIgnoreCase));
 		}
 
 		public bool StartService(string adbIntentArguments, string runAsUser = null)
@@ -94,7 +93,7 @@ namespace Android.Tool.Adb
 			// startservice [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -109,9 +108,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(adbIntentArguments);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output.Any(l => l.StartsWith("Starting service:", StringComparison.OrdinalIgnoreCase));
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput.Any(l => l.StartsWith("Starting service:", StringComparison.OrdinalIgnoreCase));
 		}
 
 		public void ForceStop(string packageName)
@@ -119,7 +117,7 @@ namespace Android.Tool.Adb
 			//force-stop package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -127,8 +125,7 @@ namespace Android.Tool.Adb
 			builder.Append("force-stop");
 			builder.Append(packageName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void Kill(string packageName, string forUser = null)
@@ -136,7 +133,7 @@ namespace Android.Tool.Adb
 			// kill[options] package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -150,8 +147,7 @@ namespace Android.Tool.Adb
 				builder.Append(forUser);
 			}
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public void KillAll()
@@ -159,15 +155,14 @@ namespace Android.Tool.Adb
 			// killall
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
 
 			builder.Append("killall");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			runner.RunAdb(Options, builder);
 		}
 
 		public int Broadcast(string intent, string toUser = null)
@@ -177,7 +172,7 @@ namespace Android.Tool.Adb
 			// broadcast [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -192,30 +187,29 @@ namespace Android.Tool.Adb
 
 			builder.Append(intent);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
+			var r = runner.RunAdb(Options, builder);
 
-			foreach (var line in output)
+			foreach (var line in r.StandardOutput)
 			{
 				var match = Regex.Match(line, rxBroadcastResult, RegexOptions.Singleline | RegexOptions.IgnoreCase);
-				var r = match?.Groups?["result"]?.Value ?? "-1";
-				var rInt = -1;
-				if (int.TryParse(r, out rInt))
+				var m = match?.Groups?["result"]?.Value ?? "-1";
+
+				if (int.TryParse(m, out var rInt))
 					return rInt;
 			}
 
 			return -1;
 		}
 
-		public List<string> Instrument(string component, AmInstrumentOptions options = null)
+		public List<string> Instrument(string component, ActivityManagerInstrumentOptions options = null)
 		{
 			// instrument [options] component
 			if (options == null)
-				options = new AmInstrumentOptions();
+				options = new ActivityManagerInstrumentOptions();
 
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -252,9 +246,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(component);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> StartProfiling(string process, FileInfo outputFile)
@@ -262,7 +255,7 @@ namespace Android.Tool.Adb
 			// broadcast [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -274,9 +267,8 @@ namespace Android.Tool.Adb
 
 			builder.AppendQuoted(outputFile.FullName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> StopProfiling(string process)
@@ -284,7 +276,7 @@ namespace Android.Tool.Adb
 			// broadcast [options] intent
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -294,9 +286,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(process);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> DumpHeap(string process, FileInfo outputFile, string forUser = null, bool dumpNativeHeap = false)
@@ -304,7 +295,7 @@ namespace Android.Tool.Adb
 			// dumpheap [options] process file
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -324,9 +315,8 @@ namespace Android.Tool.Adb
 
 			builder.AppendQuoted(outputFile.FullName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> SetDebugApp(string packageName, bool wait = false, bool persistent = false)
@@ -334,7 +324,7 @@ namespace Android.Tool.Adb
 			// set-debug-app [options] package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -349,9 +339,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(packageName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> ClearDebugApp()
@@ -359,16 +348,15 @@ namespace Android.Tool.Adb
 			// clear-debug-app
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
 
 			builder.Append("clear-debug-app");
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> Monitor(int? gdbPort = null)
@@ -376,7 +364,7 @@ namespace Android.Tool.Adb
 			// monitor [options]
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -386,9 +374,8 @@ namespace Android.Tool.Adb
 			if (gdbPort.HasValue)
 				builder.Append("--gdb:" + gdbPort.Value);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> ScreenCompat(bool compatOn, string packageName)
@@ -396,7 +383,7 @@ namespace Android.Tool.Adb
 			// screen-compat {on|off} package
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -407,9 +394,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(packageName);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> DisplaySize(int width, int height)
@@ -425,7 +411,7 @@ namespace Android.Tool.Adb
 			// display-size [reset|widthxheight]
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -437,9 +423,8 @@ namespace Android.Tool.Adb
 			else
 				builder.Append(string.Format("{0}x{1}", width, height));
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public List<string> DisplayDensity(int dpi)
@@ -447,7 +432,7 @@ namespace Android.Tool.Adb
 			// display-density dpi
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -456,9 +441,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(dpi.ToString());
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return output;
+			var r = runner.RunAdb(Options, builder);
+			return r.StandardOutput;
 		}
 
 		public string IntentToURI(string intent)
@@ -466,7 +450,7 @@ namespace Android.Tool.Adb
 			// display-density dpi
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -475,9 +459,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(intent);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return string.Join(Environment.NewLine, output);
+			var r = runner.RunAdb(Options, builder);
+			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
 
 		public string IntentToIntentURI(string intent)
@@ -485,7 +468,7 @@ namespace Android.Tool.Adb
 			// display-density dpi
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(Settings.Serial, builder);
+			runner.AddSerial(Options.Serial, builder);
 
 			builder.Append("shell");
 			builder.Append("am");
@@ -494,9 +477,8 @@ namespace Android.Tool.Adb
 
 			builder.Append(intent);
 
-			var output = new List<string>();
-			runner.RunAdb(Settings, builder, out output);
-			return string.Join(Environment.NewLine, output);
+			var r = runner.RunAdb(Options, builder);
+			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
 	}
 }
