@@ -7,9 +7,14 @@ using System.IO;
 
 namespace Android.Tools
 {
-	public partial class AvdManager
+	public partial class AvdManager : SdkTool
 	{
+		public AvdManager()
+			: this((DirectoryInfo)null)
+		{ }
+
 		public AvdManager(DirectoryInfo androidSdkHome)
+			: base(androidSdkHome)
 		{
 			AndroidSdkHome = androidSdkHome;
 		}
@@ -18,7 +23,7 @@ namespace Android.Tools
 			: this(new DirectoryInfo(androidSdkHome))
 		{ }
 
-		public DirectoryInfo AndroidSdkHome { get; set; }
+		internal override string SdkPackageId => "emulator";
 
 		public void Create(string name, string sdkId, string device, string sdCardPathOrSize = null, bool force = false, string avdPath = null)
 		{
@@ -110,13 +115,6 @@ namespace Android.Tools
 			var r = p.WaitForExit();
 
 			return r.StandardOutput;
-		}
-
-		public void Acquire()
-		{
-			var sdkManager = new SdkManager(AndroidSdkHome);
-
-			sdkManager.Acquire("emulator");
 		}
 	}
 }

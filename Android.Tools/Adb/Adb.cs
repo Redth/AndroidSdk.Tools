@@ -7,12 +7,16 @@ using System.Text.RegularExpressions;
 
 namespace Android.Tools
 {
-	public partial class Adb
+	public partial class Adb : SdkTool
 	{
+		public Adb()
+			: this((DirectoryInfo)null)
+		{ }
+
 		public Adb(DirectoryInfo androidSdkHome)
+			: base(androidSdkHome)
 		{
 			runner = new AdbRunner();
-			AndroidSdkHome = androidSdkHome;
 		}
 
 		public Adb(string androidSdkHome)
@@ -20,7 +24,7 @@ namespace Android.Tools
 		{
 		}
 
-		public DirectoryInfo AndroidSdkHome { get; set; }
+		internal override string SdkPackageId => "platform-tools";
 
 		AdbRunner runner;
 
@@ -529,11 +533,11 @@ namespace Android.Tools
 			return name;
 		}
 
-		public void Acquire()
+		public IEnumerable<string> LaunchApp(string packageName, string adbSerial = null)
 		{
-			var sdkManager = new SdkManager(AndroidSdkHome);
-
-			sdkManager.Acquire("platform-tools");
+			// Use a trick to have monkey launch the app by package name
+			// so we don't need know the activity class for the main launcher
+			return Shell("monkey -p {packageName} -v 1", adbSerial);
 		}
 	}
 }

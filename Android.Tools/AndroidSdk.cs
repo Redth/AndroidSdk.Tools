@@ -84,5 +84,14 @@ namespace Android.Tools
 
 			return null;
 		}
+
+		public static void Acquire(params SdkTool[] tools)
+		{
+			if (tools == null)
+				return;
+
+			foreach (var t in tools)
+				t.Acquire();
+		}
 	}
 }

@@ -142,3 +142,65 @@ var emulatorProcess = emu.Start(avd.Name, new EmulatorStartOptions { NoSnapshot 
 emulatorProcess.WaitForBootComplete();
 ```
 
+
+## A Complete Example
+
+A common scenario is to create, start, and deploy an apk to an emulator in CI:
+
+```csharp
+// Define the emulator image to use, this is an SDK Manager package id
+var AVD_SDK_ID = "system-images;android-29;google_apis_playstore;x86_64";
+
+// API Levels we need to install to build our app
+var SDK_PACKAGES = new [] { "platforms;android-21", "platforms;android-26", "platforms;android-29" };
+
+// The name of the emulator AVD instance we will create
+var AVD_NAME = "CI_Emulator";
+
+var APP_PROJECT = "MyAndroidApp.csproj";
+var APP_PACKAGE_NAME = "com.myapp";
+var APP_CONFIG = "Release";
+var APP_APK = $"{APP_PROJECT}/bin/{APP_CONFIG}/MonoAndroid90/{APP_PACKAGE_NAME}.apk";
+
+// Make sure all of the tools we need are created and installed
+var sdkManager = new SdkManager();
+var emu = new Emulator();
+var adb = new Adb();
+var avdManager = new AvdManager();
+
+// Ensure all the SDK components are installed
+AndroidSdk.Acquire(sdkManager, adb, emu, avdManager);
+
+// Install the API levels we need for our app
+sdkManager.Install(SDK_PACKAGES);
+
+// Build our Xamarin Android App
+var p = Process.Start($"msbuild /p:Configuration={APP_CONFIG} {APP_PROJECT}");
+p.WaitForExit();
+
+// Make sure the emulator image we want to use is installed
+sdkManager.Install(avdPackageId);
+
+// Create an Emulator instance
+avdManager.Create(AVD_NAME, AVD_SDK_ID, "pixel", force: true);
+
+// Start the emulator
+var emulatorProcess = emu.Start(AVD_NAME, new EmulatorStartOptions { NoSnapshot = true });
+
+// Wait for the emulator to be in a bootcomplete state, ready to use
+emulatorProcess.WaitForBootComplete();
+
+// Install the APK we built for our app earlier
+adb.Install(APP_APK  emulatorProcess.Serial);
+
+// Launch UI Tests or the app
+// TODO: YOUR CODE HERE
+// eg: Launch the app we just installed
+adb.LaunchApp(APP_PACKAGE_NAME, emulatorProcess.Serial);
+
+// TODO: Run some tests?
+
+// Clean up the emulator
+emulatorProcess.Shutdown();
+```
+

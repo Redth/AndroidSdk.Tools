@@ -11,19 +11,27 @@ using System.Net.Http.Headers;
 
 namespace Android.Tools
 {
-	public partial class SdkManager
+	public partial class SdkManager : SdkTool
 	{
 		const string ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED = "26.1.1";
+		const string REPOSITORY_URL_BASE = "https://dl.google.com/android/repository/";
+		const string REPOSITORY_URL = REPOSITORY_URL_BASE + "repository2-1.xml";
+		const string REPOSITORY_SDK_PATTERN = REPOSITORY_URL_BASE + "tools_r{0}.{1}.{2}-{3}.zip";
 
 		readonly Regex rxListDesc = new Regex("\\s+Description:\\s+(?<desc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListVers = new Regex("\\s+Version:\\s+(?<ver>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListLoc = new Regex("\\s+Installed Location:\\s+(?<loc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
+
+		public SdkManager()
+			: this((DirectoryInfo)null, SdkChannel.Stable, false, false, null)
+		{ }
 
 		public SdkManager(string androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
 			: this(androidSdkHome == null ? (DirectoryInfo)null : new DirectoryInfo(androidSdkHome), channel, skipVersionCheck, includeObsolete, proxy)
 		{ }
 
 		public SdkManager(DirectoryInfo androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
+			: base(androidSdkHome)
 		{
 			AndroidSdkHome = androidSdkHome;
 			Channel = channel;
@@ -34,17 +42,13 @@ namespace Android.Tools
 
 		public SdkManagerProxyOptions Proxy { get; set; }
 		
-		public DirectoryInfo AndroidSdkHome { get; set; }
-
 		public SdkChannel Channel { get; set; } = SdkChannel.Stable;
 
 		public bool SkipVersionCheck { get; set; }
 
 		public bool IncludeObsolete { get; set; }
 
-		const string REPOSITORY_URL_BASE = "https://dl.google.com/android/repository/";
-		const string REPOSITORY_URL = REPOSITORY_URL_BASE + "repository2-1.xml";
-		const string REPOSITORY_SDK_PATTERN = REPOSITORY_URL_BASE + "tools_r{0}.{1}.{2}-{3}.zip";
+		internal override string SdkPackageId => "tools";
 
 		/// <summary>
 		/// Downloads the Android SDK
@@ -452,12 +456,6 @@ namespace Android.Tools
 					builder.Append($"--proxy_port=\"{Proxy.ProxyPort}\"");
 			}
 		}
-
-		/// <summary>
-		/// Downloads the SDK and updates if necessary
-		/// </summary>
-		public void Acquire()
-			=> Acquire(null);
 
 		internal void Acquire(params string[] installIds)
 		{

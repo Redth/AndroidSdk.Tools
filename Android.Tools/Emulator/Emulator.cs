@@ -5,12 +5,18 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
 using System.Threading;
+using System.Data;
 
 namespace Android.Tools
 {
-	public partial class Emulator
+	public partial class Emulator : SdkTool
 	{
+		public Emulator()
+			: this((DirectoryInfo)null)
+		{ }
+
 		public Emulator(DirectoryInfo androidSdkHome)
+			: base(androidSdkHome)
 		{
 			AndroidSdkHome = androidSdkHome;
 		}
@@ -19,7 +25,7 @@ namespace Android.Tools
 			: this(new DirectoryInfo(androidSdkHome))
 		{ }
 
-		public DirectoryInfo AndroidSdkHome { get; set; }
+		internal override string SdkPackageId => "emulator";
 
 		public IEnumerable<string> ListAvds()
 		{
@@ -182,6 +188,8 @@ namespace Android.Tools
 
 			public string Uuid { get; private set; }
 
+			public string Serial { get; private set; }
+
 			public int WaitForExit()
 			{
 				result = process.WaitForExit();
@@ -189,8 +197,26 @@ namespace Android.Tools
 				return result.ExitCode;
 			}
 
-			public void Kill()
-				=> process.Kill();
+			public bool Shutdown()
+			{
+				var success = false;
+
+				if (!string.IsNullOrWhiteSpace(Serial))
+				{
+					var adb = new Adb(androidSdkHome);
+
+					try { success = adb.EmuKill(Serial); }
+					catch { }
+				}
+
+				if (process != null && !process.HasExited)
+				{
+					try { process.Kill(); success = true; }
+					catch { }
+				}
+
+				return success;
+			}
 
 			public IEnumerable<string> GetStandardOutput()
 				=> result?.StandardOutput ?? new List<string>();
@@ -218,7 +244,7 @@ namespace Android.Tools
 				// Get a list of devices, we need to find the device we started
 				var devices = adb.GetDevices();
 
-				string adbSerial = null;
+				Serial = null;
 
 				// Find the device we just started and get it's adb serial
 				foreach (var d in devices)
@@ -227,7 +253,7 @@ namespace Android.Tools
 					{
 						if (adb.Shell("getprop -emu.uuid")?.Any(o => o?.Contains(Uuid) ?? false) ?? false)
 						{
-							adbSerial = d.Serial;
+							Serial = d.Serial;
 							break;
 						}
 					} catch { }
@@ -235,7 +261,7 @@ namespace Android.Tools
 
 				// adb wait-for-device
 				// Wait for an on device state
-				adb.WaitFor(Adb.AdbTransport.Any, Adb.AdbState.Device, adbSerial);
+				adb.WaitFor(Adb.AdbTransport.Any, Adb.AdbState.Device, Serial);
 
 				// Keep trying to see if the boot complete prop is set
 				while (!token.IsCancellationRequested)
@@ -253,13 +279,6 @@ namespace Android.Tools
 
 				return booted;
 			}
-		}
-
-		public void Acquire()
-		{
-			var sdkManager = new SdkManager(AndroidSdkHome);
-			
-			sdkManager.Acquire("emulator");
 		}
 	}
 }
