@@ -94,9 +94,51 @@ adb.ScreenCapture(new FileInfo("/local/place/to/save/screen.png"), serial);
 
 ## AVD Manager
 
-Docs coming soon...
+Ensure the right SDK packages are installed:
+
+```csharp
+var avdManager = new AvdManager("/path/to/desired/android_home");
+
+// Download and install bits if necessary
+avdManager.Acquire();
+```
+
+Create an emulator (AVD) definition:
+
+```csharp
+var avdSdkId = "system-images;android-29;google_apis_playstore;x86_64";
+
+// Make sure the emulator image we want to use is installed
+sdkManager.Install(avdPackageId);
+
+// Create an Emulator instance
+avdManager.Create("AVD_Name", avdSdkId, "pixel", force: true);
+```
 
 
 ## Emulator
 
-Docs coming soon...
+Ensure the right SDK packages are installed:
+
+```csharp
+var emu = new Emulator("/path/to/desired/android_home");
+
+// Download and install bits if necessary
+emu.Acquire();
+```
+
+Execute Emulator Commands:
+
+```csharp
+// Get a list of available emulators
+var avds = emu.ListAvds();
+
+var avd = avds.FirstOrDefault(a => a.Name == ");
+
+// Start the emulator
+var emulatorProcess = emu.Start(avd.Name, new EmulatorStartOptions { NoSnapshot = true });
+
+// Wait for the emulator to be in a bootcomplete state, ready to use
+emulatorProcess.WaitForBootComplete();
+```
+

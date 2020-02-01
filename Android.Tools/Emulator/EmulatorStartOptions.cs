@@ -7,14 +7,8 @@ namespace Android.Tools
 {
 	public partial class Emulator
 	{
-		public class EmulatorRunOptions
+		public class EmulatorStartOptions
 		{
-			/// <summary>
-			/// Gets or sets the Android SDK root path.
-			/// </summary>
-			/// <value>The sdk root.</value>
-			public DirectoryInfo AndroidSdkHome { get; set; }
-
 			public bool NoSnapshotLoad { get; set; }
 
 			public bool NoSnapshotSave { get; set; }

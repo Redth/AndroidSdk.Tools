@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
+using System.Threading;
 
 namespace Android.Tools
 {
@@ -20,7 +21,7 @@ namespace Android.Tools
 
 		public DirectoryInfo AndroidSdkHome { get; set; }
 
-		internal IEnumerable<string> ListAvds()
+		public IEnumerable<string> ListAvds()
 		{
 			var builder = new ProcessArgumentBuilder();
 
@@ -35,10 +36,10 @@ namespace Android.Tools
 			}
 		}
 
-		internal AndroidEmulatorProcess Run(string avdName, EmulatorRunOptions options = null)
+		public AndroidEmulatorProcess Start(string avdName, EmulatorStartOptions options = null)
 		{
 			if (options == null)
-				options = new EmulatorRunOptions();
+				options = new EmulatorStartOptions();
 
 			var builder = new ProcessArgumentBuilder();
 
@@ -130,13 +131,16 @@ namespace Android.Tools
 			if (options.Screen.HasValue)
 				builder.Append($"-screen {options.Screen.Value.ToString().ToLowerInvariant()}");
 
+			var uuid = Guid.NewGuid().ToString("D");
+			builder.Append($"-prop emu.uuid={uuid}");
+
 			if (options.ExtraArgs != null && options.ExtraArgs.Length > 0)
 			{
 				foreach (var arg in options.ExtraArgs)
 					builder.Append(arg);
 			}
 
-			return new AndroidEmulatorProcess(Start(builder));
+			return new AndroidEmulatorProcess(Start(builder), uuid, AndroidSdkHome);
 		}
 
 		IEnumerable<string> Run(ProcessArgumentBuilder builder, params string[] args)
@@ -166,13 +170,17 @@ namespace Android.Tools
 
 		public class AndroidEmulatorProcess
 		{
-			internal AndroidEmulatorProcess(ProcessRunner p)
+			internal AndroidEmulatorProcess(ProcessRunner p, string uuid, DirectoryInfo sdkHome)
 			{
 				process = p;
+				androidSdkHome = sdkHome;
 			}
 
 			readonly ProcessRunner process;
+			readonly DirectoryInfo androidSdkHome;
 			ProcessResult result;
+
+			public string Uuid { get; private set; }
 
 			public int WaitForExit()
 			{
@@ -186,6 +194,65 @@ namespace Android.Tools
 
 			public IEnumerable<string> GetStandardOutput()
 				=> result?.StandardOutput ?? new List<string>();
+
+
+			public bool WaitForBootComplete()
+				=> WaitForBootComplete(TimeSpan.Zero);
+
+			public bool WaitForBootComplete(TimeSpan timeout)
+			{
+				var cts = new CancellationTokenSource();
+				
+				if (timeout != TimeSpan.Zero)
+					cts.CancelAfter(timeout);
+
+				return WaitForBootComplete(cts.Token);
+			}
+
+			public bool WaitForBootComplete(CancellationToken token)
+			{
+				var adb = new Adb(androidSdkHome);
+
+				var booted = false;
+
+				// Get a list of devices, we need to find the device we started
+				var devices = adb.GetDevices();
+
+				string adbSerial = null;
+
+				// Find the device we just started and get it's adb serial
+				foreach (var d in devices)
+				{
+					try
+					{
+						if (adb.Shell("getprop -emu.uuid")?.Any(o => o?.Contains(Uuid) ?? false) ?? false)
+						{
+							adbSerial = d.Serial;
+							break;
+						}
+					} catch { }
+				}
+
+				// adb wait-for-device
+				// Wait for an on device state
+				adb.WaitFor(Adb.AdbTransport.Any, Adb.AdbState.Device, adbSerial);
+
+				// Keep trying to see if the boot complete prop is set
+				while (!token.IsCancellationRequested)
+				{
+					if (adb.Shell("getprop dev.bootcomplete").Any(l => l.Contains("1")))
+					{
+						booted = true;
+						break;
+					}
+					else
+					{
+						Thread.Sleep(1000);
+					}
+				}
+
+				return booted;
+			}
 		}
 
 		public void Acquire()
