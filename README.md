@@ -1,4 +1,4 @@
-# Android.Tool
+# Android.Tools
 Global dotnet tool for various android adb, avd, and emulator needs.
 
 ## Usage
@@ -133,7 +133,7 @@ Execute Emulator Commands:
 // Get a list of available emulators
 var avds = emu.ListAvds();
 
-var avd = avds.FirstOrDefault(a => a.Name == ");
+var avd = avds.FirstOrDefault(a => a.Name == "AVD_Name");
 
 // Start the emulator
 var emulatorProcess = emu.Start(avd.Name, new EmulatorStartOptions { NoSnapshot = true });
