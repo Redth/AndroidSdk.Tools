@@ -525,5 +525,12 @@ namespace Android.Tools
 
 			return name;
 		}
+
+		public void Acquire()
+		{
+			var sdkManager = new SdkManager(AndroidSdkHome);
+
+			sdkManager.Acquire("platform-tools");
+		}
 	}
 }

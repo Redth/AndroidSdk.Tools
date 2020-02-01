@@ -111,5 +111,12 @@ namespace Android.Tools
 
 			return r.StandardOutput;
 		}
+
+		public void Acquire()
+		{
+			var sdkManager = new SdkManager(AndroidSdkHome);
+
+			sdkManager.Acquire("emulator");
+		}
 	}
 }

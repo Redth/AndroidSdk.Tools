@@ -26,17 +26,19 @@ namespace Android.Tools
 		public SdkManager(DirectoryInfo androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
 		{
 			AndroidSdkHome = androidSdkHome;
-			Proxy = proxy ?? new SdkManagerProxyOptions();
+			Channel = channel;
 			SkipVersionCheck = skipVersionCheck;
+			IncludeObsolete = includeObsolete;
+			Proxy = proxy ?? new SdkManagerProxyOptions();
 		}
 
 		public SdkManagerProxyOptions Proxy { get; set; }
 		
 		public DirectoryInfo AndroidSdkHome { get; set; }
 
-		public bool SkipVersionCheck { get; set; }
-
 		public SdkChannel Channel { get; set; } = SdkChannel.Stable;
+
+		public bool SkipVersionCheck { get; set; }
 
 		public bool IncludeObsolete { get; set; }
 
@@ -55,8 +57,11 @@ namespace Android.Tools
 			if (destinationDirectory == null)
 				destinationDirectory = AndroidSdkHome;
 
-			if (destinationDirectory == null || !destinationDirectory.Exists)
-				throw new DirectoryNotFoundException("Android SDK Not Found");
+			if (destinationDirectory == null)
+				throw new DirectoryNotFoundException("Android SDK Directory Not specified.");
+
+			if (!destinationDirectory.Exists)
+				destinationDirectory.Create();
 
 			var http = new HttpClient();
 			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
@@ -96,46 +101,43 @@ namespace Android.Tools
 
 			var sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, specificVersion.Major, specificVersion.Minor, specificVersion.Build, platformStr);
 
-			var toolsDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "tools"));
-			if (!toolsDir.Exists)
-				toolsDir.Create();
-
-			var sdkDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "tools", "androidsdk"));
+			var sdkDir = new DirectoryInfo(destinationDirectory.FullName);
 			if (!sdkDir.Exists)
 				sdkDir.Create();
 
-			var sdkZipFile = new FileInfo(Path.Combine(destinationDirectory.FullName, "tools", "androidsdk.zip"));
+			var sdkZipFile = new FileInfo(Path.Combine(destinationDirectory.FullName, "androidsdk.zip"));
 
-			if (sdkZipFile.Exists)
-				sdkZipFile.Delete();
-
-			var buffer = new byte[4096];
-
-			var resp = http.GetAsync(sdkUrl).Result;
-
-			resp.EnsureSuccessStatusCode();
-
-			var contentLength = resp.Content.Headers.ContentLength;
-
-			using (var httpStream = resp.Content.ReadAsStreamAsync().Result)
-			using (var fileStream = File.Create(sdkZipFile.FullName))
+			if (!sdkZipFile.Exists)
 			{
-				var totalRead = 0;
-				int prevProgress = 0;
 
-				int read = 0;
-				while ((read = httpStream.Read(buffer, 0, buffer.Length)) > 0)
+				var buffer = new byte[4096];
+
+				var resp = http.GetAsync(sdkUrl).Result;
+
+				resp.EnsureSuccessStatusCode();
+
+				var contentLength = resp.Content.Headers.ContentLength;
+
+				using (var httpStream = resp.Content.ReadAsStreamAsync().Result)
+				using (var fileStream = File.Create(sdkZipFile.FullName))
 				{
-					fileStream.Write(buffer, 0, read);
+					var totalRead = 0;
+					int prevProgress = 0;
 
-					totalRead += read;
+					int read = 0;
+					while ((read = httpStream.Read(buffer, 0, buffer.Length)) > 0)
+					{
+						fileStream.Write(buffer, 0, read);
 
-					int progress = (int)(((double)totalRead / (double)contentLength) * 100d);
+						totalRead += read;
 
-					if (progress > prevProgress)
-						progressHandler?.Invoke(progress);
+						int progress = (int)(((double)totalRead / (double)contentLength) * 100d);
 
-					prevProgress = progress;
+						if (progress > prevProgress)
+							progressHandler?.Invoke(progress);
+
+						prevProgress = progress;
+					}
 				}
 			}
 
@@ -147,15 +149,33 @@ namespace Android.Tools
 			if (SkipVersionCheck)
 				return true;
 
+			var v = GetVersion();
+
+			var min = Version.Parse(ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED);
+
+			if (v == null || v < min)
+				return false;
+
+			return true;
+		}
+
+		public Version GetVersion()
+		{
 			var builder = new ProcessArgumentBuilder();
 			builder.Append("--version");
 
 			var p = Run(builder);
 
-			if (!p.Any(o => o.Trim().Equals(ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED, StringComparison.OrdinalIgnoreCase)))
-				return false;
+			if (p != null)
+			{
+				foreach (var l in p)
+				{
+					if (Version.TryParse(l?.Trim() ?? string.Empty, out var v))
+						return v;
+				}
+			}
 
-			return true;
+			return null;
 		}
 
 		internal void CheckSdkManagerVersion ()
@@ -317,14 +337,18 @@ namespace Android.Tools
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
 
+			// We need to temporarily move ./tools/ to ./tools-temp/ and run sdkmanager.bat
+			// from there on windows to avoid errors updating the ./tools/ folder while in use
+			var moveToolsTemp = GetVersion() == null;
+			
 			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
-			builder.Append("update");
+			builder.Append("--update");
 
 			BuildStandardOptions(builder);
 
-			RunWithAccept(builder);
+			var o = RunWithAccept(builder, moveToolsTemp);
 
 			return true;
 		}
@@ -335,10 +359,10 @@ namespace Android.Tools
 			return Run(new ProcessArgumentBuilder());
 		}
 
-		List<string> RunWithAccept(ProcessArgumentBuilder builder)
-			=> RunWithAccept(builder, TimeSpan.FromSeconds(100));
+		List<string> RunWithAccept(ProcessArgumentBuilder builder, bool moveToolsToTemp = false)
+			=> RunWithAccept(builder, TimeSpan.Zero, moveToolsToTemp);
 
-		List<string> RunWithAccept(ProcessArgumentBuilder builder, TimeSpan timeout)
+		List<string> RunWithAccept(ProcessArgumentBuilder builder, TimeSpan timeout, bool moveToolsToTemp = false)
 		{
 			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
 
@@ -349,6 +373,27 @@ namespace Android.Tools
 			if (timeout != TimeSpan.Zero)
 				ct.CancelAfter(timeout);
 
+			// UGLY HACK AND DRAGONS 🐲🔥
+			// Basically, on windows sdkmanager.bat is in tools, but updating itself
+			// tries to delete tools and move the new one in place after it downloads
+			// which causes issues because sdkmanager.bat is running from that folder
+			string sdkToolsTempDir = null;
+			var didMoveToolsToTemp = false;
+
+			if (moveToolsToTemp && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+			{
+				// Get the actual tools dir
+				var sdkToolsDir = Path.Combine(sdkManager.Directory.FullName, "..");
+				sdkToolsTempDir = Path.Combine(sdkToolsDir, "..", "tools-temp");
+
+				// Perform the copy
+				CopyFilesRecursively(new DirectoryInfo(sdkToolsDir), new DirectoryInfo(sdkToolsTempDir));
+				
+				// Set the sdkmanager.bat path to the new temp location
+				sdkManager = new FileInfo(Path.Combine(sdkToolsTempDir, "bin", "sdkmanager.bat"));
+				didMoveToolsToTemp = true;
+			}
+
 			var p = new ProcessRunner(sdkManager, builder, ct.Token, true);
 
 			while (!p.HasExited)
@@ -358,6 +403,10 @@ namespace Android.Tools
 			}
 
 			var r = p.WaitForExit();
+
+			// If we used the ugly hack above, let's cleanup the temp copy
+			if (didMoveToolsToTemp)
+				Directory.Delete(sdkToolsTempDir, true);
 
 			return r.StandardOutput;
 		}
@@ -402,6 +451,34 @@ namespace Android.Tools
 				if (Proxy.ProxyPort > 0)
 					builder.Append($"--proxy_port=\"{Proxy.ProxyPort}\"");
 			}
+		}
+
+		public void Acquire()
+			=> Acquire(null);
+
+		internal void Acquire(params string[] installIds)
+		{
+			var sdkManagerApp = AndroidSdk.FindSdkManager(AndroidSdkHome);
+
+			// Download if it doesn't exist
+			if (sdkManagerApp == null || !sdkManagerApp.Exists)
+				DownloadSdk(AndroidSdkHome, null, null);
+
+			UpdateAll();
+
+			if (installIds?.Any() ?? false)
+			{
+				foreach (var id in installIds)
+					Install(id);
+			}
+		}
+
+		public static void CopyFilesRecursively(DirectoryInfo source, DirectoryInfo target)
+		{
+			foreach (DirectoryInfo dir in source.GetDirectories())
+				CopyFilesRecursively(dir, target.CreateSubdirectory(dir.Name));
+			foreach (FileInfo file in source.GetFiles())
+				file.CopyTo(Path.Combine(target.FullName, file.Name));
 		}
 	}
 }

@@ -187,5 +187,12 @@ namespace Android.Tools
 			public IEnumerable<string> GetStandardOutput()
 				=> result?.StandardOutput ?? new List<string>();
 		}
+
+		public void Acquire()
+		{
+			var sdkManager = new SdkManager(AndroidSdkHome);
+			
+			sdkManager.Acquire("emulator");
+		}
 	}
 }

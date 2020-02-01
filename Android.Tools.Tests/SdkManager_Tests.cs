@@ -15,10 +15,7 @@ namespace Android.Tools.Tests
 		[Fact]
 		public void DownloadSdk()
 		{
-			var androidSdkHome = new DirectoryInfo(Path.GetTempPath());
-
-			var s = new SdkManager(androidSdkHome);
-			s.DownloadSdk(progressHandler: p => OutputHelper.WriteLine($"Downloading SDK {p}%"));
+			var s = GetSdkManager();
 
 			var isUpToDate = s.IsUpToDate();
 
@@ -46,7 +43,7 @@ namespace Android.Tools.Tests
 		{
 			var s = GetSdkManager();
 
-			var ok = s.Install("system-images;android-26;google_apis;x86", "extras;google;auto");
+			var ok = s.Install("extras;google;auto");
 
 			Assert.True(ok);
 

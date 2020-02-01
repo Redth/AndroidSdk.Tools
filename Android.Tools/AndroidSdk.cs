@@ -48,17 +48,17 @@ namespace Android.Tools
 		}
 
 
-		public static FileInfo FindAdb(DirectoryInfo androidHome = null)
-			=> FindTool(androidHome, "adb", ".exe", "platform-tools");
+		public static FileInfo FindAdb(DirectoryInfo androidHome = null, bool installMissing = true)
+			=> FindTool(androidHome, toolName: "adb", ".exe", "platform-tools");
 
 		public static FileInfo FindSdkManager(DirectoryInfo androidHome = null)
-			=> FindTool(androidHome, "sdkmanager", ".exe", "tools", "bin");
+			=> FindTool(androidHome, toolName: "sdkmanager", ".bat", "tools", "bin");
 
-		public static FileInfo FindAvdManager(DirectoryInfo androidHome = null)
-			=> FindTool(androidHome, "avdmanager", ".exe", "tools", "bin");
+		public static FileInfo FindAvdManager(DirectoryInfo androidHome = null, bool installMissing = true)
+			=> FindTool(androidHome, toolName: "avdmanager", ".exe", "tools", "bin");
 
-		public static FileInfo FindEmulator(DirectoryInfo androidHome = null)
-			=> FindTool(androidHome, "emulator", "emulator", ".exe");
+		public static FileInfo FindEmulator(DirectoryInfo androidHome = null, bool installMissing = true)
+			=> FindTool(androidHome, toolName: "emulator", "emulator", ".exe");
 
 		static FileInfo FindTool(DirectoryInfo androidHome, string toolName, string windowsExtension, params string[] pathSegments)
 		{
@@ -84,6 +84,5 @@ namespace Android.Tools
 
 			return null;
 		}
-	
 	}
 }

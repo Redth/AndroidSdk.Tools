@@ -34,8 +34,16 @@ namespace Android.Tools
 			if (redirectStandardInput)
 				process.StartInfo.RedirectStandardInput = true;
 
-			process.OutputDataReceived += (s, e) => standardOutput.Add(e.Data);
-			process.ErrorDataReceived += (s, e) => standardError.Add(e.Data);
+			process.OutputDataReceived += (s, e) =>
+			{
+				if (e.Data != null)
+					standardOutput.Add(e.Data);
+			};
+			process.ErrorDataReceived += (s, e) =>
+			{
+				if (e.Data != null)
+					standardError.Add(e.Data);
+			};
 			process.Start();
 			process.BeginOutputReadLine();
 			process.BeginErrorReadLine();
@@ -77,11 +85,6 @@ namespace Android.Tools
 		public ProcessResult WaitForExit()
 		{
 			process.WaitForExit();
-
-			var error = standardError?.FirstOrDefault(o => o.StartsWith("error:", StringComparison.OrdinalIgnoreCase));
-
-			if (!string.IsNullOrEmpty(error))
-				throw new Exception(error);
 
 			return new ProcessResult(standardOutput, standardError, process.ExitCode);
 		}
