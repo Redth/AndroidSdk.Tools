@@ -62,33 +62,33 @@ foreach (var device in devices)
 // Find an emulator
 var emulator = devices.FirstOrDefault(d => d.IsEmulator);
 
-// Get it's name
-var emulatorName = adb.GetAvdName(emulator.Serial);
+// Get the name of an emulator/device
+var emulatorName = adb.GetDeviceName(emulator.Serial);
 
-// Set our Adb instance's Serial for subsequent commands
+// Use the emulator's serial in other adb calls
 // Useful if there's multiple devices connected
-adb.AdbSerial = emulator.Serial;
+var serial = emulator.Serial;
 
 // Push files
-adb.Push(new FileInfo("/some/image.png"), new FileInfo("/sdcard/image.png"));
+adb.Push(new FileInfo("/some/image.png"), new FileInfo("/sdcard/image.png"), serial);
 
 // Pull files
-adb.Pull(new FileInfo("/some/log.txt"), new FileInfo("/local/log.txt"));
+adb.Pull(new FileInfo("/some/log.txt"), new FileInfo("/local/log.txt"), serial);
 
 // Install an apk
-adb.Install(new FileInfo("/some/local/app.apk"));
+adb.Install(new FileInfo("/some/local/app.apk"), serial);
 
 // Uninstall a package
-adb.Uninstall("com.some.app", keepDataAndCacheDirs: false);
+adb.Uninstall("com.some.app", keepDataAndCacheDirs: false, serial);
 
 // Dump logcat lines
-List<string> logs = adb.Logcat();
+List<string> logs = adb.Logcat(serial);
 
 // Execute shell commands
-var output = adb.Shell("ls -l");
+var output = adb.Shell("ls -l", serial);
 
 // Screen capture
-adb.ScreenCapture(new FileInfo("/local/place/to/save/screen.png"));
+adb.ScreenCapture(new FileInfo("/local/place/to/save/screen.png"), serial);
 ```
 
 

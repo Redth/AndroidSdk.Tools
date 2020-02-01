@@ -9,31 +9,18 @@ namespace Android.Tools
 {
 	public partial class Adb
 	{
-		public Adb(DirectoryInfo androidSdkHome, string adbSerial)
+		public Adb(DirectoryInfo androidSdkHome)
 		{
 			runner = new AdbRunner();
 			AndroidSdkHome = androidSdkHome;
-			AdbSerial = adbSerial;
-		}
-
-		public Adb(DirectoryInfo androidSdkHome)
-			: this(androidSdkHome, null)
-		{
 		}
 
 		public Adb(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome), null)
-		{
-		}
-
-		public Adb(string androidSdkHome, string adbSerial)
-			: this(new DirectoryInfo(androidSdkHome), adbSerial)
+			: this(new DirectoryInfo(androidSdkHome))
 		{
 		}
 
 		public DirectoryInfo AndroidSdkHome { get; set; }
-
-		public string AdbSerial { get; set; }
 
 		AdbRunner runner;
 
@@ -140,13 +127,13 @@ namespace Android.Tools
 			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
-		public void Install(FileInfo apkFile)
+		public void Install(FileInfo apkFile, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("install");
 			builder.Append(apkFile.FullName);
@@ -154,14 +141,14 @@ namespace Android.Tools
 			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
-		public void WaitFor(AdbTransport transport = AdbTransport.Any, AdbState state = AdbState.Device)
+		public void WaitFor(AdbTransport transport = AdbTransport.Any, AdbState state = AdbState.Device, string adbSerial = null)
 		{
 			// adb wait-for[-<transport>]-<state>
 			//  transport: usb, local, or any (default)
 			//  state: device, recovery, sideload, bootloader
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			var x = "wait-for";
 			if (transport == AdbTransport.Local)
@@ -190,13 +177,13 @@ namespace Android.Tools
 			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
-		public void Uninstall(string packageName, bool keepDataAndCacheDirs = false)
+		public void Uninstall(string packageName, bool keepDataAndCacheDirs = false, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("uninstall");
 			if (keepDataAndCacheDirs)
@@ -206,13 +193,13 @@ namespace Android.Tools
 			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
-		public bool EmuKill()
+		public bool EmuKill(string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("emu");
 			builder.Append("kill");
@@ -222,23 +209,23 @@ namespace Android.Tools
 			return r.StandardOutput.Any(o => o.ToLowerInvariant().Contains("stopping emulator"));
 		}
 
-		public bool Pull(FileInfo remoteFileSource, FileInfo localFileDestination)
-			=> pull(remoteFileSource.FullName, localFileDestination.FullName);
+		public bool Pull(FileInfo remoteFileSource, FileInfo localFileDestination, string adbSerial = null)
+			=> pull(remoteFileSource.FullName, localFileDestination.FullName, adbSerial);
 
 
-		public bool Pull(DirectoryInfo remoteDirectorySource, DirectoryInfo localDirectoryDestination)
-			=> pull(remoteDirectorySource.FullName, localDirectoryDestination.FullName);
+		public bool Pull(DirectoryInfo remoteDirectorySource, DirectoryInfo localDirectoryDestination, string adbSerial = null)
+			=> pull(remoteDirectorySource.FullName, localDirectoryDestination.FullName, adbSerial);
 	
-		public bool Pull(FileInfo remoteFileSource, DirectoryInfo localDirectoryDestination)
-			=> pull(remoteFileSource.FullName, localDirectoryDestination.FullName);
+		public bool Pull(FileInfo remoteFileSource, DirectoryInfo localDirectoryDestination, string adbSerial = null)
+			=> pull(remoteFileSource.FullName, localDirectoryDestination.FullName, adbSerial);
 
-		bool pull(string remoteSrc, string localDest)
+		bool pull(string remoteSrc, string localDest, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("pull");
 			builder.AppendQuoted(remoteSrc);
@@ -249,22 +236,22 @@ namespace Android.Tools
 			return r.Success;
 		}
 
-		public bool Push(FileInfo localFileSource, FileInfo remoteFileDestination)
-			=> push(localFileSource.FullName, remoteFileDestination.FullName);
+		public bool Push(FileInfo localFileSource, FileInfo remoteFileDestination, string adbSerial = null)
+			=> push(localFileSource.FullName, remoteFileDestination.FullName, adbSerial);
 
-		public bool Push(FileInfo localFileSource, DirectoryInfo remoteDirectoryDestination)
-			=>push(localFileSource.FullName, remoteDirectoryDestination.FullName);
+		public bool Push(FileInfo localFileSource, DirectoryInfo remoteDirectoryDestination, string adbSerial = null)
+			=>push(localFileSource.FullName, remoteDirectoryDestination.FullName, adbSerial);
 		
-		public bool Push(DirectoryInfo localDirectorySource, DirectoryInfo remoteDirectoryDestination)
-			=> push(localDirectorySource.FullName, remoteDirectoryDestination.FullName);
+		public bool Push(DirectoryInfo localDirectorySource, DirectoryInfo remoteDirectoryDestination, string adbSerial = null)
+			=> push(localDirectorySource.FullName, remoteDirectoryDestination.FullName, adbSerial);
 
-		bool push(string localSrc, string remoteDest)
+		bool push(string localSrc, string remoteDest, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("pull");
 			builder.AppendQuoted(localSrc);
@@ -274,13 +261,13 @@ namespace Android.Tools
 			return r.Success;
 		}
 
-		public List<string> BugReport()
+		public List<string> BugReport(string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("bugreport");
 
@@ -290,7 +277,7 @@ namespace Android.Tools
 		}
 
 
-		public List<string> Logcat(AdbLogcatOptions options = null)
+		public List<string> Logcat(AdbLogcatOptions options = null, string adbSerial = null)
 		{
 			// logcat[option][filter - specs]
 			if (options == null)
@@ -300,7 +287,7 @@ namespace Android.Tools
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("logcat");
 
@@ -362,8 +349,6 @@ namespace Android.Tools
 			// adb version
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
-
 			builder.Append("version");
 			var output = new List<string>();
 			var r = runner.RunAdb(AndroidSdkHome, builder);
@@ -371,13 +356,13 @@ namespace Android.Tools
 			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
 
-		public string GetSerialNumber()
+		public string GetSerialNumber(string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("get-serialno");
 
@@ -386,13 +371,13 @@ namespace Android.Tools
 			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
 
-		public string GetState()
+		public string GetState(string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("get-state");
 
@@ -402,13 +387,13 @@ namespace Android.Tools
 		}
 
 
-		public List<string> Shell(string shellCommand)
+		public List<string> Shell(string shellCommand, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("shell");
 			builder.Append(shellCommand);
@@ -421,20 +406,20 @@ namespace Android.Tools
 		}
 
 
-		public void ScreenCapture(FileInfo saveToLocalFile)
+		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)
 		{
 			//adb shell screencap / sdcard / screen.png
 			var guid = Guid.NewGuid().ToString();
 			var remoteFile = "/sdcard/" + guid + ".png";
 
-			Shell("screencap " + remoteFile);
+			Shell("screencap " + remoteFile, adbSerial);
 
-			Pull(new FileInfo(remoteFile), saveToLocalFile);
+			Pull(new FileInfo(remoteFile), saveToLocalFile, adbSerial);
 
-			Shell("rm " + remoteFile);
+			Shell("rm " + remoteFile, adbSerial);
 		}
 
-		public void ScreenRecord(FileInfo saveToLocalFile, System.Threading.CancellationToken? recordingCancelToken = null, TimeSpan? timeLimit = null, int? bitrateMbps = null, int? width = null, int? height = null, bool rotate = false, bool logVerbose = false)
+		public void ScreenRecord(FileInfo saveToLocalFile, System.Threading.CancellationToken? recordingCancelToken = null, TimeSpan? timeLimit = null, int? bitrateMbps = null, int? width = null, int? height = null, bool rotate = false, bool logVerbose = false, string adbSerial = null)
 		{
 			// screenrecord[options] filename
 
@@ -445,7 +430,7 @@ namespace Android.Tools
 			// -k keeps data & cache dir
 			var builder = new ProcessArgumentBuilder();
 
-			runner.AddSerial(AdbSerial, builder);
+			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("shell");
 			builder.Append("screenrecord");
@@ -481,18 +466,36 @@ namespace Android.Tools
 			else
 				runner.RunAdb(AndroidSdkHome, builder);
 
-			Pull(new FileInfo(remoteFile), saveToLocalFile);
+			Pull(new FileInfo(remoteFile), saveToLocalFile, adbSerial);
 
-			Shell("rm " + remoteFile);
+			Shell("rm " + remoteFile, adbSerial);
 		}
 
-		public string GetAvdName()
+		public string GetDeviceName(string adbSerial = null)
 		{
-			if (string.IsNullOrEmpty(AdbSerial) || !AdbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
+			try
+			{
+				return GetEmulatorName(adbSerial);
+			}
+			catch (InvalidDataException)
+			{
+				// Shell getprop
+				var s = Shell("getprop ro.product.name", adbSerial);
+
+				if (s?.Any() ?? false)
+					return s.FirstOrDefault().Trim();
+			}
+
+			return null;
+		}
+
+		public string GetEmulatorName(string adbSerial = null)
+		{
+			if (string.IsNullOrEmpty(adbSerial) || !adbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
 				throw new InvalidDataException("Serial must be an emulator starting with `emulator-`");
 
 			int port = 5554;
-			if (!int.TryParse(AdbSerial.Substring(9), out port))
+			if (!int.TryParse(adbSerial.Substring(9), out port))
 				return null;
 
 			var tcpClient = new System.Net.Sockets.TcpClient("127.0.0.1", port);
