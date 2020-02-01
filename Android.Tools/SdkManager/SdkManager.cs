@@ -52,7 +52,7 @@ namespace Android.Tools
 		/// <param name="context">The context.</param>
 		/// <param name="destinationDirectory">Destination directory, or ./tools/androidsdk if none is specified.</param>
 		/// <param name="specificVersion">Specific version, or latest if none is specified.</param>
-		public void DownloadSdk(DirectoryInfo destinationDirectory = null, Version specificVersion = null, Action<int> progressHandler = null)
+		internal void DownloadSdk(DirectoryInfo destinationDirectory = null, Version specificVersion = null, Action<int> progressHandler = null)
 		{
 			if (destinationDirectory == null)
 				destinationDirectory = AndroidSdkHome;
@@ -453,6 +453,9 @@ namespace Android.Tools
 			}
 		}
 
+		/// <summary>
+		/// Downloads the SDK and updates if necessary
+		/// </summary>
 		public void Acquire()
 			=> Acquire(null);
 

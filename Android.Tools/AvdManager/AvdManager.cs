@@ -20,7 +20,7 @@ namespace Android.Tools
 
 		public DirectoryInfo AndroidSdkHome { get; set; }
 
-		public void AvdCreate(string name, string sdkId, string device, string sdCardPathOrSize = null, bool force = false, string avdPath = null)
+		public void Create(string name, string sdkId, string device, string sdCardPathOrSize = null, bool force = false, string avdPath = null)
 		{
 			var args = new List<string> {
 				"create", "avd", "-n", name, "-k", $"\"{sdkId}\""
@@ -50,12 +50,12 @@ namespace Android.Tools
 			run(args.ToArray());
 		}
 
-		public void AvdDelete(string name)
+		public void Delete(string name)
 		{
 			run("delete", "avd", "-n", name);
 		}
 
-		public void AvdMove(string name, string path = null, string newName = null)
+		public void Move(string name, string path = null, string newName = null)
 		{
 			var args = new List<string> {
 				"move", "avd", "-n", name
@@ -76,19 +76,19 @@ namespace Android.Tools
 			run(args.ToArray());
 		}
 
-		public IEnumerable<AvdTarget> AvdListTargets()
+		public IEnumerable<AvdTarget> ListTargets()
 		{
 			foreach (var line in run("list", "target", "-c"))
 				yield return new AvdTarget { Id = line.Trim() };
 		}
 
-		public IEnumerable<Avd> AvdListAvds()
+		public IEnumerable<Avd> ListAvds()
 		{
 			foreach (var line in run("list", "avd", "-c"))
 				yield return new Avd { Name = line.Trim() };
 		}
 
-		public IEnumerable<AvdDevice> AvdListDevices()
+		public IEnumerable<AvdDevice> ListDevices()
 		{
 			foreach (var line in run("list", "device", "-c"))
 				yield return new AvdDevice { Name = line.Trim() };

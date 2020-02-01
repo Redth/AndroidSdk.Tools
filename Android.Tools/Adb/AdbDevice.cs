@@ -18,6 +18,9 @@ namespace Android.Tools
 			/// <value>The serial.</value>
 			public string Serial { get; set; }
 
+			public bool IsEmulator
+				=> Serial?.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase) ?? false;
+
 			/// <summary>
 			/// Gets or sets the usb.
 			/// </summary>
