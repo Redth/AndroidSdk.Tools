@@ -13,8 +13,9 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.100
-    - name: Build
-      run: 
-        - dotnet build --configuration Release Android.Tools\Android.Tools.csproj
-        - dotnet build --configuration Release Android.Tools.Runner\Android.Tools.Runner.csproj
-        - dotnet build --configuration Release Android.Tools.Tests\Android.Tools.Tests.csproj
+    - name: Build Library
+      run: dotnet build --configuration Release Android.Tools\Android.Tools.csproj
+    - name: Build Runner
+      run: dotnet build --configuration Release Android.Tools.Runner\Android.Tools.Runner.csproj
+    - name: Build Tests
+      run: dotnet build --configuration Release Android.Tools.Tests\Android.Tools.Tests.csproj
