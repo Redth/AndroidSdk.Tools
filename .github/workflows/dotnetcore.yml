@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
@@ -18,7 +19,8 @@ jobs:
     
     - name: Pack
       run: dotnet pack --output ./artifacts --configuration Release ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
-    - uses: actions/upload-artifact@v1
+    - name: Artifacts
+      uses: actions/upload-artifact@v1
       with:
-        name: artifacts
+        name: NuGet
         path: ./artifacts
