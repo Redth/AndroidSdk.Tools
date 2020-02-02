@@ -10,6 +10,13 @@ namespace Android.Tools
 {
 	internal class AdbRunner
 	{
+		public AdbRunner(SdkTool sdkTool)
+		{
+			this.sdkTool = sdkTool;
+		}
+
+		SdkTool sdkTool;
+
 		internal void AddSerial(string serial, ProcessArgumentBuilder builder)
 		{
 			if (!string.IsNullOrEmpty(serial))
@@ -24,7 +31,7 @@ namespace Android.Tools
 
 		internal ProcessResult RunAdb(DirectoryInfo androidSdkHome, ProcessArgumentBuilder builder, System.Threading.CancellationToken cancelToken)
 		{
-			var adbToolPath = AndroidSdk.FindAdb(androidSdkHome);
+			var adbToolPath = sdkTool.FindToolPath(androidSdkHome);
 			if (adbToolPath == null || !File.Exists(adbToolPath.FullName))
 				throw new FileNotFoundException("Could not find adb", adbToolPath?.FullName);
 

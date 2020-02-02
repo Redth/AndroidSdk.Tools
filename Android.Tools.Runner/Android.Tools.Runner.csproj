@@ -5,15 +5,15 @@
 		<OutputType>Exe</OutputType>
 		<TargetFrameworks>netcoreapp2.1;netcoreapp3.0</TargetFrameworks>
 		<ToolCommandName>android-tool</ToolCommandName>
-		<AssemblyName>Android.Tool</AssemblyName>
+		<AssemblyName>Android.Tools.Runner</AssemblyName>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PreserveCompilationContext>true</PreserveCompilationContext>
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<PackageId>Android.Tool</PackageId>
+		<PackageId>Android.Tools</PackageId>
 		<PackageVersion>0.1</PackageVersion>
-		<Title>Android Tool</Title>
+		<Title>Android Tools</Title>
 		<PackageDescription>Global dotnet tool for Android related tasks.</PackageDescription>
 		<Authors>Redth</Authors>
 		<Owners>Redth</Owners>

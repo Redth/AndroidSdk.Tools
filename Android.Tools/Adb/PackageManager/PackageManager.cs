@@ -6,12 +6,16 @@ using System.Text.RegularExpressions;
 
 namespace Android.Tools
 {
-	public partial class PackageManager
+	public partial class PackageManager : SdkTool
 	{
+		public PackageManager()
+			: this((DirectoryInfo)null, null)
+		{ }
+
 		public PackageManager(DirectoryInfo androidSdkHome, string adbSerial)
+			: base(androidSdkHome)
 		{
-			runner = new AdbRunner();
-			AndroidSdkHome = androidSdkHome;
+			runner = new AdbRunner(this);
 			AdbSerial = adbSerial;
 		}
 
@@ -30,7 +34,10 @@ namespace Android.Tools
 		{
 		}
 
-		public DirectoryInfo AndroidSdkHome { get; set; }
+		internal override string SdkPackageId => "platform-tools";
+
+		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
+			=> FindTool(androidSdkHome, toolName: "adb", ".exe", "platform-tools");
 
 		public string AdbSerial { get; set; }
 		AdbRunner runner;

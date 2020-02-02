@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Android.Tools
 {
-	public static class AndroidSdk
+	public class AndroidSdk
 	{
 		static string[] KnownLikelyPaths =>
 			RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
@@ -47,51 +47,37 @@ namespace Android.Tools
 			}
 		}
 
-
-		public static FileInfo FindAdb(DirectoryInfo androidHome = null, bool installMissing = true)
-			=> FindTool(androidHome, toolName: "adb", ".exe", "platform-tools");
-
-		public static FileInfo FindSdkManager(DirectoryInfo androidHome = null)
-			=> FindTool(androidHome, toolName: "sdkmanager", ".bat", "tools", "bin");
-
-		public static FileInfo FindAvdManager(DirectoryInfo androidHome = null, bool installMissing = true)
-			=> FindTool(androidHome, toolName: "avdmanager", ".exe", "tools", "bin");
-
-		public static FileInfo FindEmulator(DirectoryInfo androidHome = null, bool installMissing = true)
-			=> FindTool(androidHome, toolName: "emulator", "emulator", ".exe");
-
-		static FileInfo FindTool(DirectoryInfo androidHome, string toolName, string windowsExtension, params string[] pathSegments)
+		public AndroidSdk(DirectoryInfo home = null)
 		{
-			var results = new List<FileInfo>();
+			Home = home ?? FindHome()?.FirstOrDefault();
 
-			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
-			var ext = isWindows ? windowsExtension : string.Empty;
-			var home = AndroidSdk.FindHome(androidHome)?.FirstOrDefault();
-
-			if (home?.Exists ?? false)
-			{
-				var allSegments = new List<string>();
-				allSegments.Add(home.FullName);
-				allSegments.AddRange(pathSegments);
-				allSegments.Add(toolName + ext);
-
-				var tool = Path.Combine(allSegments.ToArray());
-
-				if (File.Exists(tool))
-					return new FileInfo(tool);
-			}
-
-			return null;
+			SdkManager = new SdkManager(Home);
+			AvdManager = new AvdManager(Home);
+			PackageManager = new PackageManager(Home);
+			Adb = new Adb(Home);
+			Emulator = new Emulator(Home);
 		}
 
-		public static void Acquire(params SdkTool[] tools)
+		public void Acquire()
 		{
-			if (tools == null)
-				return;
-
-			foreach (var t in tools)
-				t.Acquire();
+			SdkManager.Acquire(
+				SdkManager,
+				Adb,
+				Emulator,
+				PackageManager,
+				AvdManager);
 		}
+
+		public readonly DirectoryInfo Home;
+
+		public readonly SdkManager SdkManager;
+
+		public readonly AvdManager AvdManager;
+
+		public readonly PackageManager PackageManager;
+
+		public readonly Emulator Emulator;
+
+		public readonly Adb Adb;
 	}
 }

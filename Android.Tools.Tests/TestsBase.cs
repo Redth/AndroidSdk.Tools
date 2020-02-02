@@ -37,14 +37,14 @@ namespace Android.Tools.Tests
 					Path.Combine(Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System)), "testdata")
 					: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "testdata");
 
-		public DirectoryInfo EnsureAndroidSdkExists(bool useGlobalSdk = false)
+		public AndroidSdk GetSdk(bool useGlobalSdk = false)
 		{
 			if (useGlobalSdk)
 			{
 				var globalSdk = AndroidSdk.FindHome()?.FirstOrDefault();
 
 				if (globalSdk != null && globalSdk.Exists)
-					return globalSdk;
+					AndroidSdkHome = globalSdk;
 			}
 
 			if (AndroidSdkHome == null || !AndroidSdkHome.Exists)
@@ -56,21 +56,14 @@ namespace Android.Tools.Tests
 
 				AndroidSdkHome = new DirectoryInfo(sdkPath);
 
-				var s = new SdkManager(AndroidSdkHome);
-				s.SkipVersionCheck = true;
+				var s = new AndroidSdk(AndroidSdkHome);
+
 				s.Acquire();
 
-				Assert.True(s.IsUpToDate());
+				Assert.True(s.SdkManager.IsUpToDate());
 			}
 
-			return AndroidSdkHome;
-		}
-
-		public SdkManager GetSdkManager(bool useGlobalSdk = false)
-		{
-			var androidSdkHome = EnsureAndroidSdkExists(useGlobalSdk);
-
-			return new SdkManager(androidSdkHome);
+			return new AndroidSdk(AndroidSdkHome);
 		}
 	}
 }

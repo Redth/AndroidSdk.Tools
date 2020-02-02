@@ -25,6 +25,9 @@ namespace Android.Tools
 
 		internal override string SdkPackageId => "emulator";
 
+		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
+			=> FindTool(androidSdkHome, toolName: "avdmanager", ".bat", "tools", "bin");
+
 		public void Create(string name, string sdkId, string device, string sdCardPathOrSize = null, bool force = false, string avdPath = null)
 		{
 			var args = new List<string> {
@@ -101,7 +104,7 @@ namespace Android.Tools
 
 		IEnumerable<string> run(params string[] args)
 		{
-			var adbManager = AndroidSdk.FindAvdManager(AndroidSdkHome);
+			var adbManager = FindToolPath(AndroidSdkHome);
 			if (adbManager == null || !File.Exists(adbManager.FullName))
 				throw new FileNotFoundException("Could not find avdmanager", adbManager?.FullName);
 

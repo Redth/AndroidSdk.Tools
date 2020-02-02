@@ -15,9 +15,9 @@ namespace Android.Tools.Tests
 		[Fact]
 		public void DownloadSdk()
 		{
-			var s = GetSdkManager();
+			var sdk = GetSdk();
 
-			var isUpToDate = s.IsUpToDate();
+			var isUpToDate = sdk.SdkManager.IsUpToDate();
 
 			Assert.True(isUpToDate);
 		}
@@ -25,9 +25,9 @@ namespace Android.Tools.Tests
 		[Fact]
 		public void List()
 		{
-			var s = GetSdkManager();
+			var sdk = GetSdk();
 
-			var list = s.List();
+			var list = sdk.SdkManager.List();
 
 			Assert.NotNull(list);
 
@@ -41,13 +41,13 @@ namespace Android.Tools.Tests
 		[Fact]
 		public void Install()
 		{
-			var s = GetSdkManager();
+			var sdk = GetSdk();
 
-			var ok = s.Install("extras;google;auto");
+			var ok = sdk.SdkManager.Install("extras;google;auto");
 
 			Assert.True(ok);
 
-			var list = s.List();
+			var list = sdk.SdkManager.List();
 
 			Assert.NotNull(list.InstalledPackages.FirstOrDefault(ip => ip.Path == "extras;google;auto"));
 		}
@@ -55,10 +55,10 @@ namespace Android.Tools.Tests
 		[Fact]
 		public void AcceptLicense()
 		{
-			var s = GetSdkManager();
-			s.AcceptLicenses();
+			var sdk = GetSdk();
+			sdk.SdkManager.AcceptLicenses();
 
-			var list = s.List();
+			var list = sdk.SdkManager.List();
 
 			Assert.NotNull(list.InstalledPackages);
 		}

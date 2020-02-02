@@ -27,6 +27,9 @@ namespace Android.Tools
 
 		internal override string SdkPackageId => "emulator";
 
+		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
+			=> FindTool(androidSdkHome, toolName: "emulator", "emulator", ".exe");
+
 		public IEnumerable<string> ListAvds()
 		{
 			var builder = new ProcessArgumentBuilder();
@@ -160,7 +163,7 @@ namespace Android.Tools
 
 		ProcessRunner Start(ProcessArgumentBuilder builder, params string[] args)
 		{
-			var emulator = AndroidSdk.FindAvdManager(AndroidSdkHome);
+			var emulator = FindToolPath(AndroidSdkHome);
 			if (emulator == null || !File.Exists(emulator.FullName))
 				throw new FileNotFoundException("Could not find emulator", emulator?.FullName);
 

@@ -50,6 +50,9 @@ namespace Android.Tools
 
 		internal override string SdkPackageId => "tools";
 
+		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
+			=> FindTool(androidSdkHome, toolName: "sdkmanager", ".bat", "tools", "bin");
+
 		/// <summary>
 		/// Downloads the Android SDK
 		/// </summary>
@@ -336,7 +339,7 @@ namespace Android.Tools
 
 		public bool UpdateAll()
 		{
-			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
+			var sdkManager = FindToolPath(AndroidSdkHome);
 
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
@@ -368,7 +371,7 @@ namespace Android.Tools
 
 		List<string> RunWithAccept(ProcessArgumentBuilder builder, TimeSpan timeout, bool moveToolsToTemp = false)
 		{
-			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
+			var sdkManager = FindToolPath(AndroidSdkHome);
 
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
@@ -417,7 +420,7 @@ namespace Android.Tools
 
 		List<string> Run(ProcessArgumentBuilder builder)
 		{
-			var sdkManager = AndroidSdk.FindSdkManager(AndroidSdkHome);
+			var sdkManager = FindToolPath(AndroidSdkHome);
 
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
@@ -457,9 +460,18 @@ namespace Android.Tools
 			}
 		}
 
+		public static void Acquire(params SdkTool[] tools)
+		{
+			if (tools == null)
+				return;
+
+			foreach (var t in tools)
+				t.Acquire();
+		}
+
 		internal void Acquire(params string[] installIds)
 		{
-			var sdkManagerApp = AndroidSdk.FindSdkManager(AndroidSdkHome);
+			var sdkManagerApp = FindToolPath(AndroidSdkHome);
 
 			// Download if it doesn't exist
 			if (sdkManagerApp == null || !sdkManagerApp.Exists)
