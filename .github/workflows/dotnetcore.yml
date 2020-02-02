@@ -15,9 +15,10 @@ jobs:
         dotnet-version: 3.1.100
     - name: Build
       run: dotnet build --configuration Release
-
+    
+    - name: Pack
+      run: dotnet pack --output ./artifacts --configuration Release ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
     - uses: actions/upload-artifact@v1
       with:
-        path: ./AndroidSdk.Tool/bin/Release/*.nupkg
-        name: NuGet
-      name: NuGet Artifact
+        name: artifacts
+        path: ./artifacts
