@@ -1,12 +1,12 @@
-# Android.Tools
-Global dotnet tool for various android adb, avd, and emulator needs.
+# Android SDK Tools
+.NET Library and global dotnet tool for various android adb, avd, and emulator needs.
 
 ## Usage
 
 Download/Install the SDK:
 
 ```csharp
-var sdk = new AndroidSdk("/path/to/desired/android_home");
+var sdk = new AndroidSdkManager("/path/to/desired/android_home");
 sdk.Acquire();
 ```
 
