@@ -19,4 +19,4 @@ jobs:
     - uses: actions/upload-artifact@v1
       with:
       name: NuGet Artifact
-      path: ./AndroidSdk.Tool/bin/**/AndroidSdk.Tool.nupkg
+      path: ./AndroidSdk.Tool/bin/Release/*.nupkg

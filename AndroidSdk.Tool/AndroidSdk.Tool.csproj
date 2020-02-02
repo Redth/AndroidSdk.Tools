@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<PackAsTool>true</PackAsTool>
 		<OutputType>Exe</OutputType>
-		<TargetFrameworks>netcoreapp3.0</TargetFrameworks>
+		<TargetFrameworks>netcoreapp2.1;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
 		<ToolCommandName>android-tool</ToolCommandName>
 		<AssemblyName>AndroidSdk.Tool</AssemblyName>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
