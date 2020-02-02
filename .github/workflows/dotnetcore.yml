@@ -14,8 +14,8 @@ jobs:
       with:
         dotnet-version: 3.1.100
     - name: Build Library
-      run: dotnet build --configuration Release Android.Tools\Android.Tools.csproj
+      run: dotnet build --configuration Release ./Android.Tools/Android.Tools.csproj
     - name: Build Runner
-      run: dotnet build --configuration Release Android.Tools.Runner\Android.Tools.Runner.csproj
+      run: dotnet build --configuration Release ./Android.Tools.Runner/Android.Tools.Runner.csproj
     - name: Build Tests
-      run: dotnet build --configuration Release Android.Tools.Tests\Android.Tools.Tests.csproj
+      run: dotnet build --configuration Release ./Android.Tools.Tests/Android.Tools.Tests.csproj
