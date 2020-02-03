@@ -36,13 +36,14 @@ namespace AndroidSdk.Tests
 		{
 			get
 			{
-#if DEBUG
-				return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
-					Path.Combine(Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System)), "testdata")
-					: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "testdata");
-#else
+				if (System.Diagnostics.Debugger.IsAttached)
+				{
+					return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
+						Path.Combine(Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System)), "testdata")
+						: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "testdata");
+				}
+
 				return Path.Combine(TestAssemblyDirectory, "testdata");
-#endif
 			}
 		}
 
