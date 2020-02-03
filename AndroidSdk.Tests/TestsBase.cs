@@ -47,33 +47,41 @@ namespace AndroidSdk.Tests
 			}
 		}
 
+		static object sdkLocker = new object();
+
 		public AndroidSdkManager GetSdk(bool useGlobalSdk = true)
+			=> TestsBase.GetAndroidSdk(useGlobalSdk);
+
+		public static AndroidSdkManager GetAndroidSdk(bool useGlobalSdk = true)
 		{
-			if (useGlobalSdk)
+			lock (sdkLocker)
 			{
-				var globalSdk = AndroidSdkManager.FindHome()?.FirstOrDefault();
+				if (useGlobalSdk)
+				{
+					var globalSdk = AndroidSdkManager.FindHome()?.FirstOrDefault();
 
-				if (globalSdk != null && globalSdk.Exists)
-					AndroidSdkHome = globalSdk;
+					if (globalSdk != null && globalSdk.Exists)
+						AndroidSdkHome = globalSdk;
+				}
+
+				if (AndroidSdkHome == null || !AndroidSdkHome.Exists)
+				{
+					var sdkPath = Path.Combine(TestDataDirectory, "android-sdk");
+
+					if (!Directory.Exists(sdkPath))
+						Directory.CreateDirectory(sdkPath);
+
+					AndroidSdkHome = new DirectoryInfo(sdkPath);
+
+					var s = new AndroidSdkManager(AndroidSdkHome);
+
+					s.Acquire();
+
+					Assert.True(s.SdkManager.IsUpToDate());
+				}
+
+				return new AndroidSdkManager(AndroidSdkHome);
 			}
-
-			if (AndroidSdkHome == null || !AndroidSdkHome.Exists)
-			{
-				var sdkPath = Path.Combine(TestDataDirectory, "android-sdk");
-
-				if (!Directory.Exists(sdkPath))
-					Directory.CreateDirectory(sdkPath);
-
-				AndroidSdkHome = new DirectoryInfo(sdkPath);
-
-				var s = new AndroidSdkManager(AndroidSdkHome);
-
-				s.Acquire();
-
-				Assert.True(s.SdkManager.IsUpToDate());
-			}
-
-			return new AndroidSdkManager(AndroidSdkHome);
 		}
 	}
 }
