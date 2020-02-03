@@ -16,7 +16,8 @@ jobs:
         dotnet-version: 3.1.100
     - name: Build
       run: dotnet build --configuration Release
-    
+    - name: Test
+      run: dotnet test
     - name: Pack
       run: dotnet pack --output ./artifacts --configuration Release ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
     - name: Artifacts

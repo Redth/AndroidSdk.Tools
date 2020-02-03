@@ -27,9 +27,13 @@ namespace AndroidSdk.Tests
 
 			var emulatorInstance = sdk.Emulator.Start("TestEmu123");
 
-			emulatorInstance.WaitForBootComplete();
+			var booted = emulatorInstance.WaitForBootComplete();
 
-			emulatorInstance.Shutdown();
+			Assert.True(booted);
+
+			var shutdown = emulatorInstance.Shutdown();
+
+			Assert.True(shutdown);
 		}
 	}
 }
