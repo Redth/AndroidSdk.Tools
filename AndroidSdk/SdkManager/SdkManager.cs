@@ -406,7 +406,12 @@ namespace AndroidSdk
 			while (!p.HasExited)
 			{
 				Thread.Sleep(250);
-				p.StandardInputWriteLine("y");
+
+				try
+				{
+					p.StandardInputWriteLine("y");
+				}
+				catch { }
 			}
 
 			var r = p.WaitForExit();
