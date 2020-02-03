@@ -43,11 +43,11 @@ namespace AndroidSdk.Tests
 						: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "testdata");
 				}
 
-				return Path.Combine(TestAssemblyDirectory, "testdata");
+				return Path.Combine(TestAssemblyDirectory, "..", "..", "..", "testdata");
 			}
 		}
 
-		public AndroidSdkManager GetSdk(bool useGlobalSdk = false)
+		public AndroidSdkManager GetSdk(bool useGlobalSdk = true)
 		{
 			if (useGlobalSdk)
 			{
