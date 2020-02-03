@@ -216,6 +216,23 @@ namespace AndroidSdk
 			return r.StandardOutput.Any(o => o.ToLowerInvariant().Contains("stopping emulator"));
 		}
 
+		public string EmuAvdName(string adbSerial = null)
+		{
+			// adb uninstall -k <package>
+			// -k keeps data & cache dir
+			var builder = new ProcessArgumentBuilder();
+
+			runner.AddSerial(adbSerial, builder);
+
+			builder.Append("emu");
+			builder.Append("avd");
+			builder.Append("name");
+
+			var r = runner.RunAdb(AndroidSdkHome, builder);
+
+			return r?.StandardOutput?.FirstOrDefault()?.Trim();
+		}
+
 		public bool Pull(FileInfo remoteFileSource, FileInfo localFileDestination, string adbSerial = null)
 			=> pull(remoteFileSource.FullName, localFileDestination.FullName, adbSerial);
 
@@ -498,6 +515,11 @@ namespace AndroidSdk
 
 		public string GetEmulatorName(string adbSerial = null)
 		{
+			var shellName = EmuAvdName(adbSerial);
+
+			if (!string.IsNullOrWhiteSpace(shellName))
+				return shellName;
+
 			if (string.IsNullOrEmpty(adbSerial) || !adbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
 				throw new InvalidDataException("Serial must be an emulator starting with `emulator-`");
 
