@@ -11,10 +11,10 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<PackageId>AndroidSdk</PackageId>
+		<PackageId>AndroidSdk.Tool</PackageId>
 		<PackageVersion>0.1</PackageVersion>
-		<Title>Android SDK Tools</Title>
-		<PackageDescription>Library and global dotnet tool for Android related tasks.</PackageDescription>
+		<Title>Global .NET Android SDK Tool</Title>
+		<PackageDescription>Global dotnet tool for Android SDK related tasks.</PackageDescription>
 		<Authors>Redth</Authors>
 		<Owners>Redth</Owners>
 	</PropertyGroup>
