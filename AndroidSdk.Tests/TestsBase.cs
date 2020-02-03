@@ -33,9 +33,18 @@ namespace AndroidSdk.Tests
 		}
 
 		public static string TestDataDirectory
-			=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
+		{
+			get
+			{
+#if DEBUG
+				return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
 					Path.Combine(Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System)), "testdata")
 					: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "testdata");
+#else
+				return Path.Combine(TestAssemblyDirectory, "testdata");
+#endif
+			}
+		}
 
 		public AndroidSdkManager GetSdk(bool useGlobalSdk = false)
 		{
