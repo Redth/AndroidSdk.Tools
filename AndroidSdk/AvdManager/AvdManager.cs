@@ -26,7 +26,7 @@ namespace AndroidSdk
 		internal override string SdkPackageId => "emulator";
 
 		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
-			=> FindTool(androidSdkHome, toolName: "avdmanager", ".bat", "tools", "bin");
+			=> FindTool(androidSdkHome, toolName: "avdmanager", windowsExtension: ".bat", "tools", "bin");
 
 		public void Create(string name, string sdkId, string device, string sdCardPathOrSize = null, bool force = false, string avdPath = null)
 		{

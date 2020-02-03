@@ -51,7 +51,7 @@ namespace AndroidSdk
 		internal override string SdkPackageId => "tools";
 
 		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
-			=> FindTool(androidSdkHome, toolName: "sdkmanager", ".bat", "tools", "bin");
+			=> FindTool(androidSdkHome, toolName: "sdkmanager", windowsExtension: ".bat", "tools", "bin");
 
 		/// <summary>
 		/// Downloads the Android SDK

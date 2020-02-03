@@ -28,7 +28,7 @@ namespace AndroidSdk
 		internal override string SdkPackageId => "emulator";
 
 		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
-			=> FindTool(androidSdkHome, toolName: "emulator", "emulator", ".exe");
+			=> FindTool(androidSdkHome, toolName: "emulator", windowsExtension: ".exe", "emulator");
 
 		public IEnumerable<string> ListAvds()
 		{
