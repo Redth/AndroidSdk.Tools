@@ -17,7 +17,7 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release
     - name: Test
-      run: dotnet test
+      run: dotnet test --configuration Release
     - name: Pack
       run: dotnet pack --output ./artifacts --configuration Release ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
     - name: Artifacts
