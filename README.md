@@ -1,6 +1,8 @@
 # Android SDK Tools
 .NET Library and global dotnet tool for various android adb, avd, and emulator needs.
 
+![.NET Core](https://github.com/Redth/AndroidSdk.Tools/workflows/.NET%20Core/badge.svg)
+
 ## Usage
 
 Download/Install the SDK:
