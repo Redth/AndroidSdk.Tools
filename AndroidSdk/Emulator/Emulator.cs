@@ -140,8 +140,8 @@ namespace AndroidSdk
 			if (options.Screen.HasValue)
 				builder.Append($"-screen {options.Screen.Value.ToString().ToLowerInvariant()}");
 
-			var uuid = Guid.NewGuid().ToString("D");
-			builder.Append($"-prop emu.uuid={uuid}");
+			//var uuid = Guid.NewGuid().ToString("D");
+			//builder.Append($"-prop emu.uuid={uuid}");
 
 			if (options.ExtraArgs != null && options.ExtraArgs.Length > 0)
 			{
@@ -149,7 +149,7 @@ namespace AndroidSdk
 					builder.Append(arg);
 			}
 
-			return new AndroidEmulatorProcess(Start(builder), uuid, AndroidSdkHome);
+			return new AndroidEmulatorProcess(Start(builder), avdName, AndroidSdkHome);
 		}
 
 		IEnumerable<string> Run(ProcessArgumentBuilder builder, params string[] args)
@@ -179,19 +179,20 @@ namespace AndroidSdk
 
 		public class AndroidEmulatorProcess
 		{
-			internal AndroidEmulatorProcess(ProcessRunner p, string uuid, DirectoryInfo sdkHome)
+			internal AndroidEmulatorProcess(ProcessRunner p, string avdName, DirectoryInfo sdkHome)
 			{
 				process = p;
 				androidSdkHome = sdkHome;
+				AvdName = avdName;
 			}
 
 			readonly ProcessRunner process;
 			readonly DirectoryInfo androidSdkHome;
 			ProcessResult result;
 
-			public string Uuid { get; private set; }
-
 			public string Serial { get; private set; }
+
+			public string AvdName { get; private set; }
 
 			public int WaitForExit()
 			{
@@ -243,33 +244,41 @@ namespace AndroidSdk
 				var adb = new Adb(androidSdkHome);
 
 				var booted = false;
-
-				// Get a list of devices, we need to find the device we started
-				var devices = adb.GetDevices();
-
 				Serial = null;
 
-				// Find the device we just started and get it's adb serial
-				foreach (var d in devices)
+				// Keep trying to see if the boot complete prop is set
+				while (string.IsNullOrEmpty(Serial) && !token.IsCancellationRequested)
 				{
-					try
+					if (process.HasExited)
+						return false;
+
+					Thread.Sleep(1000);
+
+					// Get a list of devices, we need to find the device we started
+					var devices = adb.GetDevices();
+
+					// Find the device we just started and get it's adb serial
+					foreach (var d in devices)
 					{
-						if (adb.Shell("getprop -emu.uuid")?.Any(o => o?.Contains(Uuid) ?? false) ?? false)
+						try
 						{
-							Serial = d.Serial;
-							break;
+							var name = adb.GetEmulatorName(d.Serial);
+							if (name.Equals(AvdName, StringComparison.OrdinalIgnoreCase))
+							{
+								Serial = d.Serial;
+								break;
+							}
 						}
-					} catch { }
+						catch { }
+					}
 				}
 
-				// adb wait-for-device
-				// Wait for an on device state
-				adb.WaitFor(Adb.AdbTransport.Any, Adb.AdbState.Device, Serial);
-
-				// Keep trying to see if the boot complete prop is set
 				while (!token.IsCancellationRequested)
 				{
-					if (adb.Shell("getprop dev.bootcomplete").Any(l => l.Contains("1")))
+					if (process.HasExited)
+						return false;
+
+					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")))
 					{
 						booted = true;
 						break;
