@@ -13,9 +13,15 @@
 			/// <value>The name.</value>
 			public string Name { get; set; }
 
+			public string Device { get; set; }
+			public string Path { get; set; }
+			public string Target { get; set; }
+
+			public string BasedOn { get; set; }
+
 			public override string ToString()
 			{
-				return Name;
+				return $"{Name} | {Device} | {Target} | {Path} | {BasedOn}";
 			}
 		}
 	}

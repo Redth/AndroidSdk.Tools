@@ -13,9 +13,13 @@
 			/// <value>The name.</value>
 			public string Name { get; set; }
 
+			public string Id { get; set; }
+
+			public string Oem { get; set; }
+
 			public override string ToString()
 			{
-				return Name;
+				return $"{Id} | {Name} | {Oem}";
 			}
 		}
 	}
