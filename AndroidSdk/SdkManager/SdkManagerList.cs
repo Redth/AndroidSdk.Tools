@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 
 namespace AndroidSdk
 {
@@ -20,6 +21,33 @@ namespace AndroidSdk
 			/// </summary>
 			/// <value>The installed packages.</value>
 			public List<InstalledSdkPackage> InstalledPackages { get; set; } = new List<InstalledSdkPackage>();
+
+			public override string ToString()
+			{
+				var s = new StringBuilder();
+
+				var writeHeaders = AvailablePackages.Count > 0 && InstalledPackages.Count > 0;
+
+				if (AvailablePackages.Count > 0)
+				{
+					if (writeHeaders)
+						s.AppendLine("Available:");
+
+					foreach (var a in AvailablePackages)
+						s.AppendLine($"{a.Path} | {a.Version} | {a.Description}");
+				}
+
+				if (InstalledPackages.Count > 0)
+				{
+					if (writeHeaders)
+						s.AppendLine("Installed:");
+
+					foreach (var a in InstalledPackages)
+						s.AppendLine($"{a.Path} | {a.Version} | {a.Description}");
+				}
+
+				return s.ToString();
+			}
 		}
 	}
 }
