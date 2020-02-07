@@ -54,26 +54,26 @@ namespace AndroidSdk.Tool
 				homeOption,
 				outputFormatOption,
 				new Option(new string[] { "--install", "-i", "--update", "-u" }, "Install or Update SDK Manager Package") {
-					Argument = new Argument<string[]>("installId") { Arity = ArgumentArity.ZeroOrMore }
+					Argument = new Argument<string[]>("install") { Arity = ArgumentArity.ZeroOrMore }
 				},
 				new Option(new string[] { "--delete", "-d"}, "Remove SDK Manager Package")
 				{
-					Argument = new Argument<string[]>("uninstallId") { Arity = ArgumentArity.ZeroOrMore }
+					Argument = new Argument<string[]>("uninstall") { Arity = ArgumentArity.ZeroOrMore }
 				},
 				sdkListCommand,
 				sdkDownloadCommand
 			};
-			sdkCommand.Handler = CommandHandler.Create<string, string[], string[]>((home, installId, uninstallId) =>
+			sdkCommand.Handler = CommandHandler.Create<string, string[], string[]>((home, install, uninstall) =>
 			{
 				var sdk = GetSdk(home);
 
-				if (installId?.Any() ?? false)
-					sdk.SdkManager.Install(installId);
+				if (install?.Any() ?? false)
+					sdk.SdkManager.Install(install);
 
-				if (uninstallId?.Any() ?? false)
-					sdk.SdkManager.Uninstall(uninstallId);
+				if (uninstall?.Any() ?? false)
+					sdk.SdkManager.Uninstall(uninstall);
 
-				if ((uninstallId?.Any() ?? false) && (installId?.Any() ?? false))
+				if ((uninstall?.Any() ?? false) && (install?.Any() ?? false))
 					sdk.SdkManager.UpdateAll();
 			});
 

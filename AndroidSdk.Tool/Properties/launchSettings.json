@@ -2,7 +2,7 @@
   "profiles": {
     "AndroidSdk.Tool": {
       "commandName": "Project",
-      "commandLineArgs": "emulator list targets"
+      "commandLineArgs": "--home=\"C:\\testdata\\tmp\" sdk --install \"platforms;android-23\""
     }
   }
 }
