@@ -409,7 +409,30 @@ namespace AndroidSdk
 
 			return string.Join(Environment.NewLine, r.StandardOutput);
 		}
+		
+		public Dictionary<string, string> GetProperties(string adbSerial = null, params string[] includeProperties)
+		{
+			var r = new Dictionary<string, string>();
 
+			var lines = Shell("getprop", adbSerial);
+
+			foreach (var l in lines)
+			{
+				if (l?.Contains(':') ?? false)
+				{
+					var parts = l.Split(new[] { ':' }, 2);
+					if (parts != null && parts.Length == 2)
+					{
+						var key = parts[0].Trim().Trim('[', ']');
+
+						if (includeProperties == null || (includeProperties?.Any(ip => ip.Equals(key, StringComparison.OrdinalIgnoreCase)) ?? false))
+							r[key] = parts[1].Trim().Trim('[', ']');
+					}
+				}
+			}
+
+			return r;
+		}
 
 		public List<string> Shell(string shellCommand, string adbSerial = null)
 		{
