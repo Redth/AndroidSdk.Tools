@@ -7,7 +7,7 @@ using System.Text;
 namespace AndroidSdk.Tool
 {
 	[DataContract]
-	class DeviceInfo
+	public class DeviceInfo
 	{
 		public DeviceInfo()
 		{

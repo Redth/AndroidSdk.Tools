@@ -41,18 +41,19 @@ namespace AndroidSdk.Tool
 
 		static string JsonSerialize<T>(T obj)
 		{
-			var s = new DataContractJsonSerializerSettings();
-			s.UseSimpleDictionaryFormat = true;
+			return Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
 
-			var js = new DataContractJsonSerializer(typeof(T), s);
-			using (var ms = new MemoryStream())
-			{
-				js.WriteObject(ms, obj);
-				ms.Position = 0;
+			//var s = new DataContractJsonSerializerSettings();
+			//s.UseSimpleDictionaryFormat = true;
 
-				using (var sr = new StreamReader(ms))
-					return sr.ReadToEnd();
-			}
+			//var js = new DataContractJsonSerializer(typeof(T), s);
+			//using (var ms = new MemoryStream())
+			//{
+			//	js.WriteObject(ms, obj);
+			//	ms.Position = 0;
+			//	using (var sr = new StreamReader(ms))
+			//		return sr.ReadToEnd();
+			//}
 		}
 
 		static string XmlSerialize<T>(T obj)

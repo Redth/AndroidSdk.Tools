@@ -13,9 +13,8 @@ namespace AndroidSdk.Tool
 	{
 		public static void Main(string[] args)
 		{
-
-			var homeOption = new Option(new string[] { "--home", "-h" }) { Argument = new Argument<string>("home") };
-			var adbSerialOption = new Option(new string[] { "--serial", "-s" }) { Argument = new Argument<string>("serial") };
+			var homeOption = new Option(new string[] { "--home", "-h" }, "Location of Android SDK Home") { Argument = new Argument<string>("home", () => null) { Arity = ArgumentArity.ZeroOrOne } };
+			var adbSerialOption = new Option(new string[] { "--serial", "-s" }, "ADB Device Serial") { Argument = new Argument<string>("serial", () => null) };
 			var outputFormatOption = new Option(new string[] { "--format", "-f" }, "Output Format") { Argument = new Argument<OutputFormat>("format", () => OutputFormat.None) };
 
 			var sdkListCommand = new Command("list", "Lists SDK Manager Packages")
@@ -39,6 +38,17 @@ namespace AndroidSdk.Tool
 				OutputHelper.Output(list, format);
 			});
 
+			var sdkDownloadCommand = new Command("download", "Downloads and updates the Android SDK")
+			{
+				homeOption
+			};
+			sdkDownloadCommand.Handler = CommandHandler.Create<string>((home) =>
+			{
+				var sdk = GetSdk(home);
+				sdk.Acquire();
+				sdk.SdkManager.UpdateAll();
+			});
+
 			var sdkCommand = new Command("sdk", "List, Install, Update or Remove SDK Manager Packages")
 			{
 				homeOption,
@@ -50,7 +60,8 @@ namespace AndroidSdk.Tool
 				{
 					Argument = new Argument<string[]>("uninstallId") { Arity = ArgumentArity.ZeroOrMore }
 				},
-				sdkListCommand
+				sdkListCommand,
+				sdkDownloadCommand
 			};
 			sdkCommand.Handler = CommandHandler.Create<string, string[], string[]>((home, installId, uninstallId) =>
 			{
@@ -61,6 +72,9 @@ namespace AndroidSdk.Tool
 
 				if (uninstallId?.Any() ?? false)
 					sdk.SdkManager.Uninstall(uninstallId);
+
+				if ((uninstallId?.Any() ?? false) && (installId?.Any() ?? false))
+					sdk.SdkManager.UpdateAll();
 			});
 
 			var deviceListCommand = new Command("list", "Lists all devices from ADB")
@@ -221,15 +235,16 @@ namespace AndroidSdk.Tool
 
 		static AndroidSdkManager GetSdk(string home)
 		{
-			if (string.IsNullOrEmpty(home))
-				throw new ArgumentNullException();
+			DirectoryInfo h = null;
 
-			var h = new DirectoryInfo(home);
+			if (!string.IsNullOrEmpty(home))
+				h = new DirectoryInfo(home);
+
 			return new AndroidSdkManager(h);
 		}
 	}
 
-	enum OutputFormat
+	public enum OutputFormat
 	{
 		None,
 		Json,
