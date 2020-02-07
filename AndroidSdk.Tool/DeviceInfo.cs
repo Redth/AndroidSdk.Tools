@@ -42,7 +42,12 @@ namespace AndroidSdk.Tool
 			var indent = PrintSerial ? "\t" : string.Empty;
 
 			foreach (var kvp in Properties)
-				s.AppendLine($"{indent}{kvp.Key}={kvp.Value}");
+			{
+				if (Properties.Count == 1)
+					s.AppendLine($"{indent}{kvp.Value}");
+				else
+					s.AppendLine($"{indent}{kvp.Key}={kvp.Value}");
+			}
 
 			return s.ToString();
 		}

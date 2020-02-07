@@ -102,7 +102,12 @@ namespace AndroidSdk.Tool
 					{
 						var p = sdk.Adb.GetProperties(device.Serial, property);
 
-						var d = new DeviceInfo(device, p, string.IsNullOrWhiteSpace(id));
+						var printSerial = string.IsNullOrWhiteSpace(id);
+
+						if (adbDevices.Count <= 1)
+							printSerial = false;
+
+						var d = new DeviceInfo(device, p, printSerial);
 
 						OutputHelper.Output(d, format);
 					}
@@ -184,7 +189,7 @@ namespace AndroidSdk.Tool
 				s.AvdManager.Delete(name);
 			});
 
-			var emulatorRunCommand = new Command("run", "Run an Emulator AVD")
+			var emulatorRunCommand = new Command("start", "Starts an Emulator AVD")
 			{
 				homeOption,
 				outputFormatOption,
@@ -211,7 +216,8 @@ namespace AndroidSdk.Tool
 				outputFormatOption,
 				emulatorListCommand,
 				emulatorCreateCommand,
-				emulatorDeleteCommand
+				emulatorDeleteCommand,
+				emulatorRunCommand
 			};
 
 			var rc = new RootCommand
