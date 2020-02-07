@@ -504,7 +504,13 @@ namespace AndroidSdk
 			catch (InvalidDataException)
 			{
 				// Shell getprop
-				var s = Shell("getprop ro.product.name", adbSerial);
+				var s = Shell("getprop ro.product.model", adbSerial);
+
+				if (s?.Any() ?? false)
+					return s.FirstOrDefault().Trim();
+
+				// Shell getprop
+				s = Shell("getprop ro.product.name", adbSerial);
 
 				if (s?.Any() ?? false)
 					return s.FirstOrDefault().Trim();
