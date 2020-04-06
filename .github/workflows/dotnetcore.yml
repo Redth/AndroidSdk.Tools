@@ -49,6 +49,7 @@ jobs:
       - name: Push NuGet
         run: |
           nuget sources add -Name "GPR" -Source "https://nuget.pkg.github.com/Redth/index.json" -Username Redth -Password ${{ secrets.GITHUB_TOKEN }}
+          nuget setApiKey ${{ secrets.NUGET_API_KEY }} -Source "GPR"
           nuget push NuGet\*.nupkg -Source "GPR" -SkipDuplicate
 
   publish-nugetorg:
