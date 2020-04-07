@@ -90,6 +90,17 @@ namespace AndroidSdk
 
 			return devices;
 		}
+		public ProcessResult RunCommand(string command, params string [] parameters)
+		{
+			var builder = new ProcessArgumentBuilder ();
+
+			builder.Append (command);
+			if (parameters != null)
+				foreach (var p in parameters)
+					builder.Append (p);
+
+			return runner.RunAdb (AndroidSdkHome, builder);
+		}
 
 		public void KillServer()
 		{

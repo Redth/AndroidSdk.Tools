@@ -106,7 +106,7 @@ namespace AndroidSdk
 		}
 	}
 
-	internal class ProcessResult
+	public class ProcessResult
 	{
 		public readonly List<string> StandardOutput;
 		public readonly List<string> StandardError;
