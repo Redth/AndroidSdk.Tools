@@ -16,7 +16,8 @@ namespace AndroidSdk
 		const string ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED = "26.1.1";
 		const string REPOSITORY_URL_BASE = "https://dl.google.com/android/repository/";
 		const string REPOSITORY_URL = REPOSITORY_URL_BASE + "repository2-1.xml";
-		const string REPOSITORY_SDK_PATTERN = REPOSITORY_URL_BASE + "tools_r{0}.{1}.{2}-{3}.zip";
+		const string REPOSITORY_SDK_PATTERN = REPOSITORY_URL_BASE + "commandlinetools-{0}-{1}_latest.zip";
+		const string REPOSITORY_SDK_DEFAULT_VERSION = "6200805";
 
 		readonly Regex rxListDesc = new Regex("\\s+Description:\\s+(?<desc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListVers = new Regex("\\s+Version:\\s+(?<ver>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -59,7 +60,7 @@ namespace AndroidSdk
 		/// <param name="context">The context.</param>
 		/// <param name="destinationDirectory">Destination directory, or ./tools/androidsdk if none is specified.</param>
 		/// <param name="specificVersion">Specific version, or latest if none is specified.</param>
-		internal void DownloadSdk(DirectoryInfo destinationDirectory = null, Version specificVersion = null, Action<int> progressHandler = null)
+		internal void DownloadSdk(DirectoryInfo destinationDirectory = null, string specificVersion = null, Action<int> progressHandler = null)
 		{
 			if (destinationDirectory == null)
 				destinationDirectory = AndroidSdkHome;
@@ -76,7 +77,19 @@ namespace AndroidSdk
 			http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
 			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
 
-			if (specificVersion == null)
+			string platformStr;
+
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				platformStr = "win";
+			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				platformStr = "mac";
+			else
+				platformStr = "linux";
+
+			// Use the default known version
+			string sdkUrl = "";
+
+			if (string.IsNullOrWhiteSpace(specificVersion))
 			{
 				try
 				{
@@ -85,28 +98,23 @@ namespace AndroidSdk
 					var xdoc = new System.Xml.XmlDocument();
 					xdoc.LoadXml(data);
 
-					var revNode = xdoc.SelectSingleNode("//remotePackage[@path='tools']/revision");
+					var urlNode = xdoc.SelectSingleNode($"//remotePackage[@path='cmdline-tools;1.0']/archives/archive/complete/url[contains(text(),'{platformStr}')]");
 
-					var strVer = revNode.SelectSingleNode("major")?.InnerText + "." + revNode.SelectSingleNode("minor").InnerText + "." + revNode.SelectSingleNode("micro").InnerText;
-
-					specificVersion = Version.Parse(strVer);
+					sdkUrl = REPOSITORY_URL_BASE + urlNode.InnerText;
 				}
 				catch
 				{
-					specificVersion = new Version(25, 2, 5);
 				}
 			}
-
-			string platformStr;
-
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-				platformStr = "windows";
-			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-				platformStr = "macosx";
 			else
-				platformStr = "linux";
+			{
+				// User passed a specific version to use
+				sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, specificVersion);
+			}
 
-			var sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, specificVersion.Major, specificVersion.Minor, specificVersion.Build, platformStr);
+			if (string.IsNullOrWhiteSpace(sdkUrl))
+				sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, REPOSITORY_SDK_DEFAULT_VERSION);
+
 
 			var sdkDir = new DirectoryInfo(destinationDirectory.FullName);
 			if (!sdkDir.Exists)
