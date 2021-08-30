@@ -44,7 +44,7 @@ namespace AndroidSdk.Tests
 
 			var avds = sdk.Emulator.ListAvds();
 
-			Assert.NotEmpty(avds);
+			Assert.NotNull(avds);
 		}
 	}
 }
