@@ -18,7 +18,7 @@ namespace AndroidSdk.Tests
 			var sdk = GetSdk();
 			sdk.Acquire();
 
-			var avdImagePackageId = "system-images;android-29;google_apis_playstore;x86_64";
+			var avdImagePackageId = "system-images;android-30;google_apis;x86_64";
 
 			// Install the right avd image
 			sdk.SdkManager.Install(avdImagePackageId);
@@ -34,6 +34,17 @@ namespace AndroidSdk.Tests
 			var shutdown = emulatorInstance.Shutdown();
 
 			Assert.True(shutdown);
+		}
+
+		[Fact]
+		public void ListAvds()
+		{
+			var sdk = GetSdk();
+			sdk.Acquire();
+
+			var avds = sdk.Emulator.ListAvds();
+
+			Assert.NotEmpty(avds);
 		}
 	}
 }
