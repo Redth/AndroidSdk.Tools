@@ -36,6 +36,9 @@ jobs:
         New-Item -ItemType Directory -Force -Path .\artifacts
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk/AndroidSdk.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
+        
+        [IO.File]::WriteAllBytes("$pwd\codesigncert.pfx",[System.Convert]::FromBase64String($env:CODESIGN_PFX))
+        dotnet nuget sign ./artifacts/*.nupkg --certificate-path "codesigncert.pfx"
     - name: Artifacts
       uses: actions/upload-artifact@v1
       with:
