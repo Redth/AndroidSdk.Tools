@@ -25,16 +25,17 @@ namespace AndroidSdk
 		public static IEnumerable<DirectoryInfo> FindHome()
 			=> FindHome((string)null, null);
 
-		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo mostLikelyHome = null)
-			=> FindHome(mostLikelyHome?.FullName, null);
+		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo specificHome = null)
+			=> FindHome(specificHome?.FullName, null);
 
-		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo mostLikelyHome = null, params string[] additionalPossibleDirectories)
-			=> FindHome(mostLikelyHome?.FullName, additionalPossibleDirectories);
+		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo specificHome = null, params string[] additionalPossibleDirectories)
+			=> FindHome(specificHome?.FullName, additionalPossibleDirectories);
 
-		public static IEnumerable<DirectoryInfo> FindHome(string mostLikelyHome = null, params string[] additionalPossibleDirectories)
+		public static IEnumerable<DirectoryInfo> FindHome(string specificHome = null, params string[] additionalPossibleDirectories)
 		{
 			var candidates = new List<string>();
-			candidates.Add(mostLikelyHome);
+			candidates.Add(specificHome);
+			candidates.Add(Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT"));
 			candidates.Add(Environment.GetEnvironmentVariable("ANDROID_HOME"));
 			if (additionalPossibleDirectories != null)
 				candidates.AddRange(additionalPossibleDirectories);
