@@ -1,4 +1,6 @@
 
+using System.Diagnostics;
+
 namespace AndroidSdk
 {
 	public partial class SdkManager
@@ -6,6 +8,7 @@ namespace AndroidSdk
 		/// <summary>
 		/// Android SDK Package Information.
 		/// </summary>
+		[DebuggerDisplay("{Path}, Version: {Version}")]
 		public class SdkPackage
 		{
 			/// <summary>
