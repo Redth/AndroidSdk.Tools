@@ -12,7 +12,7 @@ namespace AndroidSdk.Tests
 			: base(outputHelper)
 		{ }
 
-		[Fact]
+		//[Fact]
 		public void CreateAndStartAndStopEmulator()
 		{
 			var sdk = GetSdk();
@@ -34,6 +34,25 @@ namespace AndroidSdk.Tests
 			var shutdown = emulatorInstance.Shutdown();
 
 			Assert.True(shutdown);
+		}
+
+		[Fact]
+		public void CreateEmulator()
+		{
+			var sdk = GetSdk();
+			sdk.Acquire();
+
+			var avdImagePackageId = "system-images;android-30;google_apis;x86_64";
+
+			// Install the right avd image
+			sdk.SdkManager.Install(avdImagePackageId);
+
+			sdk.AvdManager.Create("TestEmu123", avdImagePackageId, "pixel", force: true);
+
+
+			var avds = sdk.AvdManager.ListAvds();
+
+			Assert.Contains(avds, avd => avd.Name.Equals("TestEmu123", StringComparison.OrdinalIgnoreCase));
 		}
 
 		[Fact]
