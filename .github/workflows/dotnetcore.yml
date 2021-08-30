@@ -10,7 +10,7 @@ jobs:
   build:
     name: Build
     env:
-      NUPKG_MAJOR: 0.1
+      NUPKG_MAJOR: 0.999
     runs-on: windows-latest
     steps:
     - name: Checkout
@@ -18,46 +18,32 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1.100
+        dotnet-version: '5.0.x'
     - name: Build
       run: dotnet build --configuration Release
-#    - name: Test
-#      run: dotnet test --configuration Release
+    - name: Test
+      run: dotnet test --configuration Release
     - name: Package NuGets
+      shell: pwsh
       run: |
-        $pkgVer = ($env:NUPKG_MAJOR + "-alpha" + $env:GITHUB_RUN_ID)
+        $VERSION="$env:NUPKG_MAJOR-ci$env:GITHUB_RUN_ID"
         if ($env:GITHUB_EVENT_NAME -eq "release") {
-          $pkgVer = $env:GITHUB_REF.Substring($env:GITHUB_REF.LastIndexOf('/') + 1)
+          $VERSION = $env:GITHUB_REF.Substring($env:GITHUB_REF.LastIndexOf('/') + 1)
         }
+        echo "::set-output name=pkgverci::$VERSION"
+        echo "PACKAGE VERSION: $VERSION"
+        
         New-Item -ItemType Directory -Force -Path .\artifacts
-        dotnet pack --output ./artifacts --configuration Release ./AndroidSdk/AndroidSdk.csproj
-        dotnet pack --output ./artifacts --configuration Release ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
+        dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk/AndroidSdk.csproj
+        dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
     - name: Artifacts
       uses: actions/upload-artifact@v1
       with:
         name: NuGet
         path: ./artifacts
-  
-  publish-gh:
-    name: Publish to GitHub Packages
-    needs: build
-    runs-on: windows-latest
-    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'release')
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: NuGet
-      - name: Setup NuGet
-        uses: nuget/setup-nuget@v1
-      - name: Push NuGet
-        run: |
-          nuget sources add -Name "GPR" -Source "https://nuget.pkg.github.com/Redth/index.json" -Username Redth -Password ${{ secrets.GITHUB_TOKEN }}
-          nuget setApiKey ${{ secrets.NUGET_API_KEY }} -Source "GPR"
-          nuget push NuGet\*.nupkg -Source "GPR" -SkipDuplicate
 
-  publish-nugetorg:
-    name: Publish to NuGet.org
+  publish:
+    name: Publish
     needs: build
     runs-on: windows-latest
     if: github.event_name == 'release'
@@ -66,8 +52,10 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: NuGet
-      - name: Setup NuGet
-        uses: nuget/setup-nuget@v1
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
       - name: Push NuGet
         run: |
-          nuget push NuGet\*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_ORG_API_KEY }}
+          dotnet nuget push NuGet\*.nupkg --source https://api.nuget.org/v3/index.json --apikey ${{ secrets.NUGET_ORG_API_KEY }}
