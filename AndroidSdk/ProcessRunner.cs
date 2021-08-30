@@ -116,6 +116,12 @@ namespace AndroidSdk
 		public bool Success
 			=> ExitCode == 0;
 
+		public string GetAllOutput()
+			=> string.Join(Environment.NewLine, StandardOutput.Concat(StandardError));
+
+		public string GetOutput()
+			=> string.Join(Environment.NewLine, StandardOutput);
+
 		internal ProcessResult(List<string> stdOut, List<string> stdErr, int exitCode)
 		{
 			StandardOutput = stdOut;

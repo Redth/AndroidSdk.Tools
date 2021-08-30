@@ -8,20 +8,36 @@ namespace AndroidSdk
 	public abstract class SdkTool
 	{
 		public SdkTool()
-		{ }
+		{
+			Init();
+		}
 
 		public SdkTool(string androidSdkHome)
 			: this(new DirectoryInfo(androidSdkHome))
-		{ }
+		{
+			Init();
+		}
 
 		public SdkTool(DirectoryInfo androidSdkHome)
 		{
 			AndroidSdkHome = androidSdkHome;
+			Init();
 		}
+
+		void Init()
+		{
+			Jdks = new JdkLocator().Find()?.ToArray() ?? new JdkInfo[0];
+		}
+
+		public JdkInfo[] Jdks { get; private set; }
 
 		internal abstract string SdkPackageId { get; }
 
 		public DirectoryInfo AndroidSdkHome { get; internal set; }
+
+		protected bool IsWindows
+			=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
 
 		public abstract FileInfo FindToolPath(DirectoryInfo androidSdkHome = null);
 
