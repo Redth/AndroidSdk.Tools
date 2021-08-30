@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace AndroidSdk
 {
@@ -23,10 +25,40 @@ namespace AndroidSdk
 			: this(new DirectoryInfo(androidSdkHome))
 		{ }
 
-		internal override string SdkPackageId => "emulator";
+		JdkInfo jdk = null;
 
 		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
-			=> FindTool(androidSdkHome, toolName: "avdmanager", windowsExtension: ".bat", "tools", "bin");
+		{
+			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+			var ext = isWindows ? ".bat" : string.Empty;
+
+			var likelyPathSegments = new List<string[]>();
+
+			var cmdlineToolsPath = new DirectoryInfo(Path.Combine(androidSdkHome.FullName, "cmdline-tools"));
+
+			if (cmdlineToolsPath.Exists)
+			{
+				foreach (var dir in cmdlineToolsPath.GetDirectories())
+				{
+					var toolPath = new FileInfo(Path.Combine(dir.FullName, "bin", "avdmanager" + ext));
+					if (toolPath.Exists)
+						likelyPathSegments.Insert(0, new[] { "cmdline-tools", dir.Name, "bin" });
+				}
+			}
+
+			likelyPathSegments.Add(new[] { "tools", "bin" });
+
+			foreach (var pathSeg in likelyPathSegments)
+			{
+				var tool = FindTool(androidSdkHome, toolName: "avdmanager", windowsExtension: ".bat", pathSeg);
+				if (tool != null)
+					return tool;
+			}
+
+			return null;
+		}
+
+		internal override string SdkPackageId => "emulator";
 
 		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false)
 		{
@@ -182,20 +214,58 @@ namespace AndroidSdk
 
 		IEnumerable<string> run(params string[] args)
 		{
+			if (jdk == null)
+				jdk = Jdks.FirstOrDefault();
+
 			var adbManager = FindToolPath(AndroidSdkHome);
-			if (adbManager == null || !File.Exists(adbManager.FullName))
-				throw new FileNotFoundException("Could not find avdmanager", adbManager?.FullName);
+			var java = jdk.Java;
 
-			var builder = new ProcessArgumentBuilder();
+			var libPath = Path.GetFullPath(Path.Combine(adbManager.DirectoryName, "..", "lib"));
+			var toolPath = Path.GetFullPath(Path.Combine(adbManager.DirectoryName, ".."));
 
-			foreach (var arg in args)
-				builder.Append(arg);
+			var cpSeparator = IsWindows ? ";" : ":";
 
-			var p = new ProcessRunner(adbManager, builder);
+			// Get all the .jars in the tools\lib folder to use as classpath
+			//var classPath = "avdmanager-classpath.jar";
+			var classPath = string.Join(cpSeparator, Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
 
-			var r = p.WaitForExit();
+			var proc = new Process();
+			// This is the package and class that contains the main() for avdmanager
+			proc.StartInfo.Arguments = "com.android.sdklib.tool.AvdManagerCli " + string.Join(" ", args);
+			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
+			proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
+			// Set the classpath to all the .jar files we found in the lib folder
+			proc.StartInfo.Environment["CLASSPATH"] = classPath;
 
-			return r.StandardOutput;
+			// Java.exe
+			proc.StartInfo.FileName = java.FullName;
+
+			// lib folder is our working dir
+			proc.StartInfo.WorkingDirectory = libPath;
+
+			proc.StartInfo.UseShellExecute = false;
+			proc.StartInfo.RedirectStandardOutput = true;
+			proc.StartInfo.RedirectStandardError = true;
+
+			var output = new List<string>();
+
+			proc.OutputDataReceived += (s, e) =>
+			{
+				if (!string.IsNullOrEmpty(e.Data))
+					output.Add(e.Data);
+			};
+			proc.ErrorDataReceived += (s, e) =>
+			{
+				if (!string.IsNullOrEmpty(e.Data))
+					output.Add(e.Data);
+			};
+
+			proc.Start();
+			proc.BeginOutputReadLine();
+			proc.BeginErrorReadLine();
+			proc.WaitForExit();
+
+			return output;
 		}
 	}
 }
