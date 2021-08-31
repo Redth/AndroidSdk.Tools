@@ -41,9 +41,10 @@ jobs:
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk/AndroidSdk.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
 
+
+        $pfxPath = Join-Path -Path $pwd -ChildPath "codesigncert.pfx"
         [IO.File]::WriteAllBytes("$pfxPath", [System.Convert]::FromBase64String($env:CODESIGN_PFX))
         
-        $pfxPath = Join-Path -Path $pwd -ChildPath "codesigncert.pfx"
         $pfxLen = (Get-ChildItem -Path $pfxPath).Length
         Write-Output "PFX LEN: $pfxLen"
 
