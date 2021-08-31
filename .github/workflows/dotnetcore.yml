@@ -11,6 +11,7 @@ jobs:
     name: Build
     env:
       NUPKG_MAJOR: 0.999
+      CODESIGN_PFX: ${{ secrets.CODESIGN_PFX }}
     runs-on: windows-latest
     steps:
     - name: Checkout
@@ -41,11 +42,6 @@ jobs:
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
         
         [IO.File]::WriteAllBytes("$pwd\codesigncert.pfx",[System.Convert]::FromBase64String($env:CODESIGN_PFX))
-        Write-Output "Wrote pfx"
-        $pfxLen = (Get-ChildItem .\artifacts\codesigncert.pfx).Length
-        
-        Write-Output "Length of pfx: $pfxLen"
-        
         nuget sign .\artifacts\*.nupkg -CertificatePath .\artifacts\codesigncert.pfx -Timestamper http://timestamp.entrust.net/TSS/RFC3161sha2TS
         
     - name: Artifacts
