@@ -3,7 +3,30 @@
 
 ![.NET Core](https://github.com/Redth/AndroidSdk.Tools/workflows/.NET%20Core/badge.svg)
 
-## Usage
+## DotNet Tool
+
+In addition to the `AndroidSDK` NuGet Package, there is also a dotnet tool `AndroidSDK.Tool`:
+
+```
+# Install the tool
+dotnet tool install -g AndroidSDK.Tool
+
+# List devices/emulators
+android device list --format json
+
+# List and install SDK packages
+android sdk list
+android sdk install --package emulator --package system-images;android-31;google_apis;x86_64
+
+# Create AVD's
+android avd create --name MyEmulator --sdk system-images;android-31;google_apis;x86_64 --device pixel
+
+# Start Emulators and wait for them to be ready
+android avd start --name MyEmulator --wait-boot
+```
+
+
+## Library API Usage
 
 Download/Install the SDK:
 
