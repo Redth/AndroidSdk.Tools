@@ -1,31 +1,46 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
+	public class SdkToolFailedExitException : Exception
+	{
+		public SdkToolFailedExitException(string name, int exitCode, IEnumerable<string> stdErr, IEnumerable<string> stdOut)
+			: base($"{name} exited with an error status")
+		{
+			ExitCode = exitCode;
+			StdErr = stdErr?.ToArray() ?? new string[0];
+			StdOut = stdOut?.ToArray() ?? new string[0];
+		}
+
+		public readonly int ExitCode;
+		public readonly string[] StdOut;
+		public readonly string[] StdErr;
+
+		public IEnumerable<string> AllOutput
+			=> StdOut.Concat(StdErr);
+	}
+
+
 	public abstract class SdkTool
 	{
 		public SdkTool()
+			: this((string)null)
 		{
-			Init();
 		}
 
 		public SdkTool(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome))
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome))
 		{
-			Init();
 		}
 
 		public SdkTool(DirectoryInfo androidSdkHome)
 		{
-			AndroidSdkHome = androidSdkHome;
-			Init();
-		}
-
-		void Init()
-		{
+			AndroidSdkHome = AndroidSdkManager.FindHome(androidSdkHome)?.FirstOrDefault();
 			Jdks = new JdkLocator().Find()?.ToArray() ?? new JdkInfo[0];
 		}
 
@@ -37,7 +52,6 @@ namespace AndroidSdk
 
 		protected bool IsWindows
 			=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
 
 		public abstract FileInfo FindToolPath(DirectoryInfo androidSdkHome = null);
 
@@ -62,17 +76,6 @@ namespace AndroidSdk
 			}
 
 			return null;
-		}
-
-
-		public void Acquire()
-		{
-			if (FindToolPath(AndroidSdkHome)?.Exists ?? false)
-				return;
-
-			var sdkManager = new SdkManager(AndroidSdkHome);
-
-			sdkManager.Acquire(SdkPackageId);
 		}
 	}
 }

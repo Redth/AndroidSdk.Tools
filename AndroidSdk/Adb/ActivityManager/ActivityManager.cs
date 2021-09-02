@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -26,12 +27,12 @@ namespace AndroidSdk
 		}
 
 		public ActivityManager(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome), null)
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome), null)
 		{
 		}
 
 		public ActivityManager(string androidSdkHome, string adbSerial)
-			: this(new DirectoryInfo(androidSdkHome), adbSerial)
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome), adbSerial)
 		{
 		}
 

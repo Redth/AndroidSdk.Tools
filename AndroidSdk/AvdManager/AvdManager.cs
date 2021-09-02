@@ -18,11 +18,10 @@ namespace AndroidSdk
 		public AvdManager(DirectoryInfo androidSdkHome)
 			: base(androidSdkHome)
 		{
-			AndroidSdkHome = androidSdkHome;
 		}
 
 		public AvdManager(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome))
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome))
 		{ }
 
 		JdkInfo jdk = null;
@@ -60,7 +59,7 @@ namespace AndroidSdk
 
 		internal override string SdkPackageId => "emulator";
 
-		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false)
+		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false, string sdCardPath = null, string sdCardSize = null)
 		{
 			var args = new List<string> {
 				"create", "avd", "-n", name, "-k", $"\"{sdkId}\""
@@ -72,10 +71,16 @@ namespace AndroidSdk
 				args.Add($"\"{device}\"");
 			}
 
-			if (!string.IsNullOrEmpty(path))
+			if (!string.IsNullOrEmpty(sdCardPath))
 			{
 				args.Add("-c");
-				args.Add($"\"{path}\"");
+				args.Add($"\"{sdCardPath}\"");
+			}
+
+			if (!string.IsNullOrEmpty(sdCardSize))
+			{
+				args.Add("-c");
+				args.Add($"\"{sdCardSize}\"");
 			}
 
 			if (force)
@@ -131,10 +136,23 @@ namespace AndroidSdk
 			{
 				foreach (Match m in matches)
 				{
+					// Parse out the id further from: `18 or "pixel"`
+					var idstr = m.Groups?["id"]?.Value;
+					int? idnum = null;
+
+					var idRx = rxIdOr.Match(idstr);
+
+					if (idRx != null && idRx.Success && int.TryParse(idRx.Groups?["num"]?.Value, out var idInt))
+					{
+						idnum = idInt;
+						idstr = idRx.Groups?["str"]?.Value ?? idstr;
+					}
+
 					var a = new AvdTarget
 					{
 						Name = m.Groups?["name"]?.Value,
-						Id = m.Groups?["id"]?.Value,
+						Id = idstr,
+						NumericId = idnum,
 						Type = m.Groups?["type"]?.Value
 					};
 
@@ -184,6 +202,8 @@ namespace AndroidSdk
 
 		static Regex rxListDevices = new Regex(@"id:\s+(?<id>[^\n]+)\s+Name:\s+(?<name>[^\n]+)\s+OEM\s?:\s+(?<oem>[^\n]+)", RegexOptions.Singleline | RegexOptions.Compiled);
 
+		static Regex rxIdOr = new Regex(@"^(?<num>[0-9]+)\s{0,}or\s{0,}\""(?<str>.*?)\""$", RegexOptions.Singleline | RegexOptions.Compiled);
+
 		public IEnumerable<AvdDevice> ListDevices()
 		{
 			var r = new List<AvdDevice>();
@@ -197,10 +217,23 @@ namespace AndroidSdk
 			{
 				foreach (Match m in matches)
 				{
+					// Parse out the id further from: `18 or "pixel"`
+					var idstr = m.Groups?["id"]?.Value;
+					int? idnum = null;
+
+					var idRx = rxIdOr.Match(idstr);
+
+					if (idRx != null && idRx.Success && int.TryParse(idRx.Groups?["num"]?.Value, out var idInt))
+					{
+						idnum = idInt;
+						idstr = idRx.Groups?["str"]?.Value ?? idstr;
+					}
+
 					var a = new AvdDevice
 					{
 						Name = m.Groups?["name"]?.Value,
-						Id = m.Groups?["id"]?.Value,
+						Id = idstr,
+						NumericId = idnum,
 						Oem = m.Groups?["oem"]?.Value
 					};
 
@@ -248,22 +281,33 @@ namespace AndroidSdk
 			proc.StartInfo.RedirectStandardError = true;
 
 			var output = new List<string>();
+			var stdout = new List<string>();
+			var stderr = new List<string>();
 
 			proc.OutputDataReceived += (s, e) =>
 			{
 				if (!string.IsNullOrEmpty(e.Data))
+				{
 					output.Add(e.Data);
+					stdout.Add(e.Data);
+				}
 			};
 			proc.ErrorDataReceived += (s, e) =>
 			{
 				if (!string.IsNullOrEmpty(e.Data))
+				{
 					output.Add(e.Data);
+					stderr.Add(e.Data);
+				}
 			};
 
 			proc.Start();
 			proc.BeginOutputReadLine();
 			proc.BeginErrorReadLine();
 			proc.WaitForExit();
+
+			if (proc.ExitCode != 0)
+				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
 
 			return output;
 		}

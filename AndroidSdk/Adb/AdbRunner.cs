@@ -37,7 +37,14 @@ namespace AndroidSdk
 
 			var p = new ProcessRunner(adbToolPath, builder, cancelToken);
 
-			return p.WaitForExit();
+			var r = p.WaitForExit();
+
+			if (r.ExitCode != 0)
+			{
+				throw new SdkToolFailedExitException("adb", r.ExitCode, r.StandardError, r.StandardOutput);
+			}
+
+			return r;
 		}
 	}
 }

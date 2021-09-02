@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -25,12 +26,12 @@ namespace AndroidSdk
 		}
 
 		public PackageManager(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome), null)
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome), null)
 		{
 		}
 
 		public PackageManager(string androidSdkHome, string adbSerial)
-			: this(new DirectoryInfo(androidSdkHome), adbSerial)
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome), adbSerial)
 		{
 		}
 

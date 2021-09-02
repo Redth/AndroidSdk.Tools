@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -59,14 +60,9 @@ namespace AndroidSdk
 			Emulator = new Emulator(Home);
 		}
 
-		public void Acquire()
+		public async Task Acquire()
 		{
-			SdkManager.Acquire(
-				SdkManager,
-				Adb,
-				Emulator,
-				PackageManager,
-				AvdManager);
+			await SdkManager.Acquire();
 		}
 
 		public readonly DirectoryInfo Home;

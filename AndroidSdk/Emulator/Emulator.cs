@@ -18,11 +18,10 @@ namespace AndroidSdk
 		public Emulator(DirectoryInfo androidSdkHome)
 			: base(androidSdkHome)
 		{
-			AndroidSdkHome = androidSdkHome;
 		}
 
 		public Emulator(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome))
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome))
 		{ }
 
 		internal override string SdkPackageId => "emulator";
@@ -197,6 +196,9 @@ namespace AndroidSdk
 			public int WaitForExit()
 			{
 				result = process.WaitForExit();
+
+				if (result.ExitCode != 0)
+					throw new SdkToolFailedExitException("avdmanager", result.ExitCode, result.StandardError, result.StandardOutput);
 
 				return result.ExitCode;
 			}

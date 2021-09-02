@@ -2,7 +2,7 @@
   "profiles": {
     "AndroidSdk.Tool": {
       "commandName": "Project",
-      "commandLineArgs": "--home=\"C:\\testdata\\tmp\" sdk --install \"platforms;android-23\""
+      "commandLineArgs": "sdk install --package emulatord"
     }
   }
 }

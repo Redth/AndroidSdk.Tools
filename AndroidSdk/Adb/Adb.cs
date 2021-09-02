@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -20,7 +21,7 @@ namespace AndroidSdk
 		}
 
 		public Adb(string androidSdkHome)
-			: this(new DirectoryInfo(androidSdkHome))
+			: this(string.IsNullOrEmpty(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome))
 		{
 		}
 
@@ -30,6 +31,18 @@ namespace AndroidSdk
 			=> FindTool(androidSdkHome, toolName: "adb", windowsExtension: ".exe", "platform-tools");
 
 		AdbRunner runner;
+
+		public List<string> Run(params string[] args)
+		{
+			var builder = new ProcessArgumentBuilder();
+
+			foreach (var arg in args)
+				builder.Append(arg);
+
+			var r = runner.RunAdb(AndroidSdkHome, builder);
+
+			return r.StandardOutput.Concat(r.StandardError).ToList();
+		}
 
 		public List<AdbDevice> GetDevices()
 		{
@@ -312,7 +325,7 @@ namespace AndroidSdk
 		}
 
 
-		public List<string> Logcat(AdbLogcatOptions options = null, string adbSerial = null)
+		public List<string> Logcat(AdbLogcatOptions options = null, string filter = null, string adbSerial = null)
 		{
 			// logcat[option][filter - specs]
 			if (options == null)
@@ -436,13 +449,22 @@ namespace AndroidSdk
 					{
 						var key = parts[0].Trim().Trim('[', ']');
 
-						if (includeProperties == null || (includeProperties?.Any(ip => ip.Equals(key, StringComparison.OrdinalIgnoreCase)) ?? false))
+						if (includeProperties == null || (includeProperties?.Any(ip => IsPropertyMatch(ip, key)) ?? false))
 							r[key] = parts[1].Trim().Trim('[', ']');
 					}
 				}
 			}
 
 			return r;
+		}
+
+		internal static bool IsPropertyMatch(string value, string input)
+		{
+			if (value.Equals(input, StringComparison.InvariantCultureIgnoreCase)
+				|| Regex.IsMatch(input, value, RegexOptions.Singleline | RegexOptions.IgnoreCase))
+				return true;
+
+			return false;
 		}
 
 		public List<string> Shell(string shellCommand, string adbSerial = null)

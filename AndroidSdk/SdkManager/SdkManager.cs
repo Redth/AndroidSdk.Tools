@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -36,7 +37,6 @@ namespace AndroidSdk
 		public SdkManager(DirectoryInfo androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
 			: base(androidSdkHome)
 		{
-			AndroidSdkHome = androidSdkHome;
 			Channel = channel;
 			SkipVersionCheck = skipVersionCheck;
 			IncludeObsolete = includeObsolete;
@@ -90,7 +90,7 @@ namespace AndroidSdk
 		/// <param name="context">The context.</param>
 		/// <param name="destinationDirectory">Destination directory, or ./tools/androidsdk if none is specified.</param>
 		/// <param name="specificVersion">Specific version, or latest if none is specified.</param>
-		internal void DownloadSdk(DirectoryInfo destinationDirectory = null, string specificVersion = null, Action<int> progressHandler = null)
+		public async Task DownloadSdk(DirectoryInfo destinationDirectory = null, string specificVersion = null, Action<int> progressHandler = null)
 		{
 			if (destinationDirectory == null)
 				destinationDirectory = AndroidSdkHome;
@@ -123,7 +123,7 @@ namespace AndroidSdk
 			{
 				try
 				{
-					var data = http.GetStringAsync(REPOSITORY_URL).Result;
+					var data = await http.GetStringAsync(REPOSITORY_URL);
 
 					var xdoc = new System.Xml.XmlDocument();
 					xdoc.LoadXml(data);
@@ -152,41 +152,30 @@ namespace AndroidSdk
 
 			var sdkZipFile = new FileInfo(Path.Combine(destinationDirectory.FullName, "androidsdk.zip"));
 
+
 			if (!sdkZipFile.Exists)
 			{
+				int prevProgress = 0;
+				var webClient = new System.Net.WebClient();
 
-				var buffer = new byte[4096];
-
-				var resp = http.GetAsync(sdkUrl).Result;
-
-				resp.EnsureSuccessStatusCode();
-
-				var contentLength = resp.Content.Headers.ContentLength;
-
-				using (var httpStream = resp.Content.ReadAsStreamAsync().Result)
-				using (var fileStream = File.Create(sdkZipFile.FullName))
+				webClient.DownloadProgressChanged += (s, e) =>
 				{
-					var totalRead = 0;
-					int prevProgress = 0;
+					var progress = e.ProgressPercentage;
 
-					int read = 0;
-					while ((read = httpStream.Read(buffer, 0, buffer.Length)) > 0)
-					{
-						fileStream.Write(buffer, 0, read);
+					if (progress > prevProgress)
+						progressHandler?.Invoke(progress);
 
-						totalRead += read;
-
-						int progress = (int)(((double)totalRead / (double)contentLength) * 100d);
-
-						if (progress > prevProgress)
-							progressHandler?.Invoke(progress);
-
-						prevProgress = progress;
-					}
-				}
+					prevProgress = progress;
+				};
+				await webClient.DownloadFileTaskAsync(sdkUrl, sdkZipFile.FullName);
 			}
 
 			ZipFile.ExtractToDirectory(sdkZipFile.FullName, sdkDir.FullName);
+		}
+
+		private void WebClient_DownloadProgressChanged(object sender, System.Net.DownloadProgressChangedEventArgs e)
+		{
+			
 		}
 
 		public bool IsUpToDate()
@@ -359,8 +348,6 @@ namespace AndroidSdk
 
 			var output = run(true, builder);
 
-			Console.WriteLine(output);
-
 			return true;
 		}
 
@@ -445,16 +432,24 @@ namespace AndroidSdk
 			proc.StartInfo.RedirectStandardInput = true;
 
 			var output = new List<string>();
+			var stderr = new List<string>();
+			var stdout = new List<string>();
 
 			proc.OutputDataReceived += (s, e) =>
 			{
 				if (!string.IsNullOrEmpty(e.Data))
+				{
 					output.Add(e.Data);
+					stdout.Add(e.Data);
+				}
 			};
 			proc.ErrorDataReceived += (s, e) =>
 			{
 				if (!string.IsNullOrEmpty(e.Data))
+				{
 					output.Add(e.Data);
+					stderr.Add(e.Data);
+				}
 			};
 
 			var cmd = $"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}";
@@ -477,8 +472,9 @@ namespace AndroidSdk
 
 			proc.WaitForExit();
 
-			Console.WriteLine(cmd);
-
+			if (proc.ExitCode != 0)
+				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
+			
 			return output;
 		}
 
@@ -510,30 +506,18 @@ namespace AndroidSdk
 			}
 		}
 
-		public static void Acquire(params SdkTool[] tools)
-		{
-			if (tools == null)
-				return;
-
-			foreach (var t in tools)
-				t.Acquire();
-		}
-
-		internal void Acquire(params string[] installIds)
+		public async Task Acquire()
 		{
 			var sdkManagerApp = FindToolPath(AndroidSdkHome);
 
 			// Download if it doesn't exist
 			if (sdkManagerApp == null || !sdkManagerApp.Exists)
-				DownloadSdk(AndroidSdkHome, null, null);
+			{
+				await DownloadSdk(AndroidSdkHome, null, null);
+				sdkManagerApp = FindToolPath(AndroidSdkHome);
+			}
 
 			UpdateAll();
-
-			if (installIds?.Any() ?? false)
-			{
-				foreach (var id in installIds)
-					Install(id);
-			}
 		}
 	}
 }

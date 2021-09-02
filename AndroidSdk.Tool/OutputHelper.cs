@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Spectre.Console;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -11,6 +12,38 @@ namespace AndroidSdk.Tool
 {
 	static class OutputHelper
 	{
+		internal static void Output<T>(IEnumerable<T> items, OutputFormat? format, string[] columns, Func<T, string[]> getRow)
+		{
+			if ((format ?? OutputFormat.None) == OutputFormat.None)
+			{
+				OutputTable<T>(items, columns, getRow);
+			}
+			else
+			{
+				if (format == OutputFormat.Json)
+					AnsiConsole.WriteLine(JsonSerialize<IEnumerable<T>>(items));
+				else if (format == OutputFormat.Xml)
+					AnsiConsole.WriteLine(XmlSerialize<IEnumerable<T>>(items));
+			}
+		}
+
+		internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
+		{
+			var table = new Table();
+
+			foreach (var c in columns)
+				table.AddColumn(c);
+
+			foreach (var i in items)
+			{
+				var row = getRow(i);
+				table.AddRow(row);
+			}
+
+			// Render the table to the console
+			AnsiConsole.Render(table);
+		}
+
 		internal static void Output<T>(T data, OutputFormat outputFormat)
 		{
 			var r = string.Empty;
