@@ -19,10 +19,10 @@ android device list --format json
 
 # List and install SDK packages
 android sdk list
-android sdk install --package emulator --package system-images;android-31;google_apis;x86_64
+android sdk install --package emulator --package "system-images;android-31;google_apis;x86_64"
 
 # Create AVD's
-android avd create --name MyEmulator --sdk system-images;android-31;google_apis;x86_64 --device pixel
+android avd create --name MyEmulator --sdk "system-images;android-31;google_apis;x86_64" --device pixel
 
 # Start Emulators and wait for them to be ready
 android avd start --name MyEmulator --wait-boot
