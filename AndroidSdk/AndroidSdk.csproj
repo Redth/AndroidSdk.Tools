@@ -1,17 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>8.0</LangVersion>
-  </PropertyGroup>
+	</PropertyGroup>
 
 	<PropertyGroup>
 		<PackageId>AndroidSdk</PackageId>
-		<PackageVersion>0.3.0</PackageVersion>
 		<Title>Android SDK Tools</Title>
-		<PackageDescription>Library for Android related tasks.</PackageDescription>
+		<PackageDescription>Library for Android SDK and Emulator management</PackageDescription>
 		<Authors>Redth</Authors>
 		<Owners>Redth</Owners>
+		<Copyright>Copyright © Redth</Copyright>
+		<PackageProjectUrl>https://github.com/redth/AndroidSdk.Tools</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/redth/AndroidSdk.Tools</RepositoryUrl>
+		<AssemblyFileVersion>$(PackageVersion)</AssemblyFileVersion>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<DebugType>portable</DebugType>
 	</PropertyGroup>
 	
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' Or '$(TF_BUILD)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
 </Project>
