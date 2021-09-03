@@ -63,7 +63,7 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "avd", "devices" });
 					sdkBranch.AddCommand<AvdCreateCommand>("create")
 						.WithDescription("Creates a new AVD")
-						.WithExample(new[] { "avd", "create", "--name MyEmulator", "--sdk system-images;android-31;google_apis;x86_64", "--device pixel" });
+						.WithExample(new[] { "avd", "create", "--name MyEmulator", "--sdk \"system-images;android-31;google_apis;x86_64\"", "--device pixel" });
 					sdkBranch.AddCommand<AvdDeleteCommand>("delete")
 						.WithDescription("Deletes an AVD")
 						.WithExample(new[] { "avd", "delete", "--name MyEmulator" });
