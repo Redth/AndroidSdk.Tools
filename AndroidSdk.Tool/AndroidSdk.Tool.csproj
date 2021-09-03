@@ -4,10 +4,10 @@
 		<OutputType>Exe</OutputType>
 		<AssemblyName>android</AssemblyName>
 		<PackAsTool>true</PackAsTool>
-		<TargetFrameworks>netcoreapp3.0;netcoreapp3.1;net5.0</TargetFrameworks>
+		<TargetFrameworks>netcoreapp3.1;net5.0</TargetFrameworks>
 		<ToolCommandName>android</ToolCommandName>
 		<GenerateProgramFile>false</GenerateProgramFile>
-		<!--<GeneratePackageOnBuild>true</GeneratePackageOnBuild>-->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<!--<PreserveCompilationContext>true</PreserveCompilationContext>-->
 	</PropertyGroup>
 
