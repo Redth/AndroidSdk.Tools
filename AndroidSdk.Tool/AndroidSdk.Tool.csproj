@@ -10,8 +10,8 @@
 
 	<PropertyGroup>
 		<PackageId>AndroidSdk.Tool</PackageId>
-		<Title>Global .NET Android SDK Tool</Title>
-		<PackageDescription>Global dotnet tool for Android SDK related tasks.</PackageDescription>
+		<Title>.NET Android SDK Tool</Title>
+		<PackageDescription>.NET tool for Android SDK management related tasks</PackageDescription>
 		<Authors>Redth</Authors>
 		<Owners>Redth</Owners>
 		<Copyright>Copyright © Redth</Copyright>
