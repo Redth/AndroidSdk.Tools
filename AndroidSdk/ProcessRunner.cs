@@ -27,6 +27,7 @@ namespace AndroidSdk
 			process = new Process();
 			process.StartInfo.FileName = executable.FullName;
 			process.StartInfo.Arguments = builder.ToString();
+			process.StartInfo.CreateNoWindow = true;
 			process.StartInfo.UseShellExecute = false;
 			process.StartInfo.RedirectStandardOutput = true;
 			process.StartInfo.RedirectStandardError = true;
