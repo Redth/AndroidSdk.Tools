@@ -4,7 +4,7 @@
 		<OutputType>Exe</OutputType>
 		<AssemblyName>android</AssemblyName>
 		<PackAsTool>true</PackAsTool>
-		<TargetFrameworks>netcoreapp3.1;net5.0</TargetFrameworks>
+		<TargetFrameworks>netcoreapp3.1;net5.0;net6.0</TargetFrameworks>
 		<ToolCommandName>android</ToolCommandName>
 	</PropertyGroup>
 
@@ -22,6 +22,7 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<DebugType>portable</DebugType>
+		<PackAsToolShimRuntimeIdentifiers>win-x64;win-x86;osx-x64</PackAsToolShimRuntimeIdentifiers>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' Or '$(TF_BUILD)' == 'true'">
@@ -31,10 +32,28 @@
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
 		<PackageReference Include="Spectre.Console" Version="0.41.0" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
+		<ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
 	</ItemGroup>
+	 
+	<PropertyGroup>
+		<SigningTimestampServer>http://timestamp.entrust.net/TSS/RFC3161sha2TS</SigningTimestampServer>
+		<SignToolPath>C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe</SignToolPath>
+	</PropertyGroup>
+
+	<Target Name="AuthenticodeSignBeforeBack" BeforeTargets="GenerateNuspec" Condition="'$(SigningCertificatePfxFile)' != ''">
+		<ItemGroup>
+			<FilesToSign Include="@(_PackageFiles)" Condition=" '%(_PackageFiles.Filename)%(_PackageFiles.Extension)' == 'MauiCheck.dll' " />
+			<FilesToSign Include="@(_PackageFiles)" Condition=" '%(_PackageFiles.Filename)%(_PackageFiles.Extension)' == 'maui-check.exe' " />
+		</ItemGroup>
+		<Exec Command="&quot;$(SignToolPath)&quot; sign /v /f $(SigningCertificatePfxFile) /as /fd sha256 /td sha256 /tr $(SigningTimestampServer) %(FilesToSign.FullPath)" />
+	</Target>
+
+	<Target Name="NugetSignAfterPack" AfterTargets="Pack" Condition="'$(SigningCertificatePfxFile)' != ''">
+		<Exec Command="nuget sign $(PackageOutputAbsolutePath)\*.nupkg -CertificatePath $(SigningCertificatePfxFile) -Timestamper $(SigningTimestampServer)" />
+	</Target>
 
 </Project>
