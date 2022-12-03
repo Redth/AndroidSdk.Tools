@@ -42,6 +42,8 @@ namespace AndroidSdk.Tool
                 result.IsUpToDate= m.IsUpToDate();
                 result.Channel = m.Channel.ToString();
 
+                var jdks = m.Jdks;
+
                 if (settings.Format == OutputFormat.None)
                 {
                     var rule = new Rule("SDK Info:");
@@ -52,10 +54,25 @@ namespace AndroidSdk.Tool
                         result,
                         new[] { "Path", "Version", "IsUpToDate", "Channel" },
                         i => new[] { i.Path, i.Version, i.IsUpToDate.ToString(), i.Channel});
+
+
+                    if (jdks is not null && jdks.Length > 0)
+                    {
+                        rule = new Rule("JDK Info:");
+                        rule.Centered();
+                        AnsiConsole.Render(rule);
+
+                        OutputHelper.OutputTable<JdkInfo>(
+                            jdks,
+                            new[] { "Version", "Path", "Java Path", "JavaC Path" },
+                            i => new[] { i.Version.ToString(), i.Home.FullName, i.Java.FullName, i.JavaC.FullName});
+                    }
+
                 }
                 else
                 {
-                    OutputHelper.Output<SdkInfoResult>(result, settings.Format);
+                    var objr = new { SdkInfo = result, Jdks = jdks };
+                    OutputHelper.Output(objr, settings.Format);
                 }
 
             }

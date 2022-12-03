@@ -27,22 +27,22 @@ namespace AndroidSdk.Tool
 			}
 		}
 
-        internal static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
-        {
-            if ((format ?? OutputFormat.None) == OutputFormat.None)
-            {
-                OutputObject<T>(item, properties, getValues);
-            }
-            else
-            {
-                if (format == OutputFormat.Json)
-                    AnsiConsole.WriteLine(JsonSerialize<T>(item));
-                else if (format == OutputFormat.Xml)
-                    AnsiConsole.WriteLine(XmlSerialize<T>(item));
-            }
-        }
+		internal static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
+		{
+			if ((format ?? OutputFormat.None) == OutputFormat.None)
+			{
+				OutputObject<T>(item, properties, getValues);
+			}
+			else
+			{
+				if (format == OutputFormat.Json)
+					AnsiConsole.WriteLine(JsonSerialize<T>(item));
+				else if (format == OutputFormat.Xml)
+					AnsiConsole.WriteLine(XmlSerialize<T>(item));
+			}
+		}
 
-        internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
+		internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
 		{
 			var table = new Table();
 
@@ -63,6 +63,9 @@ namespace AndroidSdk.Tool
 		{
 			var table = new Table();
 			var values = getValues(item);
+
+			table.AddColumn("Property");
+			table.AddColumn("Value");
 
 			for (int i = 0; i < properties.Length; i++)
 			{
