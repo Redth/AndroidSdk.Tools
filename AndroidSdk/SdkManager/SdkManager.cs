@@ -15,10 +15,10 @@ namespace AndroidSdk
 {
 	public partial class SdkManager : SdkTool
 	{
-		const string ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION = "5.0";
-		const string ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED = "3.0";
+		const string ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION = "8.0";
+		const string ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED = "7.0";
 		const string REPOSITORY_URL_BASE = "https://dl.google.com/android/repository/";
-		const string REPOSITORY_URL = REPOSITORY_URL_BASE + "repository2-1.xml";
+		const string REPOSITORY_URL = REPOSITORY_URL_BASE + "repository2-3.xml";
 		const string REPOSITORY_SDK_PATTERN = REPOSITORY_URL_BASE + "commandlinetools-{0}-{1}_latest.zip";
 		const string REPOSITORY_SDK_DEFAULT_VERSION = "6858069";
 
