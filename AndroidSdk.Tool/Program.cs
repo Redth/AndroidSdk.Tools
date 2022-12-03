@@ -34,6 +34,9 @@ namespace AndroidSdk.Tool
 						.WithDescription("Downloads a new copy of the Android SDK cmdline-tools")
 						.WithExample(new[] { "sdk", "download", "--home /path/to/sdk" })
 						.WithExample(new[] { "sdk", "download", "--home /path/to/sdk", "--force" });
+					sdkBranch.AddCommand<SdkInfoCommand>("info")
+						.WithDescription("Android SDK Info")
+						.WithExample(new[] { "sdk", "info" });
 				});
 
 				config.AddBranch("device", sdkBranch =>

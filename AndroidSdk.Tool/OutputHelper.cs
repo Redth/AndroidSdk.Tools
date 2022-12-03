@@ -27,7 +27,22 @@ namespace AndroidSdk.Tool
 			}
 		}
 
-		internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
+        internal static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
+        {
+            if ((format ?? OutputFormat.None) == OutputFormat.None)
+            {
+                OutputObject<T>(item, properties, getValues);
+            }
+            else
+            {
+                if (format == OutputFormat.Json)
+                    AnsiConsole.WriteLine(JsonSerialize<T>(item));
+                else if (format == OutputFormat.Xml)
+                    AnsiConsole.WriteLine(XmlSerialize<T>(item));
+            }
+        }
+
+        internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
 		{
 			var table = new Table();
 
@@ -38,6 +53,23 @@ namespace AndroidSdk.Tool
 			{
 				var row = getRow(i);
 				table.AddRow(row);
+			}
+
+			// Render the table to the console
+			AnsiConsole.Render(table);
+		}
+
+		internal static void OutputObject<T>(T item, string[] properties, Func<T, string[]> getValues)
+		{
+			var table = new Table();
+			var values = getValues(item);
+
+			for (int i = 0; i < properties.Length; i++)
+			{
+				var name = properties[i];
+				var val = values[i];
+
+				table.AddRow(name, val);
 			}
 
 			// Render the table to the console
