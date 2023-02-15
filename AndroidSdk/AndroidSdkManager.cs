@@ -18,10 +18,10 @@ namespace AndroidSdk
 				} :
 				new string []
 				{
-					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Android", "sdk"),
 					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "android-sdk-macosx"),
 					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "Xamarin", "android-sdk-macosx"),
 					Path.Combine("Developer", "Android", "android-sdk-macosx"),
+					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Android", "sdk"),
 				};
 
 		public static IEnumerable<DirectoryInfo> FindHome()
