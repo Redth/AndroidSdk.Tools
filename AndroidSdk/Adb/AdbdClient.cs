@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
-	public class AdbdClient : IDisposable
+	public class AdbdClient
 	{
 		public const string DefaultAdbdHost = "127.0.01";
 		public const int DefaultAdbdPort = 5037;
@@ -38,8 +38,11 @@ namespace AndroidSdk
 			catch { }
 		}
 
-		Task SendCommandAsync(string command)
-			=> streamWriter.WriteAsync($"{command.Length.ToString("X4")}{command}");
+		async Task SendCommandAsync(string command)
+		{
+			var data = $"{command.Length.ToString("X4")}{command}";
+			await streamWriter.WriteAsync(data).ConfigureAwait(false);
+		}
 
 		string currentMessage = string.Empty;
 		int currentMessageLength = -1;
