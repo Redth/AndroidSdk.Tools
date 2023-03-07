@@ -1,4 +1,6 @@
-﻿using System.Runtime.Serialization;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace AndroidSdk
 {
@@ -28,6 +30,11 @@ namespace AndroidSdk
 
 			[DataMember(Name = "basedOn")]
 			public string BasedOn { get; set; }
+
+			[DataMember(Name = "properties")]
+			public Dictionary<string, string> Properties { get; set; } = new Dictionary<string, string>();
+
+
 
 			public override string ToString()
 			{
