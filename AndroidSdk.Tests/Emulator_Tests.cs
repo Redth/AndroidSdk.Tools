@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,7 +19,7 @@ namespace AndroidSdk.Tests
 			var sdk = GetSdk();
 			sdk.Acquire();
 
-			var avdImagePackageId = "system-images;android-30;google_apis;x86_64";
+			var avdImagePackageId = "system-images;android-31;google_apis;x86_64";
 
 			// Install the right avd image
 			sdk.SdkManager.Install(avdImagePackageId);
@@ -37,10 +38,10 @@ namespace AndroidSdk.Tests
 		}
 
 		[Fact]
-		public void CreateEmulator()
+		public async Task CreateEmulator()
 		{
 			var sdk = GetSdk();
-			sdk.Acquire();
+			await sdk.Acquire();
 
 			var avdImagePackageId = "system-images;android-30;google_apis;x86_64";
 
@@ -56,10 +57,10 @@ namespace AndroidSdk.Tests
 		}
 
 		[Fact]
-		public void ListAvds()
+		public async Task ListAvds()
 		{
 			var sdk = GetSdk();
-			sdk.Acquire();
+			await sdk.Acquire();
 
 			var avds = sdk.Emulator.ListAvds();
 
