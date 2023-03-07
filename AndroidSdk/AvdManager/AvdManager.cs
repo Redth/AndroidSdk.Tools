@@ -267,7 +267,7 @@ namespace AndroidSdk
 				if (!line.Contains('='))
 					continue;
 
-				var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
+				var parts = line.Split(new char[] { '=' }, 2, StringSplitOptions.RemoveEmptyEntries);
 
 				if (parts is not null && parts.Length == 2)
 				{
