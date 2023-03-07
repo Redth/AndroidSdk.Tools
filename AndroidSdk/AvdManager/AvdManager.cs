@@ -276,6 +276,7 @@ namespace AndroidSdk
 			// lib folder is our working dir
 			proc.StartInfo.WorkingDirectory = libPath;
 
+			proc.StartInfo.CreateNoWindow = true;
 			proc.StartInfo.UseShellExecute = false;
 			proc.StartInfo.RedirectStandardOutput = true;
 			proc.StartInfo.RedirectStandardError = true;
