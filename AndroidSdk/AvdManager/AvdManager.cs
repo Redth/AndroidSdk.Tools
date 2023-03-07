@@ -192,6 +192,17 @@ namespace AndroidSdk
 						BasedOn = m.Groups?["basedon"]?.Value
 					};
 
+					if (a.Path.EndsWith(".avd", StringComparison.OrdinalIgnoreCase))
+					{
+						var avdIniFile = a.Path.Substring(0, a.Path.Length - 4) + ".ini";
+
+						// Collect properties from the avd root level ini file
+						ParseIniFile(a.Properties, avdIniFile);
+					}
+
+					// Collect properties from the config file in the avd's folder
+					ParseIniFile(a.Properties, Path.Combine(a.Path, "config.ini"));
+
 					if (!string.IsNullOrWhiteSpace(a.Name))
 						r.Add(a);
 				}
@@ -243,6 +254,29 @@ namespace AndroidSdk
 			}
 
 			return r;
+		}
+
+		void ParseIniFile(Dictionary<string, string> properties, string iniFile)
+		{
+			if (!File.Exists(iniFile))
+				return;
+
+			var lines = File.ReadAllLines(iniFile);
+			foreach (var line in lines)
+			{
+				if (!line.Contains('='))
+					continue;
+
+				var parts = line.Split(new char[] { '=' }, 2, StringSplitOptions.RemoveEmptyEntries);
+
+				if (parts is not null && parts.Length == 2)
+				{
+					var key = parts[0]?.Trim()?.ToLowerInvariant();
+
+					if (!string.IsNullOrEmpty(key))
+						properties[key] = parts[1].Trim();
+				}
+			}
 		}
 
 		IEnumerable<string> run(params string[] args)
