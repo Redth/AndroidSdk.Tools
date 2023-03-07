@@ -49,7 +49,7 @@ namespace AndroidSdk.Tests
 
 			await a.WatchDevicesAsync(cts.Token, async d =>
 			{
-				OutputHelper.WriteLine($"{d.serial} -> {d.device} -> {d.state}");
+				OutputHelper.WriteLine($"{d.Serial} -> {d.Device} -> {d.State}");
 
 
 			}).ConfigureAwait(false);
