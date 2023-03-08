@@ -377,9 +377,11 @@ public class AdbdClient
 	public async Task<IReadOnlyDictionary<string, string>> GetAllPropsAsync(string serial, CancellationToken cancellationToken = default)
 	{
 		var v = await ShellAsync(serial, "getprop", null, cancellationToken).ConfigureAwait(false);
-
+		
 		var props = new Dictionary<string, string>();
-
+		if (string.IsNullOrEmpty(v))
+			return props;
+		
 		using var r = new StringReader(v);
 
 		while (true)
@@ -408,6 +410,8 @@ public class AdbdClient
 		var v = await ShellAsync(serial, "pm", new[] { "list", "features" }, cancellationToken).ConfigureAwait(false);
 
 		var features = new List<string>();
+		if (string.IsNullOrEmpty(v))
+			return features;
 
 		using var r = new StringReader(v);
 
