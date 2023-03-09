@@ -84,7 +84,7 @@ namespace AndroidSdk.Tool
 			}
 			catch (Exception ex)
 			{
-
+				AnsiConsole.WriteException(ex);
 			}
 		}
 

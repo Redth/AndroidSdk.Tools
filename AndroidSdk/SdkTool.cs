@@ -40,8 +40,8 @@ namespace AndroidSdk
 
 		public SdkTool(DirectoryInfo androidSdkHome)
 		{
-			AndroidSdkHome = AndroidSdkManager.FindHome(androidSdkHome)?.FirstOrDefault();
-			Jdks = new JdkLocator().Find()?.ToArray() ?? new JdkInfo[0];
+			AndroidSdkHome = new SdkLocator().Locate(androidSdkHome?.FullName)?.FirstOrDefault();
+			Jdks = new JdkLocator().LocateJdk()?.ToArray() ?? new JdkInfo[0];
 		}
 
 		public JdkInfo[] Jdks { get; private set; }
@@ -60,7 +60,7 @@ namespace AndroidSdk
 			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
 			var ext = isWindows ? windowsExtension : string.Empty;
-			var home = AndroidSdkManager.FindHome(androidHome)?.FirstOrDefault();
+			var home = new SdkLocator().Locate(androidHome?.FullName)?.FirstOrDefault();
 
 			if (home?.Exists ?? false)
 			{

@@ -56,7 +56,7 @@ namespace AndroidSdk.Tool
 			}
 
 			// Render the table to the console
-			AnsiConsole.Render(table);
+			AnsiConsole.Write(table);
 		}
 
 		internal static void OutputObject<T>(T item, string[] properties, Func<T, string[]> getValues)
@@ -76,7 +76,7 @@ namespace AndroidSdk.Tool
 			}
 
 			// Render the table to the console
-			AnsiConsole.Render(table);
+			AnsiConsole.Write(table);
 		}
 
 		internal static void Output<T>(T data, OutputFormat outputFormat)

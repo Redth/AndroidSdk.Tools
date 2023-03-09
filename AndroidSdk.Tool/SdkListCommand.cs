@@ -55,7 +55,7 @@ namespace AndroidSdk.Tool
 					{
 						var rule = new Rule("Available Packages:");
 						rule.Centered();
-						AnsiConsole.Render(rule);
+						AnsiConsole.Write(rule);
 
 						OutputHelper.OutputTable(sdkList.AvailablePackages, new[] { "Package", "Version", "Description" }, i => new[] { i.Path, i.Version, i.Description });
 					}
@@ -64,7 +64,7 @@ namespace AndroidSdk.Tool
 					{
 						var rule = new Rule("Installed Packages:");
 						rule.Centered();
-						AnsiConsole.Render(rule);
+						AnsiConsole.Write(rule);
 
 						OutputHelper.OutputTable(
 							sdkList.InstalledPackages,

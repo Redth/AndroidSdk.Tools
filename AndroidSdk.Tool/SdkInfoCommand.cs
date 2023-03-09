@@ -48,7 +48,7 @@ namespace AndroidSdk.Tool
                 {
                     var rule = new Rule("SDK Info:");
                     rule.Centered();
-                    AnsiConsole.Render(rule);
+                    AnsiConsole.Write(rule);
 
                     OutputHelper.OutputObject<SdkInfoResult>(
                         result,
@@ -60,7 +60,7 @@ namespace AndroidSdk.Tool
                     {
                         rule = new Rule("JDK Info:");
                         rule.Centered();
-                        AnsiConsole.Render(rule);
+                        AnsiConsole.Write(rule);
 
                         OutputHelper.OutputTable<JdkInfo>(
                             jdks,

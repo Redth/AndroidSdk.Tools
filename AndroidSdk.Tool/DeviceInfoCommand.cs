@@ -66,7 +66,7 @@ namespace AndroidSdk.Tool
 					if (settings.Format == OutputFormat.None)
 					{
 						var rule = new Rule(device.Serial);
-						AnsiConsole.Render(rule);
+						AnsiConsole.Write(rule);
 
 						OutputHelper.OutputTable(props, new[] { "Property Name", "Property Value" },
 							i => new[] { i.Key, i.Value });
