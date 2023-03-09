@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,7 +10,7 @@ using System.Text.RegularExpressions;
 namespace AndroidSdk
 {
 
-	public class JdkLocator
+	public class JdkLocator : IPathLocator
 	{
 		string PlatformJavaCExtension => IsWindows ? ".exe" : string.Empty;
 
@@ -19,9 +20,21 @@ namespace AndroidSdk
 		protected bool IsMac
 			=> RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
-		public IEnumerable<JdkInfo> Find()
+		public IReadOnlyList<DirectoryInfo> Locate(string? specificHome = null, params string[]? additionalPossibleDirectories)
+		{
+			var jdks = LocateJdk(specificHome, additionalPossibleDirectories);
+
+			return jdks?.Select(j => j.Home)?.ToList() ?? new List<DirectoryInfo>();
+		}
+
+		public IEnumerable<JdkInfo> LocateJdk(string? specificHome = null, params string[]? additionalPossibleDirectories)
 		{
 			var paths = new List<JdkInfo>();
+
+			if (specificHome != null)
+			{
+				SearchDirectoryForJdks(paths, specificHome, true);
+			}
 
 			if (IsWindows)
 			{
@@ -76,14 +89,23 @@ namespace AndroidSdk
 			SearchDirectoryForJdks(paths, Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty, true);
 			SearchDirectoryForJdks(paths, Environment.GetEnvironmentVariable("JDK_HOME") ?? string.Empty, true);
 
+			if (additionalPossibleDirectories is not null)
+			{
+				foreach (var d in additionalPossibleDirectories)
+				{
+					SearchDirectoryForJdks(paths, d, true);
+				}
+			}
+
+
 			var environmentPaths = Environment.GetEnvironmentVariable("PATH")?.Split(';') ?? Array.Empty<string>();
 
 			foreach (var envPath in environmentPaths)
 			{
 				string ep = envPath?.ToLowerInvariant() ?? string.Empty;
 
-				if (ep.Contains("java") || ep.Contains("jdk"))
-					SearchDirectoryForJdks(paths, envPath, true);
+				if (!string.IsNullOrEmpty(ep) && ep.Contains("java") || ep.Contains("jdk"))
+					SearchDirectoryForJdks(paths, ep, true);
 			}
 
 			return paths
@@ -104,7 +126,7 @@ namespace AndroidSdk
 
 				foreach (var file in files)
 				{
-					if (!found.Any(f => f.JavaC.FullName.Equals(file.FullName)) && TryGetJavaJdkInfo(file.FullName, out var jdkInfo))
+					if (!found.Any(f => f.JavaC.FullName.Equals(file.FullName)) && TryGetJavaJdkInfo(file.FullName, out var jdkInfo) && jdkInfo is not null)
 						found.Add(jdkInfo);
 				}
 			}
@@ -112,7 +134,7 @@ namespace AndroidSdk
 
 		static readonly Regex rxJavaCVersion = new Regex("[0-9\\.\\-_]+", RegexOptions.Singleline);
 
-		bool TryGetJavaJdkInfo(string javacFilename, out JdkInfo javaJdkInfo)
+		bool TryGetJavaJdkInfo(string javacFilename, out JdkInfo? javaJdkInfo)
 		{
 			var args = new ProcessArgumentBuilder();
 			args.Append("-version");
@@ -130,7 +152,7 @@ namespace AndroidSdk
 				return true;
 			}
 
-			javaJdkInfo = default;
+			javaJdkInfo = null;
 			return false;
 		}
 	}

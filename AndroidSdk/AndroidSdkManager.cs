@@ -10,49 +10,25 @@ namespace AndroidSdk
 {
 	public class AndroidSdkManager
 	{
-		static string[] KnownLikelyPaths =>
-			RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
-				new string[] {
-					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Android", "android-sdk"),
-					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Android", "android-sdk"),
-				} :
-				new string []
-				{
-					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "android-sdk-macosx"),
-					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "Xamarin", "android-sdk-macosx"),
-					Path.Combine("Developer", "Android", "android-sdk-macosx"),
-					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Android", "sdk"),
-				};
-
+		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
 		public static IEnumerable<DirectoryInfo> FindHome()
-			=> FindHome((string)null, null);
+			=> new SdkLocator().Locate();
 
+		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
 		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo specificHome = null)
-			=> FindHome(specificHome?.FullName, null);
+			=> new SdkLocator().Locate(specificHome?.FullName, null);
 
+		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
 		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo specificHome = null, params string[] additionalPossibleDirectories)
-			=> FindHome(specificHome?.FullName, additionalPossibleDirectories);
+			=> new SdkLocator().Locate(specificHome?.FullName, additionalPossibleDirectories);
 
+		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
 		public static IEnumerable<DirectoryInfo> FindHome(string specificHome = null, params string[] additionalPossibleDirectories)
-		{
-			var candidates = new List<string>();
-			candidates.Add(specificHome);
-			candidates.Add(Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT"));
-			candidates.Add(Environment.GetEnvironmentVariable("ANDROID_HOME"));
-			if (additionalPossibleDirectories != null)
-				candidates.AddRange(additionalPossibleDirectories);
-			candidates.AddRange(KnownLikelyPaths);
-
-			foreach (var c in candidates)
-			{
-				if (!string.IsNullOrWhiteSpace(c) && Directory.Exists(c))
-					yield return new DirectoryInfo(c);
-			}
-		}
+			=> new SdkLocator().Locate(specificHome, additionalPossibleDirectories);
 
 		public AndroidSdkManager(DirectoryInfo home = null)
 		{
-			Home = home ?? FindHome()?.FirstOrDefault();
+			Home = new SdkLocator().Locate(home?.FullName)?.FirstOrDefault();
 
 			SdkManager = new SdkManager(Home);
 			AvdManager = new AvdManager(Home);
