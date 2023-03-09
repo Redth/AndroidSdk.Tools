@@ -1,5 +1,6 @@
 ﻿using AndroidSdk;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,11 +17,11 @@ namespace AndroidSdk;
 #if NET6_0_OR_GREATER
 public class AdbdClient
 {
-	public AdbdClient(string host = null, int? port = null, ILogger logger = default)
+	public AdbdClient(string? host = null, int? port = null, ILogger? logger = default)
 	{
 		Host = host ?? IPAddress.Loopback.ToString();
 		Port = port ?? 5037;
-		Logger = logger;
+		Logger = logger ?? NullLogger.Instance;
 	}
 
 	public string? Transport { get; private set; }
@@ -31,7 +32,7 @@ public class AdbdClient
 
 	TcpClient tcpClient = new TcpClient();
 	readonly Adb adb = new Adb();
-	NetworkStream stream;
+	NetworkStream? stream;
 
 	const int defaultWaitBackoff = 1000;
 
@@ -104,7 +105,8 @@ public class AdbdClient
 
 		try
 		{
-			await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
+			if (stream is not null)
+				await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
 		}
 		catch (OperationCanceledException)
 		{
@@ -130,12 +132,16 @@ public class AdbdClient
 
 			try
 			{
-				read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+				if (stream is not null)
+					read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+				else
+					read = -1;
 			}
 			catch (OperationCanceledException)
 			{
 				read = -1;
 			}
+
 			if (read <= 0)
 				break;
 
@@ -156,7 +162,7 @@ public class AdbdClient
 	string currentMessage = string.Empty;
 	int currentMessageLength = -1;
 
-	bool TryGetNextCompletedMessage(out string message)
+	bool TryGetNextCompletedMessage(out string? message)
 	{
 		if (currentMessage.Length >= currentMessageLength + 4)
 		{
@@ -257,7 +263,7 @@ public class AdbdClient
 		await SendCommandAsync("host:version", cancellationToken).ConfigureAwait(false);
 		var reply = await ReadNextReplyAsync(cancellationToken).ConfigureAwait(false);
 
-		return Int32.Parse(reply, System.Globalization.NumberStyles.HexNumber);
+		return Int32.Parse(reply ?? string.Empty, System.Globalization.NumberStyles.HexNumber);
 	}
 
 
@@ -286,7 +292,7 @@ public class AdbdClient
 
 			var str = await ReadNextReplyAsync(cancellationToken).ConfigureAwait(false);
 
-			var lines = str.Split("\n");
+			var lines = str?.Split("\n") ?? Array.Empty<string>();
 
 			var devices = new List<AdbDevice>();
 
@@ -337,7 +343,7 @@ public class AdbdClient
 		catch
 		{
 		}
-		return null;
+		return new List<AdbDevice>();
 	}
 
 
@@ -445,7 +451,7 @@ public class AdbdClient
 			if (cancellationToken.IsCancellationRequested)
 				break;
 
-			var parts = rxWhitespace.Split(reply);
+			var parts = rxWhitespace.Split(reply ?? string.Empty);
 
 			if (parts.Length > 1)
 			{
