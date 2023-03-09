@@ -16,13 +16,10 @@ namespace AndroidSdk;
 #if NET6_0_OR_GREATER
 public class AdbdClient
 {
-	public const string DefaultAdbdHost = "127.0.01";
-	public const int DefaultAdbdPort = 5037;
-
-	public AdbdClient(string host = DefaultAdbdHost, int port = DefaultAdbdPort, ILogger logger = default)
+	public AdbdClient(string host = null, int? port = null, ILogger logger = default)
 	{
-		Host = host;
-		Port = port;
+		Host = host ?? IPAddress.Loopback.ToString();
+		Port = port ?? 5037;
 		Logger = logger;
 	}
 
