@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 	<PropertyGroup>
-		<PackageId>AndroidSdk</PackageId>
+		<PackageId>AndroidSdk.Adbd</PackageId>
 		<Title>Android SDK Tools</Title>
 		<PackageDescription>Library for Android SDK and Emulator management</PackageDescription>
 		<Authors>Redth</Authors>
