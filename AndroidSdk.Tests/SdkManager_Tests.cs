@@ -13,6 +13,24 @@ namespace AndroidSdk.Tests
 		{ }
 
 		[Fact]
+		public void LocatedPath()
+		{
+			var l = new SdkLocator();
+			var p = l.Locate();
+
+			Assert.NotNull(p);
+		}
+
+		[Fact]
+		public void LocatedJdkPath()
+		{
+			var l = new JdkLocator();
+			var p = l.Locate();
+
+			Assert.NotNull(p);
+		}
+
+		[Fact]
 		public void DownloadSdk()
 		{
 			var sdk = GetSdk();

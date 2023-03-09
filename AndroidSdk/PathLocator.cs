@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace AndroidSdk;
 
@@ -13,6 +14,20 @@ public abstract class PathLocator : IPathLocator
 		=> new string[0];
 
 	protected PathLocator() { }
+
+	protected bool IsValidDirectoryPath(string path)
+	{
+		var invalidChars = Path.GetInvalidPathChars();
+
+		return !string.IsNullOrWhiteSpace(path) && !path.Any(c => invalidChars.Contains(c));
+	}
+
+	protected bool IsValidFilePath(string path)
+	{
+		var invalidChars = Path.GetInvalidFileNameChars();
+
+		return !string.IsNullOrWhiteSpace(path) && !path.Any(c => invalidChars.Contains(c));
+	}
 
 	public IReadOnlyList<DirectoryInfo> Locate(string? specificHome = null, params string[]? additionalPossibleDirectories)
 	{

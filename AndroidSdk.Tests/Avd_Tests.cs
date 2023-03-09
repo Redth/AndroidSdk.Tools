@@ -13,6 +13,15 @@ namespace AndroidSdk.Tests
 		{ }
 
 		[Fact]
+		public void LocatedPath()
+		{
+			var l = new AvdLocator();
+			var p = l.Locate();
+
+			Assert.NotNull(p);
+		}
+
+		[Fact]
 		public void ListAvds()
 		{
 			var sdk = GetSdk();
