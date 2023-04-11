@@ -17,11 +17,16 @@ namespace AndroidSdk;
 #if NET6_0_OR_GREATER
 public class AdbdClient
 {
-	public AdbdClient(string? host = null, int? port = null, ILogger? logger = default)
+	public const int DefaultAdbdPort = 5037;
+
+	public AdbdClient(string androidSdkHome = null, string? host = null, int? port = null, ILogger? logger = default)
 	{
+		AndroidSdkHome = androidSdkHome;
 		Host = host ?? IPAddress.Loopback.ToString();
 		Port = port ?? 5037;
 		Logger = logger ?? NullLogger.Instance;
+
+		adb = new Adb(AndroidSdkHome);
 	}
 
 	public string? Transport { get; private set; }
@@ -30,13 +35,15 @@ public class AdbdClient
 	public readonly string Host;
 	public readonly int Port;
 
+	public readonly string AndroidSdkHome;
 	TcpClient tcpClient = new TcpClient();
-	readonly Adb adb = new Adb();
+	readonly Adb adb;
 	NetworkStream? stream;
 
 	const int defaultWaitBackoff = 1000;
 
 	int waitBackoff = defaultWaitBackoff;
+	int connectionAttempts = 1;
 
 	async Task EnsureConnectedAsync(CancellationToken cancellationToken)
 	{
@@ -47,14 +54,28 @@ public class AdbdClient
 				// If we failed already, maybe try killing and restarting adb
 				if (waitBackoff > defaultWaitBackoff)
 				{
-					adb.KillServer();
-					adb.StartServer();
+					Logger.LogTrace("TcpClient not connected after {connectAttempts}, waiting {waitBackoff}ms...", connectionAttempts, waitBackoff);
+
+					if (!cancellationToken.IsCancellationRequested)
+					{
+						Logger.LogTrace("Stopping adb server...");
+						KillServer();
+					}
+
+					if (!cancellationToken.IsCancellationRequested)
+					{
+						Logger.LogTrace("Restarting adb server...");
+						StartServer();
+					}
 				}
 			}
 			catch { }
 
 			try
 			{
+				Logger.LogTrace("Connecting: {Host}:{Port} (attempt {connectAttempts})...", Host, Port, connectionAttempts);
+				Transport = null;
+
 				tcpClient = new TcpClient();
 				await tcpClient.ConnectAsync(Host, Port, cancellationToken).ConfigureAwait(false);
 
@@ -62,22 +83,41 @@ public class AdbdClient
 
 				// Reset wait backoff since we have a connection now
 				waitBackoff = defaultWaitBackoff;
+				connectionAttempts = 1;
 
-				Transport = null;
 
+				Logger.LogTrace("Connected: {Host}:{Port}.", Host, Port);
 				return;
 			}
-			catch (SocketException) { }
+			catch (SocketException ex)
+			{
+				Logger.LogWarning("TcpClient SocketException: {ex}", ex);
+			}
 
 			if (!tcpClient.Connected)
 			{
 				// Exponential backoff
 				waitBackoff += (int)(waitBackoff * 1.5);
+				connectionAttempts++;
+
+				Logger.LogTrace("Not connected, waiting {waitBackoff}ms before retry...", waitBackoff);
 
 				// Wait before retrying
 				await Task.Delay(waitBackoff, cancellationToken).ConfigureAwait(false);
 			}
 		}
+	}
+
+	public void KillServer()
+	{
+		//adb kill-server
+		adb.KillServer();
+	}
+
+	public void StartServer()
+	{
+		//adb start-server
+		adb.StartServer();
 	}
 
 	public void Disconnect()
@@ -91,6 +131,7 @@ public class AdbdClient
 
 		Transport = null;
 		waitBackoff = defaultWaitBackoff;
+		connectionAttempts = 1;
 	}
 
 	async Task SendCommandAsync(string command, CancellationToken cancellationToken)
@@ -99,14 +140,17 @@ public class AdbdClient
 
 		var c = $"{command.Length.ToString("X4")}{command}";
 
-		Logger?.LogDebug($"TX: {c}");
+		Logger?.LogTrace("TX: {c}", c);
 
 		var data = System.Text.Encoding.ASCII.GetBytes(c);
 
 		try
 		{
 			if (stream is not null)
+			{
 				await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
+				await stream.FlushAsync().ConfigureAwait(false);
+			}
 		}
 		catch (OperationCanceledException)
 		{
@@ -116,6 +160,8 @@ public class AdbdClient
 		if (!await WaitForOkayAsync(cancellationToken).ConfigureAwait(false))
 		{
 			var reason = await ReadNextReplyAsync(cancellationToken).ConfigureAwait(false);
+
+			Disconnect();
 
 			throw new Exception($"Command '{command}' failed: {reason}");
 		}
@@ -141,13 +187,12 @@ public class AdbdClient
 			{
 				read = -1;
 			}
-
 			if (read <= 0)
 				break;
 
 			result += System.Text.Encoding.ASCII.GetString(buffer, 0, read);
 
-			Logger?.LogDebug($"RX: {result}");
+			Logger?.LogTrace("RX: {result}", result);
 
 			if (result.Length >= 4)
 			{
@@ -155,6 +200,7 @@ public class AdbdClient
 			}
 		}
 
+		Logger?.LogTrace("No OKAY returned...");
 		Disconnect();
 		return false;
 	}
@@ -192,7 +238,10 @@ public class AdbdClient
 
 			try
 			{
-				read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+				if (stream is not null)
+					read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+				else
+					read = -1;
 			}
 			catch (OperationCanceledException) { read = -1; }
 
@@ -201,13 +250,10 @@ public class AdbdClient
 
 			var str = System.Text.Encoding.ASCII.GetString(buffer, 0, read);
 
-			Logger?.LogDebug($"RX: {str}");
+			Logger?.LogTrace("RX: {str}", str);
 
 			reply += str;
 		}
-
-		// We expect a disconnect here
-		Disconnect();
 
 		return reply;
 	}
@@ -237,7 +283,7 @@ public class AdbdClient
 
 			var str = System.Text.Encoding.ASCII.GetString(buffer, 0, read);
 
-			Logger?.LogDebug($"RX: {str}");
+			Logger?.LogTrace("RX: {str}", str);
 
 			currentMessage += str;
 
@@ -253,8 +299,7 @@ public class AdbdClient
 				return m2;
 		}
 
-		Disconnect();
-		return null;
+		return currentMessage;
 	}
 
 
@@ -263,7 +308,7 @@ public class AdbdClient
 		await SendCommandAsync("host:version", cancellationToken).ConfigureAwait(false);
 		var reply = await ReadNextReplyAsync(cancellationToken).ConfigureAwait(false);
 
-		return Int32.Parse(reply ?? string.Empty, System.Globalization.NumberStyles.HexNumber);
+		return Int32.Parse(reply ?? "-1", System.Globalization.NumberStyles.HexNumber);
 	}
 
 
@@ -277,8 +322,9 @@ public class AdbdClient
 		{
 			await SendCommandAsync($"host:transport:{serial}", cancellationToken).ConfigureAwait(false);
 		}
-		catch
+		catch (Exception ex)
 		{
+			Logger.LogDebug("Switching Transport failed: {ex}", ex);
 			return false;
 		}
 		return true;
@@ -286,15 +332,15 @@ public class AdbdClient
 
 	public async Task<List<AdbDevice>> ListDevicesAsync(CancellationToken cancellationToken = default)
 	{
+		var devices = new List<AdbDevice>();
+
 		try
 		{
-			await SendCommandAsync($"host:devices-l", cancellationToken).ConfigureAwait(false);
+			await SendCommandAsync("host:devices-l", cancellationToken).ConfigureAwait(false);
 
 			var str = await ReadNextReplyAsync(cancellationToken).ConfigureAwait(false);
 
-			var lines = str?.Split("\n") ?? Array.Empty<string>();
-
-			var devices = new List<AdbDevice>();
+			var lines = str?.Split("\n") ?? new string[0];
 
 			foreach (var line in lines)
 			{
@@ -337,22 +383,26 @@ public class AdbdClient
 				if (!string.IsNullOrEmpty(d?.Serial))
 					devices.Add(d);
 			}
-
-			return devices;
 		}
 		catch
 		{
 		}
-		return new List<AdbDevice>();
+
+		// Expect a disconnect from the server here
+		Disconnect();
+
+		return devices;
 	}
 
 
 	public async Task<string?> ShellAsync(string serial, string command, string[]? args = null, CancellationToken cancellationToken = default)
 	{
-		await TransportAsync(serial, cancellationToken).ConfigureAwait(false);
+		string? result = null;
 
 		try
 		{
+			await TransportAsync(serial, cancellationToken).ConfigureAwait(false);
+
 			var argStr = string.Empty;
 
 			if (args is not null && args.Length > 0)
@@ -360,13 +410,15 @@ public class AdbdClient
 
 			await SendCommandAsync($"shell:{command} {argStr}".Trim(), cancellationToken).ConfigureAwait(false);
 
-			return await ReadReplyBodyAsync(cancellationToken).ConfigureAwait(false);
+			result = await ReadReplyBodyAsync(cancellationToken).ConfigureAwait(false);
 		}
 		catch
 		{
 		}
 
-		return null;
+		Disconnect();
+
+		return result;
 	}
 
 	public async Task<string?> GetPropAsync(string serial, string property, CancellationToken cancellationToken = default)
@@ -380,11 +432,12 @@ public class AdbdClient
 	public async Task<IReadOnlyDictionary<string, string>> GetAllPropsAsync(string serial, CancellationToken cancellationToken = default)
 	{
 		var v = await ShellAsync(serial, "getprop", null, cancellationToken).ConfigureAwait(false);
-		
+
 		var props = new Dictionary<string, string>();
+
 		if (string.IsNullOrEmpty(v))
 			return props;
-		
+
 		using var r = new StringReader(v);
 
 		while (true)
@@ -413,6 +466,7 @@ public class AdbdClient
 		var v = await ShellAsync(serial, "pm", new[] { "list", "features" }, cancellationToken).ConfigureAwait(false);
 
 		var features = new List<string>();
+
 		if (string.IsNullOrEmpty(v))
 			return features;
 
@@ -451,7 +505,7 @@ public class AdbdClient
 			if (cancellationToken.IsCancellationRequested)
 				break;
 
-			var parts = rxWhitespace.Split(reply ?? string.Empty);
+			var parts = rxWhitespace.Split(reply);
 
 			if (parts.Length > 1)
 			{
@@ -536,6 +590,17 @@ public class AdbdClient
 		public const string BuildVersionRelease = "ro.build.version.release";
 
 		public const string AvdName = "ro.boot.qemu.avd_name";
+		public const string AvdName2 = "ro.kernel.qemu.avd_name";
+
+		public const string BootComplete = "dev.bootcomplete";
+		public const string BootComplete2 = "vendor.qemu.dev.bootcomplete";
+	}
+
+	public class AvdProperties
+	{
+		public const string HwCpuArch = "hw.cpu.arch";
+		public const string HwDeviceManufacturer = "hw.device.manufacturer";
+		public const string HwDeviceName = "hw.device.name";
 	}
 }
 
