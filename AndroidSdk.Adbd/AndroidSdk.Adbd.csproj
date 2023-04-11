@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 	<PropertyGroup>
 		<PackageId>AndroidSdk.Adbd</PackageId>
-		<Title>Android SDK Tools</Title>
-		<PackageDescription>Library for Android SDK and Emulator management</PackageDescription>
+		<Title>Android SDK ADBD Client</Title>
+		<PackageDescription>Android ADBD Client Library</PackageDescription>
 		<Authors>Redth</Authors>
 		<Owners>Redth</Owners>
 		<Copyright>Copyright © Redth</Copyright>
