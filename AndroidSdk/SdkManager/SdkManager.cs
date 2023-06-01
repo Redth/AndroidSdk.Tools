@@ -367,6 +367,99 @@ namespace AndroidSdk
 			return true;
 		}
 
+		public IEnumerable<string> GetAcceptedLicenseIds()
+		{
+			var ids = new List<string>();
+
+			var licensesDir = new DirectoryInfo(Path.Combine(AndroidSdkHome.FullName, "licenses"));
+
+			if (licensesDir.Exists)
+			{
+				var licenseFiles = licensesDir.GetFiles();
+
+				foreach (var lf in licenseFiles)
+				{
+					if ((File.ReadAllText(lf.FullName)?.Trim()?.Length ?? 0) == 40)
+					{
+						ids.Add(Path.GetFileNameWithoutExtension(lf.FullName));
+					}
+				}
+			}
+
+			return ids;
+		}
+
+		public IEnumerable<SdkLicense> GetLicenses()
+		{
+			CheckSdkManagerVersion();
+
+			//adb devices -l
+			var builder = new ProcessArgumentBuilder();
+
+			builder.Append("--licenses");
+
+			BuildStandardOptions(builder);
+
+			var lines = run(false, builder, true, false);
+
+			return ParseLicenseCommandOutput(lines);
+		}
+
+		Regex rxLicenseIdLine = new Regex(@"^License\s+(?<id>[a-zA-Z\-]+):$", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+		internal List<SdkLicense> ParseLicenseCommandOutput(IEnumerable<string> lines)
+		{
+			var licenses = new List<SdkLicense>();
+
+			SdkLicense license = null;
+
+			foreach (var line in lines)
+			{
+				var idMatch = rxLicenseIdLine.Match(line)?.Groups?["id"]?.Value;
+				
+				// Is this a license header line
+				if (!string.IsNullOrEmpty(idMatch))
+				{
+					// Is there an existing license being parsed? add it to the results
+					if (license is not null)
+					{
+						licenses.Add(license);
+						license = null;
+					}
+
+					license = new SdkLicense();
+					license.Id = idMatch;
+
+					continue;
+				}
+				else
+				{
+					// Until the first license Id is parsed, everything is throwaway
+					if (license is null)
+						continue;
+
+					// HR lines are unnecessary
+					if (line.StartsWith("---") && line.EndsWith("---"))
+						continue;
+
+					// Let's see if the license was accepted
+					if (line.StartsWith("Accepted", StringComparison.OrdinalIgnoreCase))
+					{
+						license.Accepted = true;
+						continue;
+					}
+
+					// Add the line of text
+					license.License.Add(line);
+				}
+			}
+
+			if (license is not null)
+				licenses.Add(license);
+
+			return licenses;
+		}
+
 		public bool UpdateAll()
 		{
 			var sdkManager = FindToolPath(AndroidSdkHome);
@@ -394,7 +487,7 @@ namespace AndroidSdk
 
 		JdkInfo jdk = null;
 
-		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args)
+		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
 			if (jdk == null)
 				jdk = Jdks.FirstOrDefault();
@@ -440,7 +533,8 @@ namespace AndroidSdk
 			{
 				if (!string.IsNullOrEmpty(e.Data))
 				{
-					output.Add(e.Data);
+					if (includeStdOut)
+						output.Add(e.Data);
 					stdout.Add(e.Data);
 				}
 			};
@@ -448,7 +542,8 @@ namespace AndroidSdk
 			{
 				if (!string.IsNullOrEmpty(e.Data))
 				{
-					output.Add(e.Data);
+					if (includeStdErr)
+						output.Add(e.Data);
 					stderr.Add(e.Data);
 				}
 			};

@@ -57,6 +57,26 @@ namespace AndroidSdk.Tests
 		}
 
 		[Fact]
+		public void GetLicenses()
+		{
+			var sdk = GetSdk();
+
+			var list = sdk.SdkManager.GetLicenses();
+
+			Assert.NotNull(list);
+		}
+
+		[Fact]
+		public void GetAcceptedLicenseIds()
+		{
+			var sdk = GetSdk();
+
+			var list = sdk.SdkManager.GetAcceptedLicenseIds();
+
+			Assert.NotNull(list);
+		}
+
+		[Fact]
 		public void Install()
 		{
 			var sdk = GetSdk();
