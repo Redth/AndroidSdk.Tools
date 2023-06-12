@@ -23,7 +23,7 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<DebugType>portable</DebugType>
-		<PackAsToolShimRuntimeIdentifiers>win-x64;win-x86;osx-x64</PackAsToolShimRuntimeIdentifiers>
+		<PackAsToolShimRuntimeIdentifiers>win-x64;win-x86;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64</PackAsToolShimRuntimeIdentifiers>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' Or '$(TF_BUILD)' == 'true'">
