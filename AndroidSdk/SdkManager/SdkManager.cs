@@ -170,7 +170,24 @@ namespace AndroidSdk
 				await webClient.DownloadFileTaskAsync(sdkUrl, sdkZipFile.FullName);
 			}
 
-			ZipFile.ExtractToDirectory(sdkZipFile.FullName, sdkDir.FullName);
+			using (var zip = ZipFile.OpenRead(sdkZipFile.FullName))
+			{
+				foreach (var entry in zip.Entries)
+				{
+					var name = entry.FullName;
+					if (name.StartsWith("cmdline-tools"))
+						name = $"cmdline-tools/{ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION}" + name.Substring(13);
+
+					name = name.Replace('/', Path.DirectorySeparatorChar);
+
+					var dest = Path.Combine(sdkDir.FullName, name);
+
+					var fileInfo = new FileInfo(dest);
+					fileInfo.Directory.Create();
+
+					entry.ExtractToFile(dest, true);
+				}
+			}
 		}
 
 		private void WebClient_DownloadProgressChanged(object sender, System.Net.DownloadProgressChangedEventArgs e)
