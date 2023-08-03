@@ -280,7 +280,8 @@ namespace AndroidSdk
 					if (process.HasExited)
 						return false;
 
-					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")))
+					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")) ||
+					    adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
 					{
 						booted = true;
 						break;
