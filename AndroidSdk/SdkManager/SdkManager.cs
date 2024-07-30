@@ -571,6 +571,7 @@ namespace AndroidSdk
 			proc.BeginOutputReadLine();
 			proc.BeginErrorReadLine();
 
+			// continuously send "y" to accept any licenses
 			while (!proc.HasExited)
 			{
 				Thread.Sleep(250);

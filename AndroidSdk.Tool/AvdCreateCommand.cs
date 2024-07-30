@@ -39,9 +39,17 @@ namespace AndroidSdk.Tool
 		[Description("Size of SDCard to create in megabytes")]
 		[CommandOption("--sdcard-size")]
 		public int? SdCardSizeMb { get; set; }
+		
+		[Description("The ABI to use for the AVD (Auto-selects if there is only one ABI)")]
+		[CommandOption("-a|--abi")]
+		public string Abi { get; set; }
+		
+		[Description("The name of a skin to use with this device.")]
+		[CommandOption("--skin")]
+		public string Skin { get; set; }
 
 		[Description("Force the creation of the AVD")]
-		[CommandOption("--force")]
+		[CommandOption("-f|--force")]
 		public bool Force { get; set; }
 
 		public override ValidationResult Validate()
@@ -64,14 +72,26 @@ namespace AndroidSdk.Tool
 			{
 				var avd = new AvdManager(settings?.Home);
 
+				string sdcard = null;
+				if (!string.IsNullOrEmpty(settings.SdCardPath))
+					sdcard = settings.SdCardPath;
+				else if (settings.SdCardSizeMb.HasValue)
+					sdcard = settings.SdCardSizeMb.ToString() + "MB";
+
+				var options = new AvdManager.AvdCreateOptions
+				{
+					Device = settings.DeviceId,
+					Path = settings.Path,
+					Force = settings.Force,
+					SdCardPathOrSize = sdcard,
+					Abi = settings.Abi,
+					Skin = settings.Skin
+				};
+
 				avd.Create(
 					settings.Name,
 					settings.SdkId,
-					settings.DeviceId,
-					settings.Path,
-					settings.Force,
-					settings.SdCardPath,
-					settings.SdCardSizeMb.HasValue ? (settings.SdCardSizeMb.ToString() + "MB") : (string)null);
+					options);
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{

@@ -21,46 +21,14 @@ namespace AndroidSdk
 			public string CameraBack
 			{
 				get => cameraBack;
-				set
-				{
-					var v = value.ToLowerInvariant();
-
-					if (v != "emulated" && v != "none" && !v.StartsWith("webcam"))
-						throw new ArgumentOutOfRangeException(nameof(CameraBack), cameraArgumentMessage);
-
-					if (v.StartsWith("webcam"))
-					{
-						var n = v.Substring(6);
-
-						if (!int.TryParse(n, out _))
-							throw new ArgumentOutOfRangeException(nameof(CameraBack), cameraArgumentMessage);
-					}
-
-					cameraBack = v;
-				}
+				set => cameraBack = ValidateCamera(nameof(CameraBack), value);
 			}
 
 			string cameraFront = null;
 			public string CameraFront
 			{
 				get => cameraFront;
-				set
-				{
-					var v = value.ToLowerInvariant();
-
-					if (v != "emulated" && v != "none" && !v.StartsWith("webcam"))
-						throw new ArgumentOutOfRangeException(nameof(CameraBack), cameraArgumentMessage);
-
-					if (v.StartsWith("webcam"))
-					{
-						var n = v.Substring(6);
-
-						if (!int.TryParse(n, out _))
-							throw new ArgumentOutOfRangeException(nameof(CameraBack), cameraArgumentMessage);
-					}
-
-					cameraFront = v;
-				}
+				set => cameraFront = ValidateCamera(nameof(CameraFront), value);
 			}
 
 			public int? MemoryMegabytes { get; set; }
@@ -101,7 +69,11 @@ namespace AndroidSdk
 
 			public bool NoAccel { get; set; }
 
+			public bool NoWindow { get; set; }
+
 			public bool NoJni { get; set; }
+
+			public bool NoAudio { get; set; }
 
 			public EmulatorSeLinux? SeLinux { get; set; }
 
@@ -112,6 +84,29 @@ namespace AndroidSdk
 			public EmulatorScreenMode? Screen { get; set; }
 
 			public string[] ExtraArgs { get; set; }
+
+			internal static string ValidateCamera(string paramName, string value)
+			{
+				if (value is null)
+				{
+					return null;
+				}
+
+				var v = value.ToLowerInvariant();
+
+				if (v != "emulated" && v != "none" && !v.StartsWith("webcam"))
+					throw new ArgumentOutOfRangeException(paramName, cameraArgumentMessage);
+
+				if (v.StartsWith("webcam"))
+				{
+					var n = v.Substring(6);
+
+					if (!int.TryParse(n, out _))
+						throw new ArgumentOutOfRangeException(paramName, cameraArgumentMessage);
+				}
+
+				return v;
+			}
 		}
 
 		public enum EmulatorScreenMode
