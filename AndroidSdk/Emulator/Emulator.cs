@@ -123,6 +123,15 @@ namespace AndroidSdk
 
 			if (options.Engine.HasValue)
 				builder.Append($"-engine {options.Engine.Value.ToString().ToLowerInvariant()}");
+			
+			if (!string.IsNullOrEmpty(options.Gpu))
+				builder.Append($"-gpu {options.Gpu.ToLowerInvariant()}");
+
+			if (options.NoWindow)
+				builder.Append("-no-window");
+
+			if (options.NoAudio)
+				builder.Append("-no-audio");
 
 			if (options.NoJni)
 				builder.Append("-no-jni");
@@ -225,8 +234,13 @@ namespace AndroidSdk
 			}
 
 			public IEnumerable<string> GetStandardOutput()
-				=> result?.StandardOutput ?? new List<string>();
+				=> process.StandardOutput ?? new List<string>();
+			
+			public IEnumerable<string> GetStandardError()
+				=> process.StandardError ?? new List<string>();
 
+			public IEnumerable<string> GetOutput()
+				=> process.Output ?? new List<string>();
 
 			public bool WaitForBootComplete()
 				=> WaitForBootComplete(TimeSpan.Zero);

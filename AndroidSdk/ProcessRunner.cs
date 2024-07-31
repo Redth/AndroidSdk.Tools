@@ -12,6 +12,7 @@ namespace AndroidSdk
 	{
 		readonly List<string> standardOutput;
 		readonly List<string> standardError;
+		readonly List<string> output;
 		readonly Process process;
 
 		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder)
@@ -22,6 +23,7 @@ namespace AndroidSdk
 		{
 			standardOutput = new List<string>();
 			standardError = new List<string>();
+			output = new List<string>();
 
 			//* Create your Process
 			process = new Process();
@@ -38,12 +40,18 @@ namespace AndroidSdk
 			process.OutputDataReceived += (s, e) =>
 			{
 				if (e.Data != null)
+				{
 					standardOutput.Add(e.Data);
+					output.Add(e.Data);
+				}
 			};
 			process.ErrorDataReceived += (s, e) =>
 			{
 				if (e.Data != null)
+				{
 					standardError.Add(e.Data);
+					output.Add(e.Data);
+				}
 			};
 			process.Start();
 			process.BeginOutputReadLine();
@@ -83,6 +91,18 @@ namespace AndroidSdk
 			process.StandardInput.WriteLine(input);
 		}
 
+		public List<string> StandardOutput => standardOutput;
+
+		public List<string> StandardError => standardError;
+
+		public List<string> Output => output;
+
+		public bool HasStandardOutput => standardOutput.Count > 0;
+
+		public bool HasStandardError => standardError.Count > 0;
+
+		public bool HasOutput => output.Count > 0;
+
 		public ProcessResult WaitForExit()
 		{
 			process.WaitForExit();
@@ -90,7 +110,7 @@ namespace AndroidSdk
 			if (standardError?.Any(l => l?.Contains("error: more than one device/emulator") ?? false) ?? false)
 				throw new Exception("More than one Device/Emulator detected, you must specify which Serial to target.");
 
-			return new ProcessResult(standardOutput, standardError, process.ExitCode);
+			return new ProcessResult(standardOutput, standardError, output, process.ExitCode);
 		}
 
 		public Task<ProcessResult> WaitForExitAsync()
@@ -111,6 +131,7 @@ namespace AndroidSdk
 	{
 		public readonly List<string> StandardOutput;
 		public readonly List<string> StandardError;
+		public readonly List<string> Output;
 
 		public readonly int ExitCode;
 
@@ -118,15 +139,19 @@ namespace AndroidSdk
 			=> ExitCode == 0;
 
 		public string GetAllOutput()
-			=> string.Join(Environment.NewLine, StandardOutput.Concat(StandardError));
+			=> string.Join(Environment.NewLine, Output);
 
 		public string GetOutput()
 			=> string.Join(Environment.NewLine, StandardOutput);
 
-		internal ProcessResult(List<string> stdOut, List<string> stdErr, int exitCode)
+		public string GetError()
+			=> string.Join(Environment.NewLine, StandardError);
+
+		internal ProcessResult(List<string> stdOut, List<string> stdErr, List<string> output, int exitCode)
 		{
 			StandardOutput = stdOut;
 			StandardError = stdErr;
+			Output = output;
 			ExitCode = exitCode;
 		}
 	}

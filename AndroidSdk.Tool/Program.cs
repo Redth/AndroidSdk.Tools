@@ -16,8 +16,7 @@ namespace AndroidSdk.Tool
 			var app = new CommandApp();
 			app.Configure(config =>
 			{
-				config
-				.AddBranch("sdk", sdkBranch =>
+				config.AddBranch("sdk", sdkBranch =>
 				{
 					sdkBranch.AddCommand<SdkListCommand>("list")
 						.WithDescription("Lists Android SDK packages")

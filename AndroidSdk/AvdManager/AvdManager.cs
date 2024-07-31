@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace AndroidSdk
 {
@@ -59,40 +60,59 @@ namespace AndroidSdk
 
 		internal override string SdkPackageId => "emulator";
 
-		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false, string sdCardPath = null, string sdCardSize = null)
+		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false, string sdCardPath = null, string sdCardSize = null) =>
+			Create(name, sdkId, new AvdCreateOptions { Device = device, Path = path, Force = force, SdCardPathOrSize = string.IsNullOrEmpty(sdCardPath) ? sdCardSize : sdCardPath });
+
+		public void Create(string name, string sdkId, AvdCreateOptions options)
 		{
+			if (options == null)
+				options = new AvdCreateOptions();
+
 			var args = new List<string> {
 				"create", "avd", "-n", name, "-k", $"\"{sdkId}\""
 			};
 
-			if (!string.IsNullOrEmpty(device))
+			if (!string.IsNullOrEmpty(options.Abi))
+			{
+				args.Add("-b");
+				args.Add($"\"{options.Abi}\"");
+			}
+
+			if (!string.IsNullOrEmpty(options.Device))
 			{
 				args.Add("--device");
-				args.Add($"\"{device}\"");
+				args.Add($"\"{options.Device}\"");
 			}
 
-			if (!string.IsNullOrEmpty(sdCardPath))
+			if (!string.IsNullOrEmpty(options.SdCardPathOrSize))
 			{
 				args.Add("-c");
-				args.Add($"\"{sdCardPath}\"");
+				args.Add($"\"{options.SdCardPathOrSize}\"");
 			}
 
-			if (!string.IsNullOrEmpty(sdCardSize))
+			if (!string.IsNullOrEmpty(options.Skin))
 			{
-				args.Add("-c");
-				args.Add($"\"{sdCardSize}\"");
+				args.Add("--skin");
+				args.Add($"\"{options.Skin}\"");
 			}
 
-			if (force)
+			if (options.Force)
 				args.Add("--force");
 
-			if (!string.IsNullOrEmpty(path))
+			if (!string.IsNullOrEmpty(options.Path))
 			{
 				args.Add("-p");
-				args.Add($"\"{path}\"");
+				args.Add($"\"{options.Path}\"");
 			}
 
-			run(args.ToArray());
+			runWithInput(args.ToArray(), input =>
+			{
+				// Continuously send "ENTER" to respond to the prompt:
+				// "Do you wish to create a custom hardware profile? [no]"
+				// Sending "no" too soon will cause an error...
+				input.WriteLine();
+				input.Flush();
+			});
 		}
 
 		public void Delete(string name)
@@ -279,7 +299,10 @@ namespace AndroidSdk
 			}
 		}
 
-		IEnumerable<string> run(params string[] args)
+		IEnumerable<string> run(params string[] args) =>
+			runWithInput(args, null);
+
+		IEnumerable<string> runWithInput(string[] args, Action<StreamWriter> inputAction = null)
 		{
 			if (jdk == null)
 				jdk = Jdks.FirstOrDefault();
@@ -314,6 +337,7 @@ namespace AndroidSdk
 			proc.StartInfo.UseShellExecute = false;
 			proc.StartInfo.RedirectStandardOutput = true;
 			proc.StartInfo.RedirectStandardError = true;
+			proc.StartInfo.RedirectStandardInput = inputAction is not null;
 
 			var output = new List<string>();
 			var stdout = new List<string>();
@@ -339,6 +363,21 @@ namespace AndroidSdk
 			proc.Start();
 			proc.BeginOutputReadLine();
 			proc.BeginErrorReadLine();
+
+			if (inputAction is not null)
+			{
+				while (!proc.HasExited)
+				{
+					Thread.Sleep(250);
+
+					try
+					{
+						inputAction(proc.StandardInput);
+					}
+					catch { }
+				}
+			}
+
 			proc.WaitForExit();
 
 			if (proc.ExitCode != 0)
