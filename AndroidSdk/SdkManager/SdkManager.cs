@@ -64,7 +64,13 @@ namespace AndroidSdk
 
 			if (cmdlineToolsPath.Exists)
 			{
-				foreach (var dir in cmdlineToolsPath.GetDirectories())
+				// The custom comparer will make sure that the version named
+				// "latest" is treated as the latest version as well as make sure
+				// that "11.0" comes after "7.0".
+				var dirs = cmdlineToolsPath.GetDirectories()
+					.OrderBy(d => d.Name, CmdLineToolsVersionComparer.Default)
+					.ToList();
+				foreach (var dir in dirs)
 				{
 					var toolPath = new FileInfo(Path.Combine(dir.FullName, "bin", "sdkmanager" + ext));
 					if (toolPath.Exists)
@@ -632,6 +638,35 @@ namespace AndroidSdk
 			}
 
 			UpdateAll();
+		}
+
+		static string GetRelativePath(string fromPath, string toPath)
+		{
+			var fromUri = new Uri(AppendDirectorySeparatorChar(fromPath));
+			var toUri = new Uri(AppendDirectorySeparatorChar(toPath));
+			var relativeUri = fromUri.MakeRelativeUri(toUri);
+			var relativePath = Uri.UnescapeDataString(relativeUri.ToString());
+			return relativePath;
+		}
+
+		// Append a slash only if the path is a directory and does not have a slash.
+		static string AppendDirectorySeparatorChar(string path) =>
+			Path.HasExtension(path) || path.EndsWith(Path.DirectorySeparatorChar.ToString())
+				? path
+				: path + Path.DirectorySeparatorChar;
+
+		internal class CmdLineToolsVersionComparer : IComparer<string>
+		{
+			public static CmdLineToolsVersionComparer Default { get; } = new CmdLineToolsVersionComparer();
+
+			public int Compare(string x, string y)
+			{
+				if (!Version.TryParse(x, out var vX))
+					return 1;
+				if (!Version.TryParse(y, out var vY))
+					return -1;
+				return vX.CompareTo(vY);
+			}
 		}
 	}
 }
