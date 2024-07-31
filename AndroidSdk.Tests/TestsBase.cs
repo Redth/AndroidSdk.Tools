@@ -83,5 +83,27 @@ namespace AndroidSdk.Tests
 				return new AndroidSdkManager(AndroidSdkHome);
 			}
 		}
+
+		protected static FileInfo GetFileOnPath(string fileName)
+		{
+			var paths = Environment.GetEnvironmentVariable("PATH");
+			foreach (var path in paths.Split(Path.PathSeparator))
+			{
+				// try exact path
+				var fullPath = Path.Combine(path, fileName);
+				if (File.Exists(fullPath))
+					return new FileInfo(fullPath);
+
+				if (OperatingSystem.IsWindows())
+				{
+					// try with .exe extension
+					fullPath = Path.Combine(path, fileName + ".exe");
+					if (File.Exists(fullPath))
+						return new FileInfo(fullPath);
+				}
+			}
+
+			return null;
+		}
 	}
 }
