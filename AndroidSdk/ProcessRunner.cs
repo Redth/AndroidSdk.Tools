@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AndroidSdk
@@ -16,19 +16,25 @@ namespace AndroidSdk
 		readonly Process process;
 
 		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder)
-			: this (executable, builder, System.Threading.CancellationToken.None)
-		{ }
+			: this(executable, builder, CancellationToken.None)
+		{
+		}
 
-		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, System.Threading.CancellationToken cancelToken, bool redirectStandardInput = false)
+		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput = false)
 		{
 			standardOutput = new List<string>();
 			standardError = new List<string>();
 			output = new List<string>();
 
-			//* Create your Process
 			process = new Process();
+			foreach (var envvar in builder.EnvVars)
+			{
+				process.StartInfo.Environment[envvar.Key] = envvar.Value;
+			}
 			process.StartInfo.FileName = executable.FullName;
 			process.StartInfo.Arguments = builder.ToString();
+			if (!string.IsNullOrWhiteSpace(builder.WorkingDirectory))
+				process.StartInfo.WorkingDirectory = builder.WorkingDirectory;
 			process.StartInfo.CreateNoWindow = true;
 			process.StartInfo.UseShellExecute = false;
 			process.StartInfo.RedirectStandardOutput = true;
@@ -57,9 +63,10 @@ namespace AndroidSdk
 			process.BeginOutputReadLine();
 			process.BeginErrorReadLine();
 
-			if (cancelToken != System.Threading.CancellationToken.None)
+			if (cancelToken != CancellationToken.None)
 			{
-				cancelToken.Register(() => {
+				cancelToken.Register(() =>
+				{
 					try { process.Kill(); }
 					catch { }
 				});
@@ -89,6 +96,14 @@ namespace AndroidSdk
 				throw new InvalidOperationException();
 
 			process.StandardInput.WriteLine(input);
+		}
+
+		public void StandardInputFlush()
+		{
+			if (!process.StartInfo.RedirectStandardInput)
+				throw new InvalidOperationException();
+
+			process.StandardInput.Flush();
 		}
 
 		public List<string> StandardOutput => standardOutput;
@@ -125,34 +140,28 @@ namespace AndroidSdk
 
 			return tcs.Task;
 		}
-	}
 
-	public class ProcessResult
-	{
-		public readonly List<string> StandardOutput;
-		public readonly List<string> StandardError;
-		public readonly List<string> Output;
-
-		public readonly int ExitCode;
-
-		public bool Success
-			=> ExitCode == 0;
-
-		public string GetAllOutput()
-			=> string.Join(Environment.NewLine, Output);
-
-		public string GetOutput()
-			=> string.Join(Environment.NewLine, StandardOutput);
-
-		public string GetError()
-			=> string.Join(Environment.NewLine, StandardError);
-
-		internal ProcessResult(List<string> stdOut, List<string> stdErr, List<string> output, int exitCode)
+		internal void LoopUntilExit(Action<ProcessRunner> action)
 		{
-			StandardOutput = stdOut;
-			StandardError = stdErr;
-			Output = output;
-			ExitCode = exitCode;
+			while (!HasExited)
+			{
+				Thread.Sleep(250);
+
+				try
+				{
+					action(this);
+				}
+				catch { }
+			}
+		}
+
+		internal void WriteContinuouslyUntilExit(string input)
+		{
+			LoopUntilExit(proc =>
+			{
+				proc.StandardInputWriteLine(input);
+				proc.StandardInputFlush();
+			});
 		}
 	}
 }

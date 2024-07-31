@@ -65,4 +65,29 @@ public abstract class TestsBase
 		DeleteDir(dir);
 		CreateDir(dir);
 	}
+
+	protected static FileInfo? GetFileOnPath(string fileName)
+	{
+		var paths = Environment.GetEnvironmentVariable("PATH");
+		if (string.IsNullOrWhiteSpace(paths))
+			return null;
+
+		foreach (var path in paths.Split(Path.PathSeparator))
+		{
+			// try exact path
+			var fullPath = Path.Combine(path, fileName);
+			if (File.Exists(fullPath))
+				return new FileInfo(fullPath);
+
+			if (OperatingSystem.IsWindows())
+			{
+				// try with .exe extension
+				fullPath = Path.Combine(path, fileName + ".exe");
+				if (File.Exists(fullPath))
+					return new FileInfo(fullPath);
+			}
+		}
+
+		return null;
+	}
 }
