@@ -1,14 +1,12 @@
-﻿using System;
-using System.Linq;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace AndroidSdk
@@ -25,35 +23,47 @@ namespace AndroidSdk
 		readonly Regex rxListDesc = new Regex("\\s+Description:\\s+(?<desc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListVers = new Regex("\\s+Version:\\s+(?<ver>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListLoc = new Regex("\\s+Installed Location:\\s+(?<loc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
+		readonly Regex rxLicenseIdLine = new Regex(@"^License\s+(?<id>[a-zA-Z\-]+):$", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+		JdkInfo? jdk = null;
 
 		public SdkManager()
-			: this((DirectoryInfo)null, SdkChannel.Stable, false, false, null)
-		{ }
-
-		public SdkManager(string androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
-			: this(androidSdkHome == null ? (DirectoryInfo)null : new DirectoryInfo(androidSdkHome), channel, skipVersionCheck, includeObsolete, proxy)
-		{ }
-
-		public SdkManager(DirectoryInfo androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions proxy = null)
-			: base(androidSdkHome)
+			: this((SdkManagerToolOptions?)null)
 		{
-			Channel = channel;
-			SkipVersionCheck = skipVersionCheck;
-			IncludeObsolete = includeObsolete;
-			Proxy = proxy ?? new SdkManagerProxyOptions();
+		}
+
+		[Obsolete]
+		public SdkManager(string? androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions? proxy = null)
+			: this(new SdkManagerToolOptions { AndroidSdkHome = string.IsNullOrWhiteSpace(androidSdkHome) ? null : new DirectoryInfo(androidSdkHome), Channel = channel, SkipVersionCheck = skipVersionCheck, IncludeObsolete = includeObsolete, Proxy = proxy })
+		{
+		}
+
+		[Obsolete]
+		public SdkManager(DirectoryInfo? androidSdkHome = null, SdkChannel channel = SdkChannel.Stable, bool skipVersionCheck = false, bool includeObsolete = false, SdkManagerProxyOptions? proxy = null)
+			: this(new SdkManagerToolOptions { AndroidSdkHome = androidSdkHome, Channel = channel, SkipVersionCheck = skipVersionCheck, IncludeObsolete = includeObsolete, Proxy = proxy })
+		{
+		}
+
+		public SdkManager(SdkManagerToolOptions? options)
+			: base(options)
+		{
+			options ??= new();
+
+			Channel = options.Channel;
+			SkipVersionCheck = options.SkipVersionCheck;
+			IncludeObsolete = options.IncludeObsolete;
+			Proxy = options.Proxy ?? new SdkManagerProxyOptions();
 		}
 
 		public SdkManagerProxyOptions Proxy { get; set; }
-		
+
 		public SdkChannel Channel { get; set; } = SdkChannel.Stable;
 
 		public bool SkipVersionCheck { get; set; }
 
 		public bool IncludeObsolete { get; set; }
 
-		internal override string SdkPackageId => "tools";
-
-		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
+		public override FileInfo? FindToolPath(DirectoryInfo? androidSdkHome)
 		{
 			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 			var ext = isWindows ? ".bat" : string.Empty;
@@ -90,7 +100,7 @@ namespace AndroidSdk
 		/// <param name="context">The context.</param>
 		/// <param name="destinationDirectory">Destination directory, or ./tools/androidsdk if none is specified.</param>
 		/// <param name="specificVersion">Specific version, or latest if none is specified.</param>
-		public async Task DownloadSdk(DirectoryInfo destinationDirectory = null, string specificVersion = null, Action<int> progressHandler = null)
+		public async Task DownloadSdk(DirectoryInfo? destinationDirectory = null, string? specificVersion = null, Action<int>? progressHandler = null)
 		{
 			if (destinationDirectory == null)
 				destinationDirectory = AndroidSdkHome;
@@ -101,7 +111,7 @@ namespace AndroidSdk
 			if (!destinationDirectory.Exists)
 				destinationDirectory.Create();
 
-			var http = new HttpClient();
+			using var http = new HttpClient();
 			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
 			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
 			http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
@@ -145,13 +155,11 @@ namespace AndroidSdk
 			if (string.IsNullOrWhiteSpace(sdkUrl))
 				sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, REPOSITORY_SDK_DEFAULT_VERSION);
 
-
 			var sdkDir = new DirectoryInfo(destinationDirectory.FullName);
 			if (!sdkDir.Exists)
 				sdkDir.Create();
 
 			var sdkZipFile = new FileInfo(Path.Combine(destinationDirectory.FullName, "androidsdk.zip"));
-
 
 			if (!sdkZipFile.Exists)
 			{
@@ -190,11 +198,6 @@ namespace AndroidSdk
 			}
 		}
 
-		private void WebClient_DownloadProgressChanged(object sender, System.Net.DownloadProgressChangedEventArgs e)
-		{
-			
-		}
-
 		public bool IsUpToDate()
 		{
 			if (SkipVersionCheck)
@@ -210,15 +213,15 @@ namespace AndroidSdk
 			return true;
 		}
 
-		public Version GetVersion()
+		public Version? GetVersion()
 		{
-			if (!AndroidSdkHome.Exists)
+			if (AndroidSdkHome?.Exists != true)
 				return null;
 
 			var builder = new ProcessArgumentBuilder();
 			builder.Append("--version");
 
-			var p = run(false, builder);
+			var p = Run(builder);
 
 			if (p != null)
 			{
@@ -232,11 +235,11 @@ namespace AndroidSdk
 			return null;
 		}
 
-		internal void CheckSdkManagerVersion ()
+		internal void CheckSdkManagerVersion()
 		{
 			if (SkipVersionCheck)
 				return;
-			
+
 			if (!IsUpToDate())
 				throw new NotSupportedException("Your sdkmanager is out of date.  Version " + ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED + " or later is required.");
 		}
@@ -247,14 +250,13 @@ namespace AndroidSdk
 
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--list --verbose");
 
 			BuildStandardOptions(builder);
 
-			var p = run(false, builder);
+			var p = Run(builder);
 
 			int section = 0;
 
@@ -267,7 +269,7 @@ namespace AndroidSdk
 			{
 				if (line.StartsWith("------"))
 					continue;
-				
+
 				if (line.ToLowerInvariant().Contains("installed packages:"))
 				{
 					section = 1;
@@ -286,27 +288,31 @@ namespace AndroidSdk
 
 				if (section >= 1 && section <= 2)
 				{
-					if (string.IsNullOrEmpty(path)) {
+					if (string.IsNullOrEmpty(path))
+					{
 
 						// If we have spaces preceding the line, it's not a new item yet
 						if (line.StartsWith(" "))
 							continue;
-						
+
 						path = line.Trim();
 						continue;
 					}
 
-					if (rxListDesc.IsMatch(line)) {
+					if (rxListDesc.IsMatch(line))
+					{
 						description = rxListDesc.Match(line)?.Groups?["desc"]?.Value;
 						continue;
 					}
 
-					if (rxListVers.IsMatch(line)) {
+					if (rxListVers.IsMatch(line))
+					{
 						version = rxListVers.Match(line)?.Groups?["ver"]?.Value;
 						continue;
 					}
 
-					if (rxListLoc.IsMatch(line)) {
+					if (rxListLoc.IsMatch(line))
+					{
 						location = rxListLoc.Match(line)?.Groups?["loc"]?.Value;
 						// No need to continue here since this is the last line in the output for an item
 					}
@@ -352,18 +358,17 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			if (!install)
 				builder.Append("--uninstall");
-			
+
 			foreach (var pkg in packages)
 				builder.AppendQuoted(pkg);
 
 			BuildStandardOptions(builder);
 
-			var output = run(true, builder);
+			var output = RunWithAcceptLoop(builder);
 
 			return true;
 		}
@@ -372,14 +377,13 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--licenses");
 
 			BuildStandardOptions(builder);
 
-			run(true, builder);
+			RunWithAcceptLoop(builder);
 
 			return true;
 		}
@@ -410,30 +414,27 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--licenses");
 
 			BuildStandardOptions(builder);
 
-			var lines = run(false, builder, true, false);
+			var lines = Run(builder, true, false);
 
 			return ParseLicenseCommandOutput(lines);
 		}
 
-		Regex rxLicenseIdLine = new Regex(@"^License\s+(?<id>[a-zA-Z\-]+):$", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-		internal List<SdkLicense> ParseLicenseCommandOutput(IEnumerable<string> lines)
+		List<SdkLicense> ParseLicenseCommandOutput(IEnumerable<string> lines)
 		{
 			var licenses = new List<SdkLicense>();
 
-			SdkLicense license = null;
+			SdkLicense? license = null;
 
 			foreach (var line in lines)
 			{
 				var idMatch = rxLicenseIdLine.Match(line)?.Groups?["id"]?.Value;
-				
+
 				// Is this a license header line
 				if (!string.IsNullOrEmpty(idMatch))
 				{
@@ -484,112 +485,83 @@ namespace AndroidSdk
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--update");
 
 			BuildStandardOptions(builder);
 
-			var o = run(true, builder);
+			var o = RunWithAcceptLoop(builder);
 
 			return true;
 		}
 
 		public IEnumerable<string> Help()
 		{
-			//adb devices -l
-			return run(false, new ProcessArgumentBuilder());
+			return Run(new());
 		}
 
-		JdkInfo jdk = null;
-
-		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
+		IEnumerable<string> Run(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
-			if (jdk == null)
-				jdk = Jdks.FirstOrDefault();
+			var runner = Start(args);
+
+			var result = WaitForExit(runner);
+
+			if (includeStdOut && includeStdErr)
+				return result.Output;
+			else if (includeStdOut)
+				return result.StandardOutput;
+			else if (includeStdErr)
+				return result.StandardError;
+			else
+				return Array.Empty<string>();
+		}
+
+		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args)
+		{
+			var runner = Start(args);
+
+			// continuously send "y" to accept any licenses
+			runner.WriteContinuouslyUntilExit("y");
+
+			var result = WaitForExit(runner);
+
+			return result.Output;
+		}
+
+		JavaProcessRunner Start(ProcessArgumentBuilder args)
+		{
+			jdk ??= Jdks.FirstOrDefault();
 
 			var sdkManager = FindToolPath(AndroidSdkHome);
-			var java = jdk.Java;
 
 			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
 			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
 
-			var cpSeparator = IsWindows ? ";" : ":";
-
-			// Get all the .jars in the tools\lib folder to use as classpath
-			//var classPath = "avdmanager-classpath.jar";
-			var classPath = string.Join(cpSeparator, Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
-
-			var proc = new Process();
 			// This is the package and class that contains the main() for avdmanager
-			proc.StartInfo.Arguments = "com.android.sdklib.tool.sdkmanager.SdkManagerCli " + args.ToString();
-			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
-			//proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
-			proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"";
-			// Set the classpath to all the .jar files we found in the lib folder
-			proc.StartInfo.Environment["CLASSPATH"] = classPath;
+			var javaArgs = new JavaProcessArgumentBuilder("com.android.sdklib.tool.sdkmanager.SdkManagerCli", args);
 
-			// Java.exe
-			proc.StartInfo.FileName = java.FullName;
+			// Set the classpath to all the .jar files we found in the lib folder
+			javaArgs.AppendClassPath(Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
+
+			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
+			javaArgs.AppendJavaToolOption($"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"");
 
 			// lib folder is our working dir
-			proc.StartInfo.WorkingDirectory = libPath;
+			javaArgs.SetWorkingDirectory(libPath);
 
-			proc.StartInfo.CreateNoWindow = true;
-			proc.StartInfo.UseShellExecute = false;
-			proc.StartInfo.RedirectStandardOutput = true;
-			proc.StartInfo.RedirectStandardError = true;
-			proc.StartInfo.RedirectStandardInput = true;
+			var runner = new JavaProcessRunner(jdk, javaArgs);
 
-			var output = new List<string>();
-			var stderr = new List<string>();
-			var stdout = new List<string>();
+			return runner;
+		}
 
-			proc.OutputDataReceived += (s, e) =>
-			{
-				if (!string.IsNullOrEmpty(e.Data))
-				{
-					if (includeStdOut)
-						output.Add(e.Data);
-					stdout.Add(e.Data);
-				}
-			};
-			proc.ErrorDataReceived += (s, e) =>
-			{
-				if (!string.IsNullOrEmpty(e.Data))
-				{
-					if (includeStdErr)
-						output.Add(e.Data);
-					stderr.Add(e.Data);
-				}
-			};
+		ProcessResult WaitForExit(JavaProcessRunner runner)
+		{
+			var result = runner.WaitForExit();
 
-			var cmd = $"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}";
+			SdkToolFailedExitException.ThrowIfErrorExitCode("avdmanager", result);
 
-			proc.Start();
-			proc.BeginOutputReadLine();
-			proc.BeginErrorReadLine();
-
-			// continuously send "y" to accept any licenses
-			while (!proc.HasExited)
-			{
-				Thread.Sleep(250);
-
-				try
-				{
-					proc.StandardInput.WriteLine("y");
-					proc.StandardInput.Flush();
-				}
-				catch { }
-			}
-
-			proc.WaitForExit();
-
-			if (proc.ExitCode != 0)
-				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
-			
-			return output;
+			return result;
 		}
 
 		void BuildStandardOptions(ProcessArgumentBuilder builder)
@@ -605,10 +577,10 @@ namespace AndroidSdk
 			if (IncludeObsolete)
 				builder.Append("--include_obsolete");
 
-			if (Proxy?.NoHttps ?? false)
+			if (Proxy.NoHttps)
 				builder.Append("--no_https");
 
-			if ((Proxy?.ProxyType ?? SdkManagerProxyType.None) != SdkManagerProxyType.None)
+			if (Proxy.ProxyType != SdkManagerProxyType.None)
 			{
 				builder.Append($"--proxy={Proxy.ProxyType.ToString().ToLower()}");
 
