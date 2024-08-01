@@ -65,9 +65,21 @@ namespace AndroidSdk.Tool
 		[TypeConverter(typeof(EmulatorCameraTypeConverter))]
 		public string? CameraFront { get; set; }
 
-		[Description("The TCP port number for the console and adb (Ranges from 5554 to 5682)")]
+		[Description("The TCP port number for the console and adb (Possible values: ranges from 5554 to 5682)")]
 		[CommandOption("-p|--port")]
 		public uint? Port { get; set; }
+
+		[Description("The physical RAM size in MB (Possible values: ranges from 1536 to 8192)")]
+		[CommandOption("--memory")]
+		public uint? Memory { get; set; }
+
+		[Description("The system/data partition size in MB")]
+		[CommandOption("--partition-size|--data-partition-size")]
+		public uint? PartitionSize { get; set; }
+
+		[Description("The cache partition size in MB (Default is 66 MB)")]
+		[CommandOption("--cache-size|--cache-partition-size")]
+		public uint? CacheSize { get; set; }
 
 		[Description("Emulated touch screen mode (Possible values: touch, multi-touch, no-touch)")]
 		[CommandOption("--screen")]
@@ -79,16 +91,11 @@ namespace AndroidSdk.Tool
 		public Emulator.EmulatorEngine? Engine { get; set; }
 
 		[Description("Acceleration mode (Possible values: auto, off, on)")]
-		[CommandOption("--accel-mode")]
+		[CommandOption("--accel|--acceleration")]
 		public Emulator.EmulatorAccelerationMode? Acceleration { get; set; }
 
-		[Description("Disable acceleration")]
-		[CommandOption("--no-accel")]
-		[DefaultValue(false)]
-		public bool NoAcceleration { get; set; }
-
 		[Description("Disable boot animation during emulator startup for faster booting")]
-		[CommandOption("--no-boot-anim")]
+		[CommandOption("--no-boot-anim|--no-boot-animation")]
 		[DefaultValue(false)]
 		public bool NoBootAnimation { get; set; }
 
@@ -168,7 +175,6 @@ namespace AndroidSdk.Tool
 						NoSnapshot = settings.NoSnapshot,
 						Acceleration = settings.Acceleration,
 						Engine = settings.Engine,
-						NoAccel = settings.NoAcceleration,
 						NoWindow = settings.NoWindow,
 						NoAudio = settings.NoAudio,
 						NoJni = settings.NoJni,
@@ -181,6 +187,9 @@ namespace AndroidSdk.Tool
 						NoSnapshotSave = settings.NoSnapshotSave,
 						Verbose = settings.Verbose,
 						Screen = settings.ScreenMode,
+						MemoryMegabytes = (int?)settings.Memory,
+						PartitionSizeMegabytes = (int?)settings.PartitionSize,
+						CacheSizeMegabytes = (int?)settings.CacheSize,
 					});
 
 					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;

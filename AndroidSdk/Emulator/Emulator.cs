@@ -68,6 +68,12 @@ namespace AndroidSdk
 			if (options.MemoryMegabytes.HasValue)
 				builder.Append($"-memory {options.MemoryMegabytes}");
 
+			if (options.PartitionSizeMegabytes.HasValue)
+				builder.Append($"-partition-size {options.PartitionSizeMegabytes}");
+
+			if (options.CacheSizeMegabytes.HasValue)
+				builder.Append($"-cache-size {options.CacheSizeMegabytes}");
+
 			if (options.SdCard != null)
 			{
 				builder.Append("-sdcard");

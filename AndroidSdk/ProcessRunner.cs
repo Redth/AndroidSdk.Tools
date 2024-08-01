@@ -108,7 +108,7 @@ namespace AndroidSdk
 			process.WaitForExit();
 
 			if (standardError?.Any(l => l?.Contains("error: more than one device/emulator") ?? false) ?? false)
-				throw new Exception("More than one Device/Emulator detected, you must specify which Serial to target.");
+				throw new InvalidOperationException("More than one Device/Emulator detected, you must specify which Serial to target.");
 
 			return new ProcessResult(standardOutput, standardError, output, process.ExitCode);
 		}

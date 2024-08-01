@@ -50,6 +50,16 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "device", "info", "--device 172.22.100.90" })
 						.WithExample(new[] { "device", "info", "--device emulator.*" })
 						.WithExample(new[] { "device", "info", "--device emulator.* --property ro.product.cpu.abi" });
+					sdkBranch.AddCommand<DeviceInstallCommand>("install")
+						.WithDescription("Installs a package")
+						.WithExample(new[] { "device", "install", "--package com.example.App.apk" })
+						.WithExample(new[] { "device", "install", "--package com.example.App.apk --replace" })
+						.WithExample(new[] { "device", "install", "--device 172.22.100.90 --package com.example.App.apk" })
+						.WithExample(new[] { "device", "install", "--device emulator.* --package com.example.App.apk" });
+					sdkBranch.AddCommand<DeviceUninstallCommand>("uninstall")
+						.WithDescription("Uninstalls a package")
+						.WithExample(new[] { "device", "uninstall", "--package com.example.App" })
+						.WithExample(new[] { "device", "uninstall", "--package com.example.App --keep-data" });
 				});
 
 				config.AddBranch("avd", sdkBranch =>
@@ -74,6 +84,18 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "avd", "start", "--name MyEmulator" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot", "--no-snapshot" });
+				});
+
+				config.AddBranch("apk", sdkBranch =>
+				{
+					sdkBranch.AddBranch("manifest", manifestBranch =>
+					{
+						manifestBranch.AddCommand<ApkManifestInfoCommand>("info")
+							.WithDescription("Lists APK manifest properties")
+							.WithExample(new[] { "apk", "manifest", "info", "--package com.example.App.apk" })
+							.WithExample(new[] { "apk", "manifest", "info", "--package com.example.App.apk --format xml" })
+							.WithExample(new[] { "apk", "manifest", "info", "--package com.example.App.apk --format json" });
+					});
 				});
 			});
 

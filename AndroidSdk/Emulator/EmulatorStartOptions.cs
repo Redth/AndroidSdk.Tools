@@ -33,6 +33,10 @@ namespace AndroidSdk
 
 			public int? MemoryMegabytes { get; set; }
 
+			public int? PartitionSizeMegabytes { get; set; }
+
+			public int? CacheSizeMegabytes { get; set; }
+
 			public FileInfo SdCard { get; set; }
 
 			public bool WipeData { get; set; }

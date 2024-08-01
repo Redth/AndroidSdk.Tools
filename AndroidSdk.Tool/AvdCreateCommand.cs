@@ -36,7 +36,7 @@ namespace AndroidSdk.Tool
 		[CommandOption("--sdcard-path")]
 		public string SdCardPath { get; set; }
 
-		[Description("Size of SDCard to create in megabytes")]
+		[Description("Size of SDCard to create in MB")]
 		[CommandOption("--sdcard-size")]
 		public int? SdCardSizeMb { get; set; }
 		
