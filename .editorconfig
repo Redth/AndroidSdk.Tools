@@ -1,0 +1,16 @@
+root = true
+
+# All files
+[*]
+indent_style = space
+
+# Xml files
+[*.xml]
+indent_size = 2
+
+# C# files
+[*.cs]
+indent_size = 4
+tab_width = 4
+indent_style = tab
+
