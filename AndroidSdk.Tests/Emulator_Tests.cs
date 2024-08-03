@@ -1,105 +1,107 @@
 ﻿using System;
-using System.Diagnostics.SymbolStore;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace AndroidSdk.Tests
+namespace AndroidSdk.Tests;
+
+public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.OneTimeSetup>, IDisposable
 {
-	public class Emulator_Tests : TestsBase
+	const string TestEmulatorName = "TestEmu123";
+	const string TestAvdPackageId = "system-images;android-31;google_apis;x86_64";
+
+	// Make sure the emulator is installed, but only do this once for all
+	// the tests in this class to make things a fair bit faster.
+	public class OneTimeSetup
 	{
-		const string TestEmulatorName = "TestEmu123";
-		const string TestAvdImagePackageId = "system-images;android-31;google_apis;x86_64";
-
-		public Emulator_Tests(ITestOutputHelper outputHelper)
-			: base(outputHelper)
-		{ }
-
-		[Fact]
-		public Task CreateAndStartAndStopEmulator() =>
-			CreateTestEmulator(sdk =>
-			{
-				// Start the emulator
-				var emulatorInstance = sdk.Emulator.Start(TestEmulatorName);
-
-				// Wait for the boot
-				var booted = emulatorInstance.WaitForBootComplete();
-				Assert.True(booted);
-
-				// Assert that the emulator is valid
-				Assert.NotEmpty(emulatorInstance.Serial);
-				Assert.Equal(TestEmulatorName, emulatorInstance.AvdName);
-
-				// Shutdown the emulator
-				var shutdown = emulatorInstance.Shutdown();
-				Assert.True(shutdown);
-			});
-
-		[Fact]
-		public Task CreateAndStartAndStopHeadlessEmulatorWithOptions() =>
-			CreateTestEmulator(sdk =>
-			{
-				// Start the emulator
-				var options = new Emulator.EmulatorStartOptions
-				{
-					Port = 5554,
-					NoWindow = true,
-					Gpu = "swiftshader_indirect",
-					NoSnapshot = true,
-					NoAudio = true,
-					NoBootAnim = true
-				};
-				var emulatorInstance = sdk.Emulator.Start(TestEmulatorName, options);
-
-				// Wait for the boot
-				var booted = emulatorInstance.WaitForBootComplete();
-				Assert.True(booted);
-
-				// Assert that the emulator is valid
-				Assert.Equal("emulator-5554", emulatorInstance.Serial);
-				Assert.Equal(TestEmulatorName, emulatorInstance.AvdName);
-
-				// Shutdown the emulator
-				var shutdown = emulatorInstance.Shutdown();
-				Assert.True(shutdown);
-			});
-
-		[Fact]
-		public async Task ListAvds()
+		public OneTimeSetup(AndroidSdkManagerFixture fixture)
 		{
-			var sdk = GetSdk();
-			await sdk.Acquire();
+			var sdk = fixture.Sdk;
 
-			var avds = sdk.Emulator.ListAvds();
+			// Install
+			var ok = sdk.SdkManager.Install(TestAvdPackageId);
+			Assert.True(ok);
 
-			Assert.NotNull(avds);
+			// Assert that it installed
+			var list = sdk.SdkManager.List();
+			Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+		}
+	}
+
+	public Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
+		: base(outputHelper, fixture)
+	{
+		// Create the emulator instance
+		Sdk.AvdManager.Create(TestEmulatorName, TestAvdPackageId, "pixel", force: true);
+	}
+
+	public override void Dispose()
+	{
+		// Delete the emulator
+		Sdk.AvdManager.Delete(TestEmulatorName);
+
+		base.Dispose();
+	}
+
+	[Fact]
+	public void ListAvdsIsEmptyWhenNoAvdsWereCreated()
+	{
+		var avds = Sdk.Emulator.ListAvds().ToList();
+
+		// TODO: remove the debug info items
+		for (var i = avds.Count - 1; i >= 0; i--)
+		{
+			if (avds[i].StartsWith("INFO "))
+				avds.RemoveAt(i);
 		}
 
-		Task CreateTestEmulator(Action<AndroidSdkManager> test) =>
-			CreateTestEmulator(sdk =>
-			{
-				test(sdk);
-				return Task.CompletedTask;
-			});
+		Assert.Empty(avds);
+	}
 
-		async Task CreateTestEmulator(Func<AndroidSdkManager, Task> test)
+	[Fact]
+	public void CreateAndStartAndStopEmulator()
+	{
+		// Start the emulator
+		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName);
+
+		// Wait for the boot
+		var booted = emulatorInstance.WaitForBootComplete();
+		Assert.True(booted);
+
+		// Assert that the emulator is valid
+		Assert.NotEmpty(emulatorInstance.Serial);
+		Assert.Equal(TestEmulatorName, emulatorInstance.AvdName);
+
+		// Shutdown the emulator
+		var shutdown = emulatorInstance.Shutdown();
+		Assert.True(shutdown);
+	}
+
+	[Fact]
+	public void CreateAndStartAndStopHeadlessEmulatorWithOptions()
+	{
+		// Start the emulator
+		var options = new Emulator.EmulatorStartOptions
 		{
-			var sdk = GetSdk();
-			await sdk.Acquire();
+			Port = 5554,
+			NoWindow = true,
+			Gpu = "swiftshader_indirect",
+			NoSnapshot = true,
+			NoAudio = true,
+			NoBootAnim = true
+		};
+		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
-			// Install the right avd image
-			sdk.SdkManager.Install(TestAvdImagePackageId);
+		// Wait for the boot
+		var booted = emulatorInstance.WaitForBootComplete();
+		Assert.True(booted);
 
-			// Create the emulator instance
-			sdk.AvdManager.Create(TestEmulatorName, TestAvdImagePackageId, "pixel", force: true);
+		// Assert that the emulator is valid
+		Assert.Equal("emulator-5554", emulatorInstance.Serial);
+		Assert.Equal(TestEmulatorName, emulatorInstance.AvdName);
 
-			// Run the actual test
-			await test(sdk);
-
-			// Delete the emulator
-			sdk.AvdManager.Delete(TestEmulatorName);
-		}
+		// Shutdown the emulator
+		var shutdown = emulatorInstance.Shutdown();
+		Assert.True(shutdown);
 	}
 }
