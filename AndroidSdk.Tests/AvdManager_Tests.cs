@@ -8,7 +8,8 @@ namespace AndroidSdk.Tests;
 
 public class AvdManager_Tests : AvdManagerTestsBase, IClassFixture<AvdManager_Tests.OneTimeSetup>
 {
-	const string TestAvdPackageId = "system-images;android-30;google_apis;x86_64";
+	static readonly string TestEmulatorName = "TestAvd" + Guid.NewGuid().ToString("N").Substring(0, 6);
+	static readonly string TestAvdPackageId = "system-images;android-30;google_apis;x86_64";
 
 	// Make sure the emulator is installed, but only do this once for all
 	// the tests in this class to make things a fair bit faster.
@@ -31,6 +32,25 @@ public class AvdManager_Tests : AvdManagerTestsBase, IClassFixture<AvdManager_Te
 	public AvdManager_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
 		: base(outputHelper, fixture)
 	{
+	}
+
+	[Fact]
+	public void ListAvdsOnlyContainsCreatedAvd()
+	{
+		try
+		{
+			// Create the emulator instance
+			Sdk.AvdManager.Create(TestEmulatorName, TestAvdPackageId, "pixel", force: true);
+
+			var avds = Sdk.AvdManager.ListAvds();
+
+			Assert.Single(avds.Select(a => a.Name), TestEmulatorName);
+		}
+		finally
+		{
+			// Delete the emulator
+			Sdk.AvdManager.Delete(TestEmulatorName);
+		}
 	}
 
 	[Fact]

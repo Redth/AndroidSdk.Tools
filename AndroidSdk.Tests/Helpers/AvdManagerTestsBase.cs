@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
@@ -19,7 +20,7 @@ public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase, IDisposa
 		oldAndroidAvdHome = Environment.GetEnvironmentVariable("ANDROID_AVD_HOME");
 
 		tempAndroidAvdHome = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", GetType().Name, "android-avd-home");
-		Directory.CreateDirectory(tempAndroidAvdHome);
+		RecreateDir(tempAndroidAvdHome);
 
 		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", tempAndroidAvdHome);
 	}
@@ -27,6 +28,7 @@ public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase, IDisposa
 	public virtual void Dispose()
 	{
 		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", oldAndroidAvdHome);
-		Directory.Delete(tempAndroidAvdHome, true);
+
+		DeleteDir(tempAndroidAvdHome);
 	}
 }
