@@ -585,8 +585,9 @@ namespace AndroidSdk
 
 		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
-			if (jdk == null)
-				jdk = Jdks.FirstOrDefault();
+			jdk ??= Jdks.FirstOrDefault();
+			if (jdk is null)
+				throw new InvalidOperationException("Unable to find the JDK.");
 
 			var sdkManager = FindToolPath(AndroidSdkHome);
 			var java = jdk.Java;
