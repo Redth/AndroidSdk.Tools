@@ -125,7 +125,7 @@ public abstract class TestsBase
 			OutputHelper.WriteLine($"Expected output '{output}' not found.");
 			WriteOutput(runner);
 
-			Assert.Contains(output, runnerOutput);
+			Assert.Contains(output, runnerOutput.Select(selector));
 		}
 
 		return index;
