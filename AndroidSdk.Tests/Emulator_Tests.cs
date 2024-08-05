@@ -62,7 +62,8 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		Assert.Single(avds, TestEmulatorName);
 	}
 
-	[Fact]
+	// CI can't really launch as normal with nested virtualization
+	[Fact(Skip = SkipOnCI)]
 	public void CreateAndStartAndStopEmulator()
 	{
 		// Start the emulator
