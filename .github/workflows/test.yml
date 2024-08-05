@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
 
+permissions:
+  checks: write
+  pull-requests: write
+
 jobs:
   test:
     name: Test
@@ -21,4 +25,16 @@ jobs:
       with:
         dotnet-version: 8.0.x
     - name: Test
-      run: dotnet test --configuration Release
+      run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=artifacts/TestResults.trx"
+    - name: Artifacts
+      uses: actions/upload-artifact@v1
+      if: always()
+      with:
+        name: NuGet
+        path: ./artifacts
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action/macos@v2
+      if: always()
+      with:
+        files: ./artifacts/**/*.trx
+
