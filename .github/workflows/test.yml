@@ -25,16 +25,16 @@ jobs:
       with:
         dotnet-version: 8.0.x
     - name: Test
-      run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=artifacts/TestResults.trx"
+      run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=TestResults.trx"
     - name: Artifacts
       uses: actions/upload-artifact@v1
       if: always()
       with:
         name: NuGet
-        path: ./artifacts
+        path: ./*.Tests/TestResults/*.trx
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action/macos@v2
       if: always()
       with:
-        files: ./artifacts/**/*.trx
+        files: ./*.Tests/TestResults/*.trx
 
