@@ -12,9 +12,11 @@ namespace AndroidSdk.Tests
 	{
 		public Adbd_Tests(ITestOutputHelper outputHelper)
 			: base(outputHelper)
-		{ }
+		{
+		}
 
-		[Fact]
+		// TODO: this needs to be written for a CI scenario
+		[Fact(Skip = SkipOnCI)]
 		public async Task GetVersion()
 		{
 			var adbclient = new AdbdClient();
@@ -26,7 +28,8 @@ namespace AndroidSdk.Tests
 			Assert.True(v > 0);
 		}
 
-		[Fact]
+		// TODO: this needs to be written for a CI scenario
+		[Fact(Skip = SkipOnCI)]
 		public async Task GetShellProps()
 		{
 			var adbclient = new AdbdClient();
@@ -39,7 +42,8 @@ namespace AndroidSdk.Tests
 			Assert.NotEmpty(avdName);
 		}
 
-		[Fact]
+		// TODO: this needs to be written for a CI scenario
+		[Fact(Skip = SkipOnCI)]
 		public async Task WatchDevices()
 		{
 			var a = new AdbdClient();
@@ -50,11 +54,7 @@ namespace AndroidSdk.Tests
 			await a.WatchDevicesAsync(cts.Token, async d =>
 			{
 				OutputHelper.WriteLine($"{d.Serial} -> {d.Device} -> {d.State}");
-
-
 			}).ConfigureAwait(false);
-
-			
 		}
 	}
 }

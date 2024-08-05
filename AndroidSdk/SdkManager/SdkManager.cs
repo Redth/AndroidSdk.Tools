@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Xml;
 
 namespace AndroidSdk
 {
@@ -25,6 +26,7 @@ namespace AndroidSdk
 		readonly Regex rxListDesc = new Regex("\\s+Description:\\s+(?<desc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListVers = new Regex("\\s+Version:\\s+(?<ver>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListLoc = new Regex("\\s+Installed Location:\\s+(?<loc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
+		readonly Regex rxPkgRevision = new Regex(@"^Pkg\.Revision=(?<rev>.+)$", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
 		public SdkManager()
 			: this((DirectoryInfo)null, SdkChannel.Stable, false, false, null)
@@ -44,7 +46,7 @@ namespace AndroidSdk
 		}
 
 		public SdkManagerProxyOptions Proxy { get; set; }
-		
+
 		public SdkChannel Channel { get; set; } = SdkChannel.Stable;
 
 		public bool SkipVersionCheck { get; set; }
@@ -102,62 +104,18 @@ namespace AndroidSdk
 				destinationDirectory = AndroidSdkHome;
 
 			if (destinationDirectory == null)
-				throw new DirectoryNotFoundException("Android SDK Directory Not specified.");
+				throw new DirectoryNotFoundException("Android SDK Directory was not specified.");
 
 			if (!destinationDirectory.Exists)
 				destinationDirectory.Create();
 
-			var http = new HttpClient();
-			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
-			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
-			http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
-			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
-
-			string platformStr;
-
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-				platformStr = "win";
-			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-				platformStr = "mac";
-			else
-				platformStr = "linux";
-
-			// Use the default known version
-			string sdkUrl = "";
-
-			if (string.IsNullOrWhiteSpace(specificVersion))
-			{
-				try
-				{
-					var data = await http.GetStringAsync(REPOSITORY_URL);
-
-					var xdoc = new System.Xml.XmlDocument();
-					xdoc.LoadXml(data);
-
-					var urlNode = xdoc.SelectSingleNode($"//remotePackage[@path='cmdline-tools;{ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION}']/archives/archive/complete/url[contains(text(),'{platformStr}')]");
-
-					sdkUrl = REPOSITORY_URL_BASE + urlNode.InnerText;
-				}
-				catch
-				{
-				}
-			}
-			else
-			{
-				// User passed a specific version to use
-				sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, specificVersion);
-			}
-
-			if (string.IsNullOrWhiteSpace(sdkUrl))
-				sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, REPOSITORY_SDK_DEFAULT_VERSION);
-
+			var sdkUrl = await GetSdkUrl(specificVersion);
 
 			var sdkDir = new DirectoryInfo(destinationDirectory.FullName);
 			if (!sdkDir.Exists)
 				sdkDir.Create();
 
 			var sdkZipFile = new FileInfo(Path.Combine(destinationDirectory.FullName, "androidsdk.zip"));
-
 
 			if (!sdkZipFile.Exists)
 			{
@@ -178,27 +136,138 @@ namespace AndroidSdk
 
 			using (var zip = ZipFile.OpenRead(sdkZipFile.FullName))
 			{
+				// Read the revision from the source.properties file
+				var toolsVersion = ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION;
+				try
+				{
+					var sourceProperties = zip.GetEntry("cmdline-tools/source.properties");
+					if (sourceProperties is not null)
+					{
+						using var stream = sourceProperties.Open();
+						using var reader = new StreamReader(stream);
+						string line;
+						while ((line = reader.ReadLine()) is not null)
+						{
+							var matched = rxPkgRevision.Match(line)?.Groups?["rev"]?.Value?.Trim();
+							if(!string.IsNullOrWhiteSpace(matched))
+							{
+								toolsVersion = matched;
+							}
+						}
+					}
+				}
+				catch
+				{
+					// Something went wrong, but it does not really matter
+				}
+
 				foreach (var entry in zip.Entries)
 				{
 					var name = entry.FullName;
 					if (name.StartsWith("cmdline-tools"))
-						name = $"cmdline-tools/{ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION}" + name.Substring(13);
+						name = $"cmdline-tools/{toolsVersion}" + name.Substring(13);
 
 					name = name.Replace('/', Path.DirectorySeparatorChar);
 
 					var dest = Path.Combine(sdkDir.FullName, name);
 
-					var fileInfo = new FileInfo(dest);
-					fileInfo.Directory.Create();
+					if (string.IsNullOrWhiteSpace(entry.Name))
+					{
+						var dirInfo = new DirectoryInfo(dest);
+						dirInfo.Create();
+					}
+					else
+					{
+						var fileInfo = new FileInfo(dest);
+						fileInfo.Directory.Create();
 
-					entry.ExtractToFile(dest, true);
+						entry.ExtractToFile(dest, true);
+					}
 				}
 			}
 		}
 
-		private void WebClient_DownloadProgressChanged(object sender, System.Net.DownloadProgressChangedEventArgs e)
+		static async Task<string> GetSdkUrl(string specificVersion)
 		{
-			
+			string platformStr;
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				platformStr = "win";
+			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				platformStr = "mac";
+			else
+				platformStr = "linux";
+
+			string sdkUrl = "";
+
+			// Download the repository xml so we can check for versions in there
+			var xdoc = await DownloadRepositoryXml();
+
+			// The user specified a specific version
+			if (!string.IsNullOrWhiteSpace(specificVersion))
+			{
+				// Maybe 'latest' or '7.0' or '8.0' etc (only if our XML downloaded)
+				if (xdoc is not null)
+				{
+					try
+					{
+						var urlNode = xdoc.SelectSingleNode($"//remotePackage[@path='cmdline-tools;{specificVersion}']/archives/archive/complete/url[contains(text(),'{platformStr}')]");
+						if (urlNode is not null)
+							sdkUrl = REPOSITORY_URL_BASE + urlNode.InnerText;
+					}
+					catch
+					{
+						// maybe the number is not valid for XML but still may be a URL number
+					}
+				}
+
+				// Assume the user passed a specific version number
+				if (string.IsNullOrWhiteSpace(sdkUrl))
+				{
+					sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, specificVersion);
+				}
+			}
+			else
+			{
+				// The user did not specify a version
+
+				// Try to get the default version from the XML
+				if (xdoc is not null)
+				{
+					var urlNode = xdoc.SelectSingleNode($"//remotePackage[@path='cmdline-tools;{ANDROID_SDKMANAGER_DEFAULT_ACQUIRE_VERSION}']/archives/archive/complete/url[contains(text(),'{platformStr}')]");
+					sdkUrl = REPOSITORY_URL_BASE + urlNode.InnerText;
+				}
+
+				// Fall back to the default version in this library
+				if (string.IsNullOrWhiteSpace(sdkUrl))
+				{
+					sdkUrl = string.Format(REPOSITORY_SDK_PATTERN, platformStr, REPOSITORY_SDK_DEFAULT_VERSION);
+				}
+			}
+
+			return sdkUrl;
+		}
+
+		static async Task<XmlDocument> DownloadRepositoryXml()
+		{
+			var http = new HttpClient();
+			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
+			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
+			http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
+			http.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
+
+			try
+			{
+				var data = await http.GetStringAsync(REPOSITORY_URL);
+
+				var xdoc = new XmlDocument();
+				xdoc.LoadXml(data);
+				return xdoc;
+			}
+			catch
+			{
+			}
+
+			return null;
 		}
 
 		public bool IsUpToDate()
@@ -238,11 +307,11 @@ namespace AndroidSdk
 			return null;
 		}
 
-		internal void CheckSdkManagerVersion ()
+		internal void CheckSdkManagerVersion()
 		{
 			if (SkipVersionCheck)
 				return;
-			
+
 			if (!IsUpToDate())
 				throw new NotSupportedException("Your sdkmanager is out of date.  Version " + ANDROID_SDKMANAGER_MINIMUM_VERSION_REQUIRED + " or later is required.");
 		}
@@ -273,7 +342,7 @@ namespace AndroidSdk
 			{
 				if (line.StartsWith("------"))
 					continue;
-				
+
 				if (line.ToLowerInvariant().Contains("installed packages:"))
 				{
 					section = 1;
@@ -292,27 +361,31 @@ namespace AndroidSdk
 
 				if (section >= 1 && section <= 2)
 				{
-					if (string.IsNullOrEmpty(path)) {
+					if (string.IsNullOrEmpty(path))
+					{
 
 						// If we have spaces preceding the line, it's not a new item yet
 						if (line.StartsWith(" "))
 							continue;
-						
+
 						path = line.Trim();
 						continue;
 					}
 
-					if (rxListDesc.IsMatch(line)) {
+					if (rxListDesc.IsMatch(line))
+					{
 						description = rxListDesc.Match(line)?.Groups?["desc"]?.Value;
 						continue;
 					}
 
-					if (rxListVers.IsMatch(line)) {
+					if (rxListVers.IsMatch(line))
+					{
 						version = rxListVers.Match(line)?.Groups?["ver"]?.Value;
 						continue;
 					}
 
-					if (rxListLoc.IsMatch(line)) {
+					if (rxListLoc.IsMatch(line))
+					{
 						location = rxListLoc.Match(line)?.Groups?["loc"]?.Value;
 						// No need to continue here since this is the last line in the output for an item
 					}
@@ -363,7 +436,7 @@ namespace AndroidSdk
 
 			if (!install)
 				builder.Append("--uninstall");
-			
+
 			foreach (var pkg in packages)
 				builder.AppendQuoted(pkg);
 
@@ -439,7 +512,7 @@ namespace AndroidSdk
 			foreach (var line in lines)
 			{
 				var idMatch = rxLicenseIdLine.Match(line)?.Groups?["id"]?.Value;
-				
+
 				// Is this a license header line
 				if (!string.IsNullOrEmpty(idMatch))
 				{
@@ -512,8 +585,9 @@ namespace AndroidSdk
 
 		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
-			if (jdk == null)
-				jdk = Jdks.FirstOrDefault();
+			jdk ??= Jdks.FirstOrDefault();
+			if (jdk is null)
+				throw new InvalidOperationException("Unable to find the JDK.");
 
 			var sdkManager = FindToolPath(AndroidSdkHome);
 			var java = jdk.Java;
@@ -594,7 +668,7 @@ namespace AndroidSdk
 
 			if (proc.ExitCode != 0)
 				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
-			
+
 			return output;
 		}
 

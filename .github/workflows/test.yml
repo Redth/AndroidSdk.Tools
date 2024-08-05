@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  checks: write
+  pull-requests: write
+
+jobs:
+  test:
+    name: Test
+    runs-on: macos-13
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'microsoft'
+        java-version: '21'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+    - name: Test
+      run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=TestResults.trx"
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action/macos@v2
+      if: always()
+      with:
+        files: ./*.Tests/TestResults/*.trx
+
