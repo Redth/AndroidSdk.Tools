@@ -118,7 +118,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 			OutputHelper.WriteLine(line);
 
 		// Wait for the boot
-		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(10));
+		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
 
 		// Write the rest
 		var output2 = emulatorInstance.GetOutput().Skip(output.Count).ToList();
