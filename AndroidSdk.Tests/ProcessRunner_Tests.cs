@@ -66,7 +66,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Host 'Hello, World!'");
 
 		Assert.False(runner.HasExited);
-		runner.WaitForOutput("Hello, World!");
+		WaitForOutput(runner, "Hello, World!");
 
 		runner.StandardInputWriteLine("exit");
 
@@ -100,7 +100,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
-		runner.WaitForOutput("\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m");
+		WaitForOutput(runner, "\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m");
 
 		runner.StandardInputWriteLine("exit 3");
 

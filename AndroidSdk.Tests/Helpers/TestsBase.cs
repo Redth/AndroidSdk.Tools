@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
@@ -89,5 +90,38 @@ public abstract class TestsBase
 		}
 
 		return null;
+	}
+
+	internal void WaitForOutput(ProcessRunner runner, int timeout = 5_000)
+	{
+		var cts = new CancellationTokenSource(timeout);
+		while (!cts.IsCancellationRequested && !runner.HasExited && !runner.HasOutput)
+		{
+			Thread.Sleep(100);
+		}
+		Assert.True(runner.HasOutput);
+	}
+
+	internal int WaitForOutput(ProcessRunner runner, string output, int outputOffset = 0, int timeout = 5_000)
+	{
+		var cts = new CancellationTokenSource(timeout);
+		while (!cts.IsCancellationRequested && !runner.HasExited && runner.Output.IndexOf(output, outputOffset) == -1)
+		{
+			Thread.Sleep(100);
+		}
+
+		var runnerOutput = runner.Output.Skip(outputOffset);
+		if (!runnerOutput.Contains(output))
+		{
+			OutputHelper.WriteLine($"Expected output '{output}' not found in:");
+			foreach (var line in runner.Output)
+			{
+				OutputHelper.WriteLine(line);
+			}
+		}
+
+		Assert.Contains(output, runnerOutput);
+
+		return runner.Output.IndexOf(output, outputOffset);
 	}
 }
