@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestPlatform.Utilities;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -101,7 +102,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
-		WaitForOutput(runner, "Write-Error: Bad Things!");
+		WaitForOutput(runner, "Write-Error: Bad Things!", selector: RemoveUnicode);
 
 		runner.StandardInputWriteLine("exit 3");
 
@@ -128,8 +129,28 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(3, result.ExitCode);
-		Assert.Equal(expectedStdOutput, RemoveUnicode(result.StandardOutput));
-		Assert.Equal(expectedError, RemoveUnicode(result.StandardError));
-		Assert.Equal(expectedOutput, RemoveUnicode(result.Output));
+		Assert.Equal(expectedStdOutput, result.StandardOutput.Select(RemoveUnicode));
+		Assert.Equal(expectedError, result.StandardError.Select(RemoveUnicode));
+		Assert.Equal(expectedOutput, result.Output.Select(RemoveUnicode));
+
+		static string RemoveUnicode(string input)
+		{
+			List<char> chars = new();
+			for (var i = 0; i < input.Length; i++)
+			{
+				if (input[i] == 27)
+				{
+					if (OperatingSystem.IsWindows())
+						i += 6;
+					else
+						i += 4;
+				}
+				else
+				{
+					chars.Add(input[i]);
+				}
+			}
+			return new(chars.ToArray());
+		}
 	}
 }
