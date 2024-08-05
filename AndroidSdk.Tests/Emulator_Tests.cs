@@ -64,8 +64,20 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		// Start the emulator
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName);
 
+		// Write output so far
+		var output = emulatorInstance.GetOutput().ToList();
+		foreach (var line in output)
+			OutputHelper.WriteLine(line);
+
 		// Wait for the boot
 		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(10));
+
+		// Write the rest
+		var output2 = emulatorInstance.GetOutput().Skip(output.Count).ToList();
+		foreach (var line in output2)
+			OutputHelper.WriteLine(line);
+
+		// Make sure it booted
 		Assert.True(booted);
 
 		// Assert that the emulator is valid
@@ -92,8 +104,20 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		};
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
+		// Write output so far
+		var output = emulatorInstance.GetOutput().ToList();
+		foreach (var line in output)
+			OutputHelper.WriteLine(line);
+
 		// Wait for the boot
 		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(10));
+
+		// Write the rest
+		var output2 = emulatorInstance.GetOutput().Skip(output.Count).ToList();
+		foreach (var line in output2)
+			OutputHelper.WriteLine(line);
+
+		// Make sure it booted
 		Assert.True(booted);
 
 		// Assert that the emulator is valid
