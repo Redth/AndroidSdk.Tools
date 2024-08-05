@@ -65,7 +65,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName);
 
 		// Wait for the boot
-		var booted = emulatorInstance.WaitForBootComplete();
+		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(10));
 		Assert.True(booted);
 
 		// Assert that the emulator is valid
@@ -93,7 +93,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
 		// Wait for the boot
-		var booted = emulatorInstance.WaitForBootComplete();
+		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(10));
 		Assert.True(booted);
 
 		// Assert that the emulator is valid
