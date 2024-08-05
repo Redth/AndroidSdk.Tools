@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestPlatform.Utilities;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -80,7 +81,7 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(0, result.ExitCode);
-		Assert.Equal(expectedOutput, result.Output);
+		Assert.Equal(expectedOutput, result.StandardOutput);
 		Assert.Empty(result.StandardError);
 		Assert.Equal(expectedOutput, result.Output);
 	}
@@ -100,26 +101,35 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
-		WaitForOutput(runner, "\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m");
+		WaitForOutput(runner, "Write-Error: Bad Things!");
 
 		runner.StandardInputWriteLine("exit 3");
 
 		var result = runner.WaitForExit();
 
-		var expectedOutput = new[]
+		WriteOutput(result);
+
+		var expectedStdOutput = new[]
 		{
-			"\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m",
+			"PS>Write-Error 'Bad Things!'",
 			"PS>exit 3"
 		};
 
 		var expectedError = new[]
 		{
-			"\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m",
+			"Write-Error: Bad Things!",
+		};
+
+		var expectedOutput = new[]
+		{
+			"PS>Write-Error 'Bad Things!'",
+			"Write-Error: Bad Things!",
+			"PS>exit 3"
 		};
 
 		Assert.Equal(3, result.ExitCode);
-		Assert.Equal(expectedOutput, result.Output.Skip(1));
-		Assert.Equal(expectedError, result.StandardError);
-		Assert.Equal(expectedOutput, result.Output.Skip(1));
+		Assert.Equal(expectedStdOutput, RemoveUnicode(result.StandardOutput));
+		Assert.Equal(expectedError, RemoveUnicode(result.StandardError));
+		Assert.Equal(expectedOutput, RemoveUnicode(result.Output));
 	}
 }

@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -105,23 +106,69 @@ public abstract class TestsBase
 	internal int WaitForOutput(ProcessRunner runner, string output, int outputOffset = 0, int timeout = 5_000)
 	{
 		var cts = new CancellationTokenSource(timeout);
-		while (!cts.IsCancellationRequested && !runner.HasExited && runner.Output.IndexOf(output, outputOffset) == -1)
+		while (!cts.IsCancellationRequested && !runner.HasExited && IndexOfNoUnicode(runner.Output, output, outputOffset) == -1)
 		{
 			Thread.Sleep(100);
 		}
 
-		var runnerOutput = runner.Output.Skip(outputOffset);
-		if (!runnerOutput.Contains(output))
+		var runnerOutput = runner.Output;
+		var index = IndexOfNoUnicode(runnerOutput, output, outputOffset);
+		if (index == -1)
 		{
-			OutputHelper.WriteLine($"Expected output '{output}' not found in:");
-			foreach (var line in runner.Output)
-			{
-				OutputHelper.WriteLine(line);
-			}
+			OutputHelper.WriteLine($"Expected output '{output}' not found.");
+			WriteOutput(runner);
+			WriteOutput(runner, true);
+
+			Assert.Contains(output, runnerOutput);
 		}
 
-		Assert.Contains(output, runnerOutput);
+		return index;
+	}
 
-		return runner.Output.IndexOf(output, outputOffset);
+	internal void WriteOutput(ProcessRunner runner, bool cleaned = false)
+	{
+		OutputHelper.WriteLine(cleaned ? "Cleaned output:" : "Output:");
+		foreach (var line in runner.Output)
+		{
+			OutputHelper.WriteLine(cleaned ? RemoveUnicode(line) : line);
+		}
+	}
+
+	internal void WriteOutput(ProcessResult result)
+	{
+		OutputHelper.WriteLine("Output:");
+		foreach (var line in result.Output)
+		{
+			OutputHelper.WriteLine(line);
+		}
+	}
+
+	internal static string RemoveUnicode(string input)
+	{
+		List<char> chars = new();
+		for (var i = 0; i < input.Length; i++)
+		{
+			if (input[i] == 27)
+				i += 6;
+			else
+				chars.Add(input[i]);
+		}
+		return new(chars.ToArray());
+	}
+
+	internal static IEnumerable<string> RemoveUnicode(IEnumerable<string> input)
+	{
+		foreach (var line in input)
+			yield return RemoveUnicode(line);
+	}
+
+	private static int IndexOfNoUnicode(IReadOnlyList<string> output, string value, int startIndex = 0)
+	{
+		for (var i = startIndex; i < output.Count; i++)
+		{
+			if (RemoveUnicode(output[i]) == value)
+				return i;
+		}
+		return -1;
 	}
 }
