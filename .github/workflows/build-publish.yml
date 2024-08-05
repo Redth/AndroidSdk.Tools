@@ -1,4 +1,4 @@
-name: .NET Core
+name: Build and Publish
 
 on:
   pull_request:
@@ -11,7 +11,6 @@ jobs:
     name: Build
     env:
       NUPKG_MAJOR: 0.999
-      CODESIGN_PFX: ${{ secrets.CODESIGN_PFX }}
     runs-on: windows-latest
     steps:
     - name: Checkout
@@ -19,11 +18,9 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Build
       run: dotnet build --configuration Release
-   # - name: Test
-   #   run: dotnet test --configuration Release
     - name: Package NuGets
       shell: pwsh
       run: |
@@ -38,10 +35,6 @@ jobs:
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk/AndroidSdk.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Adbd/AndroidSdk.Adbd.csproj
-
-        $pfxPath = Join-Path -Path $pwd -ChildPath "codesigncert.pfx"
-        [IO.File]::WriteAllBytes("$pfxPath", [System.Convert]::FromBase64String($env:CODESIGN_PFX))
-        dotnet nuget sign .\artifacts\*.nupkg --certificate-path $pfxPath --timestamper http://timestamp.entrust.net/TSS/RFC3161sha2TS
         
     - name: Artifacts
       uses: actions/upload-artifact@v1
@@ -62,7 +55,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7.0.x'
+          dotnet-version: '8.0.x'
       - name: Push NuGet
         run: |
           dotnet nuget push NuGet\*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}

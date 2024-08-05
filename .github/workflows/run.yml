@@ -36,5 +36,9 @@ jobs:
       run: |
         dotnet run --project AndroidSdk.Tool -- device list
         dotnet run --project AndroidSdk.Tool -- device info
+    - name: Install an app
+      run: dotnet run --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+    - name: Uninstall an app
+      run: dotnet run --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
       run: dotnet run --project AndroidSdk.Tool -- avd delete -n test

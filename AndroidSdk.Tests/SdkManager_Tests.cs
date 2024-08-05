@@ -1,104 +1,69 @@
-using System;
-using System.IO;
 using System.Linq;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace AndroidSdk.Tests
+namespace AndroidSdk.Tests;
+
+public class SdkManager_Tests : AndroidSdkManagerTestsBase
 {
-	public class SdkManager_Tests : TestsBase
+	public SdkManager_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
+		: base(outputHelper, fixture)
 	{
-		public SdkManager_Tests(ITestOutputHelper outputHelper)
-			: base(outputHelper)
-		{ }
+	}
 
-		[Fact]
-		public void LocatedPath()
-		{
-			var l = new SdkLocator();
-			var p = l.Locate();
+	[Fact]
+	public void List()
+	{
+		var list = Sdk.SdkManager.List();
 
-			Assert.NotNull(p);
-		}
+		Assert.NotEmpty(list.AvailablePackages);
 
-		[Fact]
-		public void LocatedJdkPath()
-		{
-			var l = new JdkLocator();
-			var p = l.Locate();
+		Assert.NotEmpty(list.InstalledPackages);
 
-			Assert.NotNull(p);
-		}
+		foreach (var a in list.AvailablePackages)
+			OutputHelper.WriteLine($"{a.Description}\t{a.Version}\t{a.Path}");
 
-		[Fact]
-		public void DownloadSdk()
-		{
-			var sdk = GetSdk();
+		foreach (var a in list.InstalledPackages)
+			OutputHelper.WriteLine($"{a.Description}\t{a.Version}\t{a.Path}");
+	}
 
-			var isUpToDate = sdk.SdkManager.IsUpToDate();
+	[Fact]
+	public void GetLicenses()
+	{
+		var list = Sdk.SdkManager.GetLicenses();
 
-			Assert.True(isUpToDate);
-		}
+		Assert.NotNull(list);
+	}
 
-		[Fact]
-		public void List()
-		{
-			var sdk = GetSdk();
+	[Fact]
+	public void GetAcceptedLicenseIds()
+	{
+		var list = Sdk.SdkManager.GetAcceptedLicenseIds();
 
-			var list = sdk.SdkManager.List();
+		Assert.NotNull(list);
+	}
 
-			Assert.NotNull(list);
+	[Fact]
+	public void Install()
+	{
+		const string PackageToInstall = "extras;google;auto";
 
-			foreach (var a in list.AvailablePackages)
-				Console.WriteLine($"{a.Description}\t{a.Version}\t{a.Path}");
+		var ok = Sdk.SdkManager.Install(PackageToInstall);
 
-			foreach (var a in list.InstalledPackages)
-				Console.WriteLine($"{a.Description}\t{a.Version}\t{a.Path}");
-		}
+		Assert.True(ok);
 
-		[Fact]
-		public void GetLicenses()
-		{
-			var sdk = GetSdk();
+		var list = Sdk.SdkManager.List();
 
-			var list = sdk.SdkManager.GetLicenses();
+		Assert.Contains(PackageToInstall, list.InstalledPackages.Select(ip => ip.Path));
+	}
 
-			Assert.NotNull(list);
-		}
+	[Fact]
+	public void AcceptLicense()
+	{
+		Sdk.SdkManager.AcceptLicenses();
 
-		[Fact]
-		public void GetAcceptedLicenseIds()
-		{
-			var sdk = GetSdk();
+		var list = Sdk.SdkManager.List();
 
-			var list = sdk.SdkManager.GetAcceptedLicenseIds();
-
-			Assert.NotNull(list);
-		}
-
-		[Fact]
-		public void Install()
-		{
-			var sdk = GetSdk();
-
-			var ok = sdk.SdkManager.Install("extras;google;auto");
-
-			Assert.True(ok);
-
-			var list = sdk.SdkManager.List();
-
-			Assert.NotNull(list.InstalledPackages.FirstOrDefault(ip => ip.Path == "extras;google;auto"));
-		}
-
-		[Fact]
-		public void AcceptLicense()
-		{
-			var sdk = GetSdk();
-			sdk.SdkManager.AcceptLicenses();
-
-			var list = sdk.SdkManager.List();
-
-			Assert.NotNull(list.InstalledPackages);
-		}
+		Assert.NotNull(list.InstalledPackages);
 	}
 }

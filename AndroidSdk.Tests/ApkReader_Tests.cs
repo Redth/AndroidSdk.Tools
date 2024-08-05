@@ -11,9 +11,9 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class ApkReaderTests : TestsBase
+public class ApkReader_Tests : TestsBase
 {
-	public ApkReaderTests(ITestOutputHelper outputHelper) : base(outputHelper)
+	public ApkReader_Tests(ITestOutputHelper outputHelper) : base(outputHelper)
 	{
 		ApkFile = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
 	}
@@ -49,7 +49,7 @@ public class ApkReaderTests : TestsBase
 
 		var versionCode = reader.ReadManifest().Manifest.VersionCode;
 
-		Assert.NotNull(versionCode);
+		Assert.NotEqual(0, versionCode);
 		Assert.Equal(1, versionCode);
 	}
 

@@ -158,7 +158,10 @@ namespace AndroidSdk
 			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
-		public void Install(FileInfo apkFile, string adbSerial = null)
+		public void Install(FileInfo apkFile, string adbSerial = null) =>
+			Install(apkFile, new AdbInstallOptions(), adbSerial);
+
+		public void Install(FileInfo apkFile, AdbInstallOptions options, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
@@ -166,6 +169,10 @@ namespace AndroidSdk
 
 			runner.AddSerial(adbSerial, builder);
 
+			if (options.Replace)
+			{
+				builder.Append("-r");
+			}
 			builder.Append("install");
 			builder.Append(apkFile.FullName);
 
@@ -208,7 +215,10 @@ namespace AndroidSdk
 			runner.RunAdb(AndroidSdkHome, builder);
 		}
 
-		public void Uninstall(string packageName, bool keepDataAndCacheDirs = false, string adbSerial = null)
+		public void Uninstall(string packageName, bool keepDataAndCacheDirs = false, string adbSerial = null) =>
+			Uninstall(packageName, new AdbUninstallOptions { KeepDataAndCacheDirectories = keepDataAndCacheDirs }, adbSerial);
+
+		public void Uninstall(string packageName, AdbUninstallOptions options, string adbSerial = null)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
@@ -217,7 +227,7 @@ namespace AndroidSdk
 			runner.AddSerial(adbSerial, builder);
 
 			builder.Append("uninstall");
-			if (keepDataAndCacheDirs)
+			if (options.KeepDataAndCacheDirectories)
 				builder.Append("-k");
 			builder.Append(packageName);
 
