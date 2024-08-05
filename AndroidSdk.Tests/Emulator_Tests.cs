@@ -101,11 +101,14 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		{
 			Port = 5554,
 			NoWindow = true,
-			Gpu = "swiftshader_indirect",
+			Gpu = "guest",
 			NoSnapshot = true,
 			NoAudio = true,
-			NoBootAnim = true
+			NoBootAnim = true,
+			MemoryMegabytes = 2048,
+			PartitionSizeMegabytes = 4096,
 		};
+
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
 		// Write output so far
