@@ -68,7 +68,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Host 'Hello, World!'");
 
 		Assert.False(runner.HasExited);
-		WaitForOutput(runner, "Hello, World!");
+		WaitForOutput(runner, "Hello, World!", selector: RemovePwshUnicode);
 
 		runner.StandardInputWriteLine("exit");
 
@@ -82,9 +82,9 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(0, result.ExitCode);
-		Assert.Equal(expectedOutput, result.StandardOutput);
-		Assert.Empty(result.StandardError);
-		Assert.Equal(expectedOutput, result.Output);
+		Assert.Equal(expectedOutput, result.StandardOutput.Select(RemovePwshUnicode));
+		Assert.Empty(result.StandardError.Select(RemovePwshUnicode));
+		Assert.Equal(expectedOutput, result.Output.Select(RemovePwshUnicode));
 	}
 
 	[Fact]
@@ -102,7 +102,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
-		WaitForOutput(runner, "Write-Error: Bad Things!", selector: RemoveUnicode);
+		WaitForOutput(runner, "Write-Error: Bad Things!", selector: RemovePwshUnicode);
 
 		runner.StandardInputWriteLine("exit 3");
 
@@ -129,28 +129,28 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(3, result.ExitCode);
-		Assert.Equal(expectedStdOutput, result.StandardOutput.Select(RemoveUnicode));
-		Assert.Equal(expectedError, result.StandardError.Select(RemoveUnicode));
-		Assert.Equal(expectedOutput, result.Output.Select(RemoveUnicode));
+		Assert.Equal(expectedStdOutput, result.StandardOutput.Select(RemovePwshUnicode));
+		Assert.Equal(expectedError, result.StandardError.Select(RemovePwshUnicode));
+		Assert.Equal(expectedOutput, result.Output.Select(RemovePwshUnicode));
+	}
 
-		static string RemoveUnicode(string input)
+	static string RemovePwshUnicode(string input)
+	{
+		List<char> chars = new();
+		for (var i = 0; i < input.Length; i++)
 		{
-			List<char> chars = new();
-			for (var i = 0; i < input.Length; i++)
+			if (input[i] == 27)
 			{
-				if (input[i] == 27)
-				{
-					if (OperatingSystem.IsWindows())
-						i += 6;
-					else
-						i += 4;
-				}
+				if (OperatingSystem.IsWindows())
+					i += 6;
 				else
-				{
-					chars.Add(input[i]);
-				}
+					i += 4;
 			}
-			return new(chars.ToArray());
+			else
+			{
+				chars.Add(input[i]);
+			}
 		}
+		return new(chars.ToArray());
 	}
 }
