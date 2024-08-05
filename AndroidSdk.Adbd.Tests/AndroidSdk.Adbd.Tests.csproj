@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-
+    <DefineConstants Condition="'$(CI)' == 'true'">$(DefineConstants);IS_ON_CI</DefineConstants>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AndroidSdk.Adbd\AndroidSdk.Adbd.csproj" />
+    <ProjectReference Include="..\AndroidSdk.Tests\AndroidSdk.Tests.csproj" />
     <ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
   </ItemGroup>
 

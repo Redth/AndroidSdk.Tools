@@ -12,7 +12,7 @@ public class AvdLocator_Tests : TestsBase
 	{
 	}
 
-	[Fact]
+	[Fact(Skip = SkipOnCI)]
 	public void LocatedPath()
 	{
 		var l = new AvdLocator();

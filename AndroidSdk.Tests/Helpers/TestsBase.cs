@@ -12,6 +12,13 @@ namespace AndroidSdk.Tests;
 /// </summary>
 public abstract class TestsBase
 {
+	protected const string? SkipOnCI =
+#if IS_ON_CI
+		"This test cannot run on CI.";
+#else
+		null;
+#endif
+
 	public TestsBase(ITestOutputHelper outputHelper)
 	{
 		OutputHelper = outputHelper;

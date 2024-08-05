@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-
+    <DefineConstants Condition="'$(CI)' == 'true'">$(DefineConstants);IS_ON_CI</DefineConstants>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
