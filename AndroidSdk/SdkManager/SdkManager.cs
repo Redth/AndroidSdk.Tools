@@ -306,7 +306,7 @@ namespace AndroidSdk
 			var builder = new ProcessArgumentBuilder();
 			builder.Append("--version");
 
-			var p = run(false, builder);
+			var p = Run(builder);
 
 			if (p != null)
 			{
@@ -335,14 +335,13 @@ namespace AndroidSdk
 
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--list --verbose");
 
 			BuildStandardOptions(builder);
 
-			var p = run(false, builder);
+			var p = Run(builder);
 
 			int section = 0;
 
@@ -444,7 +443,6 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			if (!install)
@@ -455,7 +453,7 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			var output = run(true, builder);
+			var output = RunWithAcceptLoop(builder);
 
 			return true;
 		}
@@ -464,14 +462,13 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--licenses");
 
 			BuildStandardOptions(builder);
 
-			run(true, builder);
+			RunWithAcceptLoop(builder);
 
 			return true;
 		}
@@ -502,14 +499,13 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--licenses");
 
 			BuildStandardOptions(builder);
 
-			var lines = run(false, builder, true, false);
+			var lines = Run(builder, true, false);
 
 			return ParseLicenseCommandOutput(lines);
 		}
@@ -574,112 +570,20 @@ namespace AndroidSdk
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--update");
 
 			BuildStandardOptions(builder);
 
-			var o = run(true, builder);
+			var o = RunWithAcceptLoop(builder);
 
 			return true;
 		}
 
 		public IEnumerable<string> Help()
 		{
-			//adb devices -l
-			return run(false, new ProcessArgumentBuilder());
-		}
-
-
-		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
-		{
-			jdk ??= Jdks.FirstOrDefault();
-			if (jdk is null)
-				throw new InvalidOperationException("Unable to find the JDK.");
-
-			var sdkManager = FindToolPath(AndroidSdkHome);
-			var java = jdk.Java;
-
-			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
-			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
-
-			var cpSeparator = IsWindows ? ";" : ":";
-
-			// Get all the .jars in the tools\lib folder to use as classpath
-			//var classPath = "avdmanager-classpath.jar";
-			var classPath = string.Join(cpSeparator, Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
-
-			var proc = new Process();
-			// This is the package and class that contains the main() for avdmanager
-			proc.StartInfo.Arguments = "com.android.sdklib.tool.sdkmanager.SdkManagerCli " + args.ToString();
-			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
-			//proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
-			proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"";
-			// Set the classpath to all the .jar files we found in the lib folder
-			proc.StartInfo.Environment["CLASSPATH"] = classPath;
-
-			// Java.exe
-			proc.StartInfo.FileName = java.FullName;
-
-			// lib folder is our working dir
-			proc.StartInfo.WorkingDirectory = libPath;
-
-			proc.StartInfo.CreateNoWindow = true;
-			proc.StartInfo.UseShellExecute = false;
-			proc.StartInfo.RedirectStandardOutput = true;
-			proc.StartInfo.RedirectStandardError = true;
-			proc.StartInfo.RedirectStandardInput = true;
-
-			var output = new List<string>();
-			var stderr = new List<string>();
-			var stdout = new List<string>();
-
-			proc.OutputDataReceived += (s, e) =>
-			{
-				if (!string.IsNullOrEmpty(e.Data))
-				{
-					if (includeStdOut)
-						output.Add(e.Data);
-					stdout.Add(e.Data);
-				}
-			};
-			proc.ErrorDataReceived += (s, e) =>
-			{
-				if (!string.IsNullOrEmpty(e.Data))
-				{
-					if (includeStdErr)
-						output.Add(e.Data);
-					stderr.Add(e.Data);
-				}
-			};
-
-			var cmd = $"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}";
-
-			proc.Start();
-			proc.BeginOutputReadLine();
-			proc.BeginErrorReadLine();
-
-			// continuously send "y" to accept any licenses
-			while (!proc.HasExited)
-			{
-				Thread.Sleep(250);
-
-				try
-				{
-					proc.StandardInput.WriteLine("y");
-					proc.StandardInput.Flush();
-				}
-				catch { }
-			}
-
-			proc.WaitForExit();
-
-			if (proc.ExitCode != 0)
-				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
-
-			return output;
+			return Run(new());
 		}
 
 		void BuildStandardOptions(ProcessArgumentBuilder builder)
@@ -722,6 +626,71 @@ namespace AndroidSdk
 			}
 
 			UpdateAll();
+		}
+
+		IEnumerable<string> Run(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
+		{
+			var runner = Start(args);
+
+			var result = WaitForExit(runner);
+
+			if (includeStdOut && includeStdErr)
+				return result.Output;
+			else if (includeStdOut)
+				return result.StandardOutput;
+			else if (includeStdErr)
+				return result.StandardError;
+			else
+				return Array.Empty<string>();
+		}
+
+		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args)
+		{
+			var runner = Start(args);
+
+			// continuously send "y" to accept any licenses
+			runner.WriteContinuouslyUntilExit("y");
+
+			var result = WaitForExit(runner);
+
+			return result.Output;
+		}
+
+		JavaProcessRunner Start(ProcessArgumentBuilder args)
+		{
+			jdk ??= Jdks.FirstOrDefault();
+			if (jdk is null)
+				throw new InvalidOperationException("Unable to find the JDK.");
+
+			var sdkManager = FindToolPath(AndroidSdkHome);
+
+			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
+			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
+
+			// This is the package and class that contains the main() for avdmanager
+			var javaArgs = new JavaProcessArgumentBuilder("com.android.sdklib.tool.sdkmanager.SdkManagerCli", args);
+
+			// Set the classpath to all the .jar files we found in the lib folder
+			javaArgs.AppendClassPath(Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
+
+			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
+			javaArgs.AppendJavaToolOptions($"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"");
+
+			// lib folder is our working dir
+			javaArgs.SetWorkingDirectory(libPath);
+
+			var runner = new JavaProcessRunner(jdk, javaArgs);
+
+			return runner;
+		}
+
+		ProcessResult WaitForExit(JavaProcessRunner runner)
+		{
+			var result = runner.WaitForExit();
+
+			SdkToolFailedExitException.ThrowIfErrorExitCode("avdmanager", result);
+
+			return result;
 		}
 
 		static string GetRelativePath(string fromPath, string toPath)
