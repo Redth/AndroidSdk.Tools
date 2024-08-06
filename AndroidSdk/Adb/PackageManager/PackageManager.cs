@@ -35,8 +35,6 @@ namespace AndroidSdk
 		{
 		}
 
-		internal override string SdkPackageId => "platform-tools";
-
 		public override FileInfo FindToolPath(DirectoryInfo androidSdkHome)
 			=> FindTool(androidSdkHome, toolName: "adb", windowsExtension: ".exe", "platform-tools");
 
