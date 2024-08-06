@@ -1,9 +1,9 @@
 ﻿#nullable enable
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -155,7 +155,7 @@ namespace AndroidSdk
 					{
 						using var stream = sourceProperties.Open();
 						using var reader = new StreamReader(stream);
-						string line;
+						string? line;
 						while ((line = reader.ReadLine()) is not null)
 						{
 							var matched = rxPkgRevision.Match(line)?.Groups?["rev"]?.Value?.Trim();
@@ -189,7 +189,7 @@ namespace AndroidSdk
 					else
 					{
 						var fileInfo = new FileInfo(dest);
-						fileInfo.Directory.Create();
+						fileInfo.Directory?.Create();
 
 						entry.ExtractToFile(dest, true);
 					}
@@ -507,7 +507,7 @@ namespace AndroidSdk
 			return ParseLicenseCommandOutput(lines);
 		}
 
-		List<SdkLicense> ParseLicenseCommandOutput(IEnumerable<string> lines)
+		internal List<SdkLicense> ParseLicenseCommandOutput(IEnumerable<string> lines)
 		{
 			var licenses = new List<SdkLicense>();
 
@@ -709,7 +709,7 @@ namespace AndroidSdk
 		{
 			public static CmdLineToolsVersionComparer Default { get; } = new CmdLineToolsVersionComparer();
 
-			public int Compare(string x, string y)
+			public int Compare(string? x, string? y)
 			{
 				if (!Version.TryParse(x, out var vX))
 					return 1;

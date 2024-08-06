@@ -1,4 +1,5 @@
-﻿using System;
+#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -33,7 +34,7 @@ public class SdkToolFailedExitException : Exception
 
 	public readonly string[] AllOut;
 
-	public static void ThrowIfErrorExitCode(string name, ProcessResult result)
+	internal static void ThrowIfErrorExitCode(string name, ProcessResult result)
 	{
 		if (result.ExitCode != 0)
 			throw new SdkToolFailedExitException(name, result);

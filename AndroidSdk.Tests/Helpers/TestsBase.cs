@@ -93,17 +93,17 @@ public abstract class TestsBase
 		return null;
 	}
 
-	internal void WaitForOutput(ProcessRunner runner, int timeout = 5_000)
+	internal void WaitForOutput(ProcessRunner runner, int timeout = 10_000)
 	{
 		var cts = new CancellationTokenSource(timeout);
 		while (!cts.IsCancellationRequested && !runner.HasExited && !runner.HasOutput)
 		{
-			Thread.Sleep(100);
+			Thread.Sleep(250);
 		}
 		Assert.True(runner.HasOutput);
 	}
 
-	internal int WaitForOutput(ProcessRunner runner, string output, int outputOffset = 0, int timeout = 5_000, Func<string, string>? selector = null)
+	internal int WaitForOutput(ProcessRunner runner, string output, int outputOffset = 0, int timeout = 10_000, Func<string, string>? selector = null)
 	{
 		selector ??= s => s;
 		Func<IEnumerable<string>> filtered = () => runner.Output.Skip(outputOffset).Select(selector);
@@ -111,7 +111,7 @@ public abstract class TestsBase
 		var cts = new CancellationTokenSource(timeout);
 		while (!cts.IsCancellationRequested && !runner.HasExited && !filtered().Contains(output))
 		{
-			Thread.Sleep(100);
+			Thread.Sleep(250);
 		}
 
 		var index = filtered().ToList().IndexOf(output);

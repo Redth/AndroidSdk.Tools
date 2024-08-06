@@ -30,7 +30,7 @@ namespace AndroidSdk
 		{
 			Home = new SdkLocator().Locate(home?.FullName)?.FirstOrDefault();
 
-			SdkManager = new SdkManager(Home);
+			SdkManager = new SdkManager(new SdkManagerToolOptions { AndroidSdkHome = Home });
 			AvdManager = new AvdManager(Home);
 			PackageManager = new PackageManager(Home);
 			Adb = new Adb(Home);
