@@ -145,7 +145,7 @@ public abstract class TestsBase
 		OutputHelper.WriteLine("Output:");
 		foreach (var line in result.Output)
 		{
-			OutputHelper.WriteLine(line);
+			OutputHelper.WriteLine(string.Concat(line.Select(c => $"{(int)c}|{c}")));
 		}
 	}
 }
