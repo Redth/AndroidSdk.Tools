@@ -58,8 +58,6 @@ namespace AndroidSdk
 			return null;
 		}
 
-		internal override string SdkPackageId => "emulator";
-
 		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false, string sdCardPath = null, string sdCardSize = null) =>
 			Create(name, sdkId, new AvdCreateOptions { Device = device, Path = path, Force = force, SdCardPathOrSize = string.IsNullOrEmpty(sdCardPath) ? sdCardSize : sdCardPath });
 
