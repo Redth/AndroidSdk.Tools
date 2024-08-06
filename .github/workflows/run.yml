@@ -3,6 +3,7 @@ name: Run Android Emulator
 on:
   pull_request:
   push:
+    branches: [ main ]
 
 jobs:
   run:
