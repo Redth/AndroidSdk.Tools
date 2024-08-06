@@ -37,10 +37,10 @@ internal class JavaProcessArgumentBuilder : ProcessArgumentBuilder
 		SetEnvVar("CLASSPATH", newclasspath);
 	}
 
-	public void AppendJavaToolOption(params string[] options) =>
-		AppendJavaToolOption((IEnumerable<string>)options);
+	public void AppendJavaToolOptions(params string[] options) =>
+		AppendJavaToolOptions((IEnumerable<string>)options);
 
-	public void AppendJavaToolOption(IEnumerable<string> options)
+	public void AppendJavaToolOptions(IEnumerable<string> options)
 	{
 		if (!EnvVars.TryGetValue("JAVA_TOOL_OPTIONS", out var oldOptions) || string.IsNullOrWhiteSpace(oldOptions))
 			oldOptions = null;

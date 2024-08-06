@@ -674,7 +674,7 @@ namespace AndroidSdk
 			javaArgs.AppendClassPath(Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
 
 			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
-			javaArgs.AppendJavaToolOption($"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"");
+			javaArgs.AppendJavaToolOptions($"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"");
 
 			// lib folder is our working dir
 			javaArgs.SetWorkingDirectory(libPath);
