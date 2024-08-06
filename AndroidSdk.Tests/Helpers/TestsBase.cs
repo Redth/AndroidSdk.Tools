@@ -106,26 +106,21 @@ public abstract class TestsBase
 	internal int WaitForOutput(ProcessRunner runner, string output, int outputOffset = 0, int timeout = 5_000, Func<string, string>? selector = null)
 	{
 		selector ??= s => s;
+		Func<IEnumerable<string>> filtered = () => runner.Output.Skip(outputOffset).Select(selector);
 
 		var cts = new CancellationTokenSource(timeout);
-		while (!cts.IsCancellationRequested && !runner.HasExited && !runner.Output.Skip(outputOffset).Select(selector).Contains(output))
+		while (!cts.IsCancellationRequested && !runner.HasExited && !filtered().Contains(output))
 		{
 			Thread.Sleep(100);
 		}
 
-		var runnerOutput = runner.Output;
-		var index = runnerOutput
-			.Skip(outputOffset)
-			.Select(selector)
-			.ToList()
-			.IndexOf(output);
+		var index = filtered().ToList().IndexOf(output);
 		index += outputOffset;
 		if (index == -1)
 		{
 			OutputHelper.WriteLine($"Expected output '{output}' not found.");
 			WriteOutput(runner);
-
-			Assert.Contains(output, string.Concat(runnerOutput.SelectMany(s=>s).Select(c => $"{(int)c}|{c}")));
+			Assert.Contains(output, filtered());
 		}
 
 		return index;

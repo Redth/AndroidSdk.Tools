@@ -82,9 +82,9 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(0, result.ExitCode);
-		Assert.Equal(expectedOutput, result.StandardOutput.Select(RemovePwshUnicode));
-		Assert.Empty(result.StandardError.Select(RemovePwshUnicode));
-		Assert.Equal(expectedOutput, result.Output.Select(RemovePwshUnicode));
+		Assert.Equal(expectedOutput, RemovePwshUnicode(result.StandardOutput));
+		Assert.Empty(RemovePwshUnicode(result.StandardError));
+		Assert.Equal(expectedOutput, RemovePwshUnicode(result.Output));
 	}
 
 	[Fact]
@@ -129,11 +129,21 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(3, result.ExitCode);
-		Assert.Equal(expectedStdOutput, result.StandardOutput.Select(RemovePwshUnicode));
-		Assert.Equal(expectedError, result.StandardError.Select(RemovePwshUnicode));
-		Assert.Equal(expectedOutput, result.Output.Select(RemovePwshUnicode));
+		Assert.Equal(expectedStdOutput, RemovePwshUnicode(result.StandardOutput));
+		Assert.Equal(expectedError, RemovePwshUnicode(result.StandardError));
+		Assert.Equal(expectedOutput, RemovePwshUnicode(result.Output));
 	}
 
+	static IEnumerable<string> RemovePwshUnicode(IEnumerable<string> input)
+	{
+		foreach (var line in input)
+		{
+			var newLine = RemovePwshUnicode(line);
+			if (!string.IsNullOrEmpty(newLine))
+				yield return newLine;
+		}
+	}
+		
 	static string RemovePwshUnicode(string input)
 	{
 		List<char> chars = new();
@@ -141,10 +151,10 @@ public class ProcessRunner_Tests : TestsBase
 		{
 			if (input[i] == 27)
 			{
-				if (OperatingSystem.IsWindows())
-					i += 6;
-				else
+				if (input[i + 2] == 63)
 					i += 4;
+				else
+					i += 6;
 			}
 			else
 			{
