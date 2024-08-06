@@ -18,11 +18,12 @@ namespace AndroidSdk
 		{
 			args = new(other.args);
 			envvars = new(other.envvars);
+			working = other.working;
 		}
 
-		public List<string> Args => args;
+		public IReadOnlyList<string> Args => args;
 
-		public Dictionary<string, string> EnvVars => envvars;
+		public IReadOnlyDictionary<string, string> EnvVars => envvars;
 
 		public string WorkingDirectory => working;
 

@@ -5,7 +5,7 @@ namespace AndroidSdk;
 
 internal class JavaProcessArgumentBuilder : ProcessArgumentBuilder
 {
-	private static string ClassPathSeparator =
+	private static readonly string ClassPathSeparator =
 		RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ";" : ":";
 
 	public JavaProcessArgumentBuilder(string package)
