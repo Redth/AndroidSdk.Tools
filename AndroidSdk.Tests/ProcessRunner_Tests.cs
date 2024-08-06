@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestPlatform.Utilities;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -66,7 +68,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Host 'Hello, World!'");
 
 		Assert.False(runner.HasExited);
-		runner.WaitForOutput("Hello, World!");
+		WaitForOutput(runner, "Hello, World!", selector: RemovePwshUnicode);
 
 		runner.StandardInputWriteLine("exit");
 
@@ -80,9 +82,9 @@ public class ProcessRunner_Tests : TestsBase
 		};
 
 		Assert.Equal(0, result.ExitCode);
-		Assert.Equal(expectedOutput, result.Output);
-		Assert.Empty(result.StandardError);
-		Assert.Equal(expectedOutput, result.Output);
+		Assert.Equal(expectedOutput, RemovePwshUnicode(result.StandardOutput));
+		Assert.Empty(RemovePwshUnicode(result.StandardError));
+		Assert.Equal(expectedOutput, RemovePwshUnicode(result.Output));
 	}
 
 	[Fact]
@@ -100,27 +102,66 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
-		runner.WaitForOutput("\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m");
+		WaitForOutput(runner, "Write-Error: Bad Things!", selector: RemovePwshUnicode);
 
 		runner.StandardInputWriteLine("exit 3");
 
 		var result = runner.WaitForExit();
 
-		var expectedOutput = new[]
+		WriteOutput(result);
+
+		var expectedStdOutput = new[]
 		{
-			"\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m",
+			"PS>Write-Error 'Bad Things!'",
 			"PS>exit 3"
 		};
 
 		var expectedError = new[]
 		{
-			"\u001b[31;1mWrite-Error: \u001b[31;1mBad Things!\u001b[0m",
+			"Write-Error: Bad Things!",
+		};
+
+		var expectedOutput = new[]
+		{
+			"PS>Write-Error 'Bad Things!'",
+			"Write-Error: Bad Things!",
+			"PS>exit 3"
 		};
 
 		Assert.Equal(3, result.ExitCode);
-		Assert.Equal(expectedOutput, result.Output.Skip(1));
-		Assert.Equal(expectedError, result.StandardError);
-		Assert.Equal(expectedOutput, result.Output.Skip(1));
+		Assert.Equal(expectedStdOutput, RemovePwshUnicode(result.StandardOutput));
+		Assert.Equal(expectedError, RemovePwshUnicode(result.StandardError));
+		Assert.Equal(expectedOutput, RemovePwshUnicode(result.Output));
+	}
+
+	static IEnumerable<string> RemovePwshUnicode(IEnumerable<string> input)
+	{
+		foreach (var line in input)
+		{
+			var newLine = RemovePwshUnicode(line);
+			if (!string.IsNullOrEmpty(newLine))
+				yield return newLine;
+		}
+	}
+		
+	static string RemovePwshUnicode(string input)
+	{
+		List<char> chars = new();
+		for (var i = 0; i < input.Length; i++)
+		{
+			if (input[i] == 27)
+			{
+				if (input[i + 2] == 63)
+					i += 4;
+				else
+					i += 6;
+			}
+			else
+			{
+				chars.Add(input[i]);
+			}
+		}
+		return string.Concat(chars);
 	}
 
 	[Fact]
