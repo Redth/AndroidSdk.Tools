@@ -4,7 +4,7 @@
 		<OutputType>Exe</OutputType>
 		<AssemblyName>android</AssemblyName>
 		<PackAsTool>true</PackAsTool>
-		<TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+		<TargetFramework>net6.0</TargetFramework>
 		<ToolCommandName>android</ToolCommandName>
 		<RollForward>Major</RollForward>
 	</PropertyGroup>
