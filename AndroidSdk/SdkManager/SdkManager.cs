@@ -2,11 +2,14 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.IO.Compression;
 using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+using System.Net.Http.Headers;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -583,71 +586,6 @@ namespace AndroidSdk
 			return Run(new());
 		}
 
-		IEnumerable<string> Run(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
-		{
-			var runner = Start(args);
-
-			var result = WaitForExit(runner);
-
-			if (includeStdOut && includeStdErr)
-				return result.Output;
-			else if (includeStdOut)
-				return result.StandardOutput;
-			else if (includeStdErr)
-				return result.StandardError;
-			else
-				return Array.Empty<string>();
-		}
-
-		JavaProcessRunner Start(ProcessArgumentBuilder args)
-		{
-			jdk ??= Jdks.FirstOrDefault();
-			if (jdk is null)
-				throw new InvalidOperationException("Unable to find the JDK.");
-
-			var sdkManager = FindToolPath(AndroidSdkHome);
-
-			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
-			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
-
-			// This is the package and class that contains the main() for avdmanager
-			var javaArgs = new JavaProcessArgumentBuilder("com.android.sdklib.tool.sdkmanager.SdkManagerCli", args);
-
-			// Set the classpath to all the .jar files we found in the lib folder
-			javaArgs.AppendClassPath(Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
-
-			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
-			javaArgs.AppendJavaToolOption($"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"");
-
-			// lib folder is our working dir
-			javaArgs.SetWorkingDirectory(libPath);
-
-			var runner = new JavaProcessRunner(jdk, javaArgs);
-
-			return runner;
-		}
-
-		ProcessResult WaitForExit(JavaProcessRunner runner)
-		{
-			var result = runner.WaitForExit();
-
-			SdkToolFailedExitException.ThrowIfErrorExitCode("avdmanager", result);
-
-			return result;
-		}
-
-		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args)
-		{
-			var runner = Start(args);
-
-			// continuously send "y" to accept any licenses
-			runner.WriteContinuouslyUntilExit("y");
-
-			var result = WaitForExit(runner);
-
-			return result.Output;
-		}
-
 		void BuildStandardOptions(ProcessArgumentBuilder builder)
 		{
 			builder.Append("--verbose");
@@ -688,6 +626,71 @@ namespace AndroidSdk
 			}
 
 			UpdateAll();
+		}
+
+		IEnumerable<string> Run(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
+		{
+			var runner = Start(args);
+
+			var result = WaitForExit(runner);
+
+			if (includeStdOut && includeStdErr)
+				return result.Output;
+			else if (includeStdOut)
+				return result.StandardOutput;
+			else if (includeStdErr)
+				return result.StandardError;
+			else
+				return Array.Empty<string>();
+		}
+
+		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args)
+		{
+			var runner = Start(args);
+
+			// continuously send "y" to accept any licenses
+			runner.WriteContinuouslyUntilExit("y");
+
+			var result = WaitForExit(runner);
+
+			return result.Output;
+		}
+
+		JavaProcessRunner Start(ProcessArgumentBuilder args)
+		{
+			jdk ??= Jdks.FirstOrDefault();
+			if (jdk is null)
+				throw new InvalidOperationException("Unable to find the JDK.");
+
+			var sdkManager = FindToolPath(AndroidSdkHome);
+
+			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
+			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
+
+			// This is the package and class that contains the main() for avdmanager
+			var javaArgs = new JavaProcessArgumentBuilder("com.android.sdklib.tool.sdkmanager.SdkManagerCli", args);
+
+			// Set the classpath to all the .jar files we found in the lib folder
+			javaArgs.AppendClassPath(Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
+
+			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
+			javaArgs.AppendJavaToolOption($"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"");
+
+			// lib folder is our working dir
+			javaArgs.SetWorkingDirectory(libPath);
+
+			var runner = new JavaProcessRunner(jdk, javaArgs);
+
+			return runner;
+		}
+
+		ProcessResult WaitForExit(JavaProcessRunner runner)
+		{
+			var result = runner.WaitForExit();
+
+			SdkToolFailedExitException.ThrowIfErrorExitCode("avdmanager", result);
+
+			return result;
 		}
 
 		static string GetRelativePath(string fromPath, string toPath)
