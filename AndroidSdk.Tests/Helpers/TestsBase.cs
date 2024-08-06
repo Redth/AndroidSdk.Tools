@@ -1,6 +1,8 @@
 ﻿#nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
@@ -64,5 +66,81 @@ public abstract class TestsBase
 	{
 		DeleteDir(dir);
 		CreateDir(dir);
+	}
+
+	protected static FileInfo? GetFileOnPath(string fileName)
+	{
+		var paths = Environment.GetEnvironmentVariable("PATH");
+		if (string.IsNullOrWhiteSpace(paths))
+			return null;
+
+		foreach (var path in paths.Split(Path.PathSeparator))
+		{
+			// try exact path
+			var fullPath = Path.Combine(path, fileName);
+			if (File.Exists(fullPath))
+				return new FileInfo(fullPath);
+
+			if (OperatingSystem.IsWindows())
+			{
+				// try with .exe extension
+				fullPath = Path.Combine(path, fileName + ".exe");
+				if (File.Exists(fullPath))
+					return new FileInfo(fullPath);
+			}
+		}
+
+		return null;
+	}
+
+	internal void WaitForOutput(ProcessRunner runner, int timeout = 5_000)
+	{
+		var cts = new CancellationTokenSource(timeout);
+		while (!cts.IsCancellationRequested && !runner.HasExited && !runner.HasOutput)
+		{
+			Thread.Sleep(100);
+		}
+		Assert.True(runner.HasOutput);
+	}
+
+	internal int WaitForOutput(ProcessRunner runner, string output, int outputOffset = 0, int timeout = 5_000, Func<string, string>? selector = null)
+	{
+		selector ??= s => s;
+		Func<IEnumerable<string>> filtered = () => runner.Output.Skip(outputOffset).Select(selector);
+
+		var cts = new CancellationTokenSource(timeout);
+		while (!cts.IsCancellationRequested && !runner.HasExited && !filtered().Contains(output))
+		{
+			Thread.Sleep(100);
+		}
+
+		var index = filtered().ToList().IndexOf(output);
+		index += outputOffset;
+		if (index == -1)
+		{
+			OutputHelper.WriteLine($"Expected output '{output}' not found.");
+			WriteOutput(runner);
+			Assert.Contains(output, filtered());
+		}
+
+		return index;
+	}
+
+	internal void WriteOutput(ProcessRunner runner)
+	{
+		OutputHelper.WriteLine("Output:");
+		foreach (var line in runner.Output)
+		{
+			OutputHelper.WriteLine(line);
+		}
+	}
+
+	internal void WriteOutput(ProcessResult result)
+	{
+		OutputHelper.WriteLine("Output:");
+		foreach (var line in result.Output)
+		{
+			OutputHelper.WriteLine(line);
+		}
 	}
 }
