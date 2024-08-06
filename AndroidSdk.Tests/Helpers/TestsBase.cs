@@ -125,7 +125,7 @@ public abstract class TestsBase
 			OutputHelper.WriteLine($"Expected output '{output}' not found.");
 			WriteOutput(runner);
 
-			Assert.Contains(output, runnerOutput.Select(selector));
+			Assert.Contains(output, string.Concat(runnerOutput.SelectMany(s=>s).Select(c => $"{(int)c}|{c}")));
 		}
 
 		return index;
@@ -145,7 +145,7 @@ public abstract class TestsBase
 		OutputHelper.WriteLine("Output:");
 		foreach (var line in result.Output)
 		{
-			OutputHelper.WriteLine(string.Concat(line.Select(c => $"{(int)c}|{c}")));
+			OutputHelper.WriteLine(line);
 		}
 	}
 }

@@ -99,7 +99,6 @@ public class ProcessRunner_Tests : TestsBase
 		var runner = new ProcessRunner(pwsh, args, default, true);
 
 		Assert.False(runner.HasExited);
-		runner.StandardInputWriteLine("[Console]::OutputEncoding = 'ascii'");
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
