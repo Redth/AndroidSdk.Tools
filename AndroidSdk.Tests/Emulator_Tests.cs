@@ -24,6 +24,8 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		{
 			sdk = fixture.Sdk;
 
+			throw new Exception("RuntimeInformation.ProcessArchitecture=" + RuntimeInformation.ProcessArchitecture);
+
 			// Install
 			var ok = sdk.SdkManager.Install(TestAvdPackageId);
 			Assert.True(ok);
