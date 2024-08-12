@@ -335,7 +335,6 @@ namespace AndroidSdk
 
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--list --verbose");
@@ -444,7 +443,6 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			if (!install)
@@ -464,7 +462,6 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--licenses");
@@ -502,7 +499,6 @@ namespace AndroidSdk
 		{
 			CheckSdkManagerVersion();
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--licenses");
@@ -574,7 +570,6 @@ namespace AndroidSdk
 			if (!(sdkManager?.Exists ?? false))
 				throw new FileNotFoundException("Could not locate sdkmanager", sdkManager?.FullName);
 
-			//adb devices -l
 			var builder = new ProcessArgumentBuilder();
 
 			builder.Append("--update");
@@ -588,7 +583,6 @@ namespace AndroidSdk
 
 		public IEnumerable<string> Help()
 		{
-			//adb devices -l
 			return run(false, new ProcessArgumentBuilder());
 		}
 

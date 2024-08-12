@@ -1,6 +1,6 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -9,7 +9,10 @@ namespace AndroidSdk.Tests;
 public class AvdManager_Tests : AvdManagerTestsBase, IClassFixture<AvdManager_Tests.OneTimeSetup>
 {
 	static readonly string TestEmulatorName = "TestAvd" + Guid.NewGuid().ToString("N").Substring(0, 6);
-	static readonly string TestAvdPackageId = "system-images;android-30;google_apis;x86_64";
+	static readonly string TestAvdPackageId =
+		RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+			? "system-images;android-30;google_apis;arm64-v8a"
+			: "system-images;android-30;google_apis;x86_64";
 
 	// Make sure the emulator is installed, but only do this once for all
 	// the tests in this class to make things a fair bit faster.
