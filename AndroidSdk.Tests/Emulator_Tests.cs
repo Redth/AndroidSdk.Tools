@@ -32,8 +32,8 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 			var list = sdk.SdkManager.List();
 			Assert.Contains(TestAvdPackageId, list.InstalledPackages
 				.Where(p => p.Path.StartsWith("system-images;", StringComparison.OrdinalIgnoreCase))
-				.Select(p => p.Path))
-				.ToArray();
+				.Select(p => p.Path)
+				.ToArray());
 		}
 
 		public void Dispose()
