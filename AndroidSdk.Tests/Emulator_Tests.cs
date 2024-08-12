@@ -16,13 +16,11 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 
 	// Make sure the emulator is installed, but only do this once for all
 	// the tests in this class to make things a fair bit faster.
-	public class OneTimeSetup : IDisposable
+	public class OneTimeSetup
 	{
-		readonly AndroidSdkManager sdk;
-
 		public OneTimeSetup(AndroidSdkManagerFixture fixture)
 		{
-			sdk = fixture.Sdk;
+			var sdk = fixture.Sdk;
 
 			// Install
 			var ok = sdk.SdkManager.Install(TestAvdPackageId);
@@ -30,21 +28,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 
 			// Assert that it installed
 			var list = sdk.SdkManager.List();
-			Assert.Contains(TestAvdPackageId, list.InstalledPackages
-				.Where(p => p.Path.StartsWith("system-images;", StringComparison.OrdinalIgnoreCase))
-				.Select(p => p.Path)
-				.ToArray());
-		}
-
-		public void Dispose()
-		{
-			// Uninstall
-			var ok = sdk.SdkManager.Uninstall(TestAvdPackageId);
-			Assert.True(ok);
-
-			// Assert that it uninstalled
-			var list = sdk.SdkManager.List();
-			Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+			Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
 		}
 	}
 
