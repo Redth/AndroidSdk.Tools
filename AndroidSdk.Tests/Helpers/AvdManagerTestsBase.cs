@@ -20,7 +20,7 @@ public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase, IDisposa
 		oldAndroidAvdHome = Environment.GetEnvironmentVariable("ANDROID_AVD_HOME");
 
 		var tempRoot = Path.GetTempPath();
-		if (oldAndroidAvdHome.StartsWith(tempRoot))
+		if (!string.IsNullOrEmpty(oldAndroidAvdHome) && oldAndroidAvdHome.StartsWith(tempRoot))
 			throw new InvalidOperationException("ANDROID_AVD_HOME was not un set from a previous test run.");
 
 		tempAndroidAvdHome = Path.Combine(tempRoot, "AndroidSdk.Tests", GetType().Name, "android-avd-home");
