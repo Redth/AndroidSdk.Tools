@@ -58,6 +58,20 @@ public class SdkManager_Tests : AndroidSdkManagerTestsBase
 	}
 
 	[Fact]
+	public void Uninstall()
+	{
+		const string PackageToUninstall = "extras;google;auto";
+
+		var ok = Sdk.SdkManager.Uninstall(PackageToUninstall);
+
+		Assert.True(ok);
+
+		var list = Sdk.SdkManager.List();
+
+		Assert.DoesNotContain(PackageToUninstall, list.InstalledPackages.Select(ip => ip.Path));
+	}
+
+	[Fact]
 	public void AcceptLicense()
 	{
 		Sdk.SdkManager.AcceptLicenses();
