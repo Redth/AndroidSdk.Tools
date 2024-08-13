@@ -630,91 +630,92 @@ namespace AndroidSdk
 
 		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
-			jdk ??= Jdks.FirstOrDefault();
-			if (jdk is null)
-				throw new InvalidOperationException("Unable to find the JDK.");
+			return RunWithAcceptLoop(args ,includeStdOut, includeStdErr);
+			//jdk ??= Jdks.FirstOrDefault();
+			//if (jdk is null)
+			//	throw new InvalidOperationException("Unable to find the JDK.");
 
-			var sdkManager = FindToolPath(AndroidSdkHome);
-			var java = jdk.Java;
+			//var sdkManager = FindToolPath(AndroidSdkHome);
+			//var java = jdk.Java;
 
-			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
-			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
+			//var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
+			//var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
 
-			var cpSeparator = IsWindows ? ";" : ":";
+			//var cpSeparator = IsWindows ? ";" : ":";
 
-			// Get all the .jars in the tools\lib folder to use as classpath
-			//var classPath = "avdmanager-classpath.jar";
-			var classPath = string.Join(cpSeparator, Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
+			//// Get all the .jars in the tools\lib folder to use as classpath
+			////var classPath = "avdmanager-classpath.jar";
+			//var classPath = string.Join(cpSeparator, Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
 
-			var proc = new Process();
-			// This is the package and class that contains the main() for avdmanager
-			proc.StartInfo.Arguments = "com.android.sdklib.tool.sdkmanager.SdkManagerCli " + args.ToString();
-			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
-			//proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
-			proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"";
-			// Set the classpath to all the .jar files we found in the lib folder
-			proc.StartInfo.Environment["CLASSPATH"] = classPath;
+			//var proc = new Process();
+			//// This is the package and class that contains the main() for avdmanager
+			//proc.StartInfo.Arguments = "com.android.sdklib.tool.sdkmanager.SdkManagerCli " + args.ToString();
+			//// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
+			////proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
+			//proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"";
+			//// Set the classpath to all the .jar files we found in the lib folder
+			//proc.StartInfo.Environment["CLASSPATH"] = classPath;
 
-			// Java.exe
-			proc.StartInfo.FileName = java.FullName;
+			//// Java.exe
+			//proc.StartInfo.FileName = java.FullName;
 
-			// lib folder is our working dir
-			proc.StartInfo.WorkingDirectory = libPath;
+			//// lib folder is our working dir
+			//proc.StartInfo.WorkingDirectory = libPath;
 
-			proc.StartInfo.CreateNoWindow = true;
-			proc.StartInfo.UseShellExecute = false;
-			proc.StartInfo.RedirectStandardOutput = true;
-			proc.StartInfo.RedirectStandardError = true;
-			proc.StartInfo.RedirectStandardInput = true;
+			//proc.StartInfo.CreateNoWindow = true;
+			//proc.StartInfo.UseShellExecute = false;
+			//proc.StartInfo.RedirectStandardOutput = true;
+			//proc.StartInfo.RedirectStandardError = true;
+			//proc.StartInfo.RedirectStandardInput = true;
 
-			var output = new List<string>();
-			var stderr = new List<string>();
-			var stdout = new List<string>();
+			//var output = new List<string>();
+			//var stderr = new List<string>();
+			//var stdout = new List<string>();
 
-			proc.OutputDataReceived += (s, e) =>
-			{
-				if (!string.IsNullOrEmpty(e.Data))
-				{
-					if (includeStdOut)
-						output.Add(e.Data);
-					stdout.Add(e.Data);
-				}
-			};
-			proc.ErrorDataReceived += (s, e) =>
-			{
-				if (!string.IsNullOrEmpty(e.Data))
-				{
-					if (includeStdErr)
-						output.Add(e.Data);
-					stderr.Add(e.Data);
-				}
-			};
+			//proc.OutputDataReceived += (s, e) =>
+			//{
+			//	if (!string.IsNullOrEmpty(e.Data))
+			//	{
+			//		if (includeStdOut)
+			//			output.Add(e.Data);
+			//		stdout.Add(e.Data);
+			//	}
+			//};
+			//proc.ErrorDataReceived += (s, e) =>
+			//{
+			//	if (!string.IsNullOrEmpty(e.Data))
+			//	{
+			//		if (includeStdErr)
+			//			output.Add(e.Data);
+			//		stderr.Add(e.Data);
+			//	}
+			//};
 
-			var cmd = $"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}";
+			//var cmd = $"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}";
 
-			proc.Start();
-			proc.BeginOutputReadLine();
-			proc.BeginErrorReadLine();
+			//proc.Start();
+			//proc.BeginOutputReadLine();
+			//proc.BeginErrorReadLine();
 
-			// continuously send "y" to accept any licenses
-			while (!proc.HasExited)
-			{
-				Thread.Sleep(250);
+			//// continuously send "y" to accept any licenses
+			//while (!proc.HasExited)
+			//{
+			//	Thread.Sleep(250);
 
-				try
-				{
-					proc.StandardInput.WriteLine("y");
-					proc.StandardInput.Flush();
-				}
-				catch { }
-			}
+			//	try
+			//	{
+			//		proc.StandardInput.WriteLine("y");
+			//		proc.StandardInput.Flush();
+			//	}
+			//	catch { }
+			//}
 
-			proc.WaitForExit();
+			//proc.WaitForExit();
 
-			if (proc.ExitCode != 0)
-				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
+			//if (proc.ExitCode != 0)
+			//	throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
 
-			return output;
+			//return output;
 		}
 
 		IEnumerable<string> Run(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
@@ -733,7 +734,7 @@ namespace AndroidSdk
 				return Array.Empty<string>();
 		}
 
-		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args)
+		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
 			var runner = Start(args);
 
@@ -742,7 +743,14 @@ namespace AndroidSdk
 
 			var result = WaitForExit(runner);
 
-			return result.Output;
+			if (includeStdOut && includeStdErr)
+				return result.Output;
+			else if (includeStdOut)
+				return result.StandardOutput;
+			else if (includeStdErr)
+				return result.StandardError;
+			else
+				return Array.Empty<string>();
 		}
 
 		JavaProcessRunner Start(ProcessArgumentBuilder args)
