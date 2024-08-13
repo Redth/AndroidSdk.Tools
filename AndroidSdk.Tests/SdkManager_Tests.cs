@@ -58,6 +58,20 @@ public class SdkManager_Tests : AndroidSdkManagerTestsBase
 	}
 
 	[Fact]
+	public void InstallPlatform()
+	{
+		const string PackageToInstall = "platforms;android-33";
+
+		var ok = Sdk.SdkManager.Install(PackageToInstall);
+
+		Assert.True(ok);
+
+		var list = Sdk.SdkManager.List();
+
+		Assert.Contains(PackageToInstall, list.InstalledPackages.Select(ip => ip.Path));
+	}
+
+	[Fact]
 	public void Uninstall()
 	{
 		const string PackageToUninstall = "extras;google;auto";

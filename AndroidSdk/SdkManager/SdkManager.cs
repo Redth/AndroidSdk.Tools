@@ -736,7 +736,7 @@ namespace AndroidSdk
 
 		IEnumerable<string> RunWithAcceptLoop(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
 		{
-			var runner = Start(args);
+			var runner = Start(args, true);
 
 			// continuously send "y" to accept any licenses
 			runner.WriteContinuouslyUntilExit("y");
@@ -753,7 +753,7 @@ namespace AndroidSdk
 				return Array.Empty<string>();
 		}
 
-		JavaProcessRunner Start(ProcessArgumentBuilder args)
+		JavaProcessRunner Start(ProcessArgumentBuilder args, bool redirectStandardInput = false)
 		{
 			jdk ??= Jdks.FirstOrDefault();
 			if (jdk is null)
@@ -776,7 +776,7 @@ namespace AndroidSdk
 			// lib folder is our working dir
 			javaArgs.SetWorkingDirectory(libPath);
 
-			var runner = new JavaProcessRunner(jdk, javaArgs);
+			var runner = new JavaProcessRunner(jdk, javaArgs, default, redirectStandardInput);
 
 			return runner;
 		}
