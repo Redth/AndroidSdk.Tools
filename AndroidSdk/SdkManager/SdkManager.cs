@@ -162,7 +162,7 @@ namespace AndroidSdk
 						while ((line = reader.ReadLine()) is not null)
 						{
 							var matched = rxPkgRevision.Match(line)?.Groups?["rev"]?.Value?.Trim();
-							if(!string.IsNullOrWhiteSpace(matched))
+							if (!string.IsNullOrWhiteSpace(matched))
 							{
 								toolsVersion = matched;
 							}
@@ -306,7 +306,7 @@ namespace AndroidSdk
 			var builder = new ProcessArgumentBuilder();
 			builder.Append("--version");
 
-			var p = Run(builder);
+			var p = run(false, builder);
 
 			if (p != null)
 			{
@@ -341,7 +341,7 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			var p = Run(builder);
+			var p = run(false, builder);
 
 			int section = 0;
 
@@ -453,7 +453,7 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			var output = RunWithAcceptLoop(builder);
+			var output = run(true, builder);
 
 			return true;
 		}
@@ -468,7 +468,7 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			RunWithAcceptLoop(builder);
+			run(true, builder);
 
 			return true;
 		}
@@ -505,7 +505,7 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			var lines = Run(builder, true, false);
+			var lines = run(false, builder, true, false);
 
 			return ParseLicenseCommandOutput(lines);
 		}
@@ -576,14 +576,14 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			var o = RunWithAcceptLoop(builder);
+			var o = run(true, builder);
 
 			return true;
 		}
 
 		public IEnumerable<string> Help()
 		{
-			return Run(new());
+			return run(false, new());
 		}
 
 		void BuildStandardOptions(ProcessArgumentBuilder builder)
@@ -626,6 +626,95 @@ namespace AndroidSdk
 			}
 
 			UpdateAll();
+		}
+
+		IEnumerable<string> run(bool withAccept, ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
+		{
+			jdk ??= Jdks.FirstOrDefault();
+			if (jdk is null)
+				throw new InvalidOperationException("Unable to find the JDK.");
+
+			var sdkManager = FindToolPath(AndroidSdkHome);
+			var java = jdk.Java;
+
+			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
+			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));
+
+			var cpSeparator = IsWindows ? ";" : ":";
+
+			// Get all the .jars in the tools\lib folder to use as classpath
+			//var classPath = "avdmanager-classpath.jar";
+			var classPath = string.Join(cpSeparator, Directory.GetFiles(libPath, "*.jar").Select(f => new FileInfo(f).Name));
+
+			var proc = new Process();
+			// This is the package and class that contains the main() for avdmanager
+			proc.StartInfo.Arguments = "com.android.sdklib.tool.sdkmanager.SdkManagerCli " + args.ToString();
+			// This needs to be set to the working dir / classpath dir as the library looks for this system property at runtime
+			//proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
+			proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdklib.toolsdir=\"{toolPath}\"";
+			// Set the classpath to all the .jar files we found in the lib folder
+			proc.StartInfo.Environment["CLASSPATH"] = classPath;
+
+			// Java.exe
+			proc.StartInfo.FileName = java.FullName;
+
+			// lib folder is our working dir
+			proc.StartInfo.WorkingDirectory = libPath;
+
+			proc.StartInfo.CreateNoWindow = true;
+			proc.StartInfo.UseShellExecute = false;
+			proc.StartInfo.RedirectStandardOutput = true;
+			proc.StartInfo.RedirectStandardError = true;
+			proc.StartInfo.RedirectStandardInput = true;
+
+			var output = new List<string>();
+			var stderr = new List<string>();
+			var stdout = new List<string>();
+
+			proc.OutputDataReceived += (s, e) =>
+			{
+				if (!string.IsNullOrEmpty(e.Data))
+				{
+					if (includeStdOut)
+						output.Add(e.Data);
+					stdout.Add(e.Data);
+				}
+			};
+			proc.ErrorDataReceived += (s, e) =>
+			{
+				if (!string.IsNullOrEmpty(e.Data))
+				{
+					if (includeStdErr)
+						output.Add(e.Data);
+					stderr.Add(e.Data);
+				}
+			};
+
+			var cmd = $"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}";
+
+			proc.Start();
+			proc.BeginOutputReadLine();
+			proc.BeginErrorReadLine();
+
+			// continuously send "y" to accept any licenses
+			while (!proc.HasExited)
+			{
+				Thread.Sleep(250);
+
+				try
+				{
+					proc.StandardInput.WriteLine("y");
+					proc.StandardInput.Flush();
+				}
+				catch { }
+			}
+
+			proc.WaitForExit();
+
+			if (proc.ExitCode != 0)
+				throw new SdkToolFailedExitException("avdmanager", proc.ExitCode, stderr, stdout);
+
+			return output;
 		}
 
 		IEnumerable<string> Run(ProcessArgumentBuilder args, bool includeStdOut = true, bool includeStdErr = true)
