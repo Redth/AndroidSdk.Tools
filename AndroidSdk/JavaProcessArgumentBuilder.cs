@@ -8,6 +8,12 @@ internal class JavaProcessArgumentBuilder : ProcessArgumentBuilder
 	private static readonly string ClassPathSeparator =
 		RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ";" : ":";
 
+	public JavaProcessArgumentBuilder(JavaProcessArgumentBuilder other)
+		: base(other)
+	{
+		Package = other.Package;
+	}
+
 	public JavaProcessArgumentBuilder(string package)
 		: base()
 	{
@@ -31,7 +37,7 @@ internal class JavaProcessArgumentBuilder : ProcessArgumentBuilder
 			oldclasspath = null;
 
 		var newclasspath = string.Join(ClassPathSeparator, paths);
-		if (oldclasspath is null)
+		if (!string.IsNullOrWhiteSpace(oldclasspath))
 			newclasspath = string.Join(ClassPathSeparator, oldclasspath, newclasspath);
 
 		SetEnvVar("CLASSPATH", newclasspath);
@@ -46,7 +52,7 @@ internal class JavaProcessArgumentBuilder : ProcessArgumentBuilder
 			oldOptions = null;
 
 		var newOptions = string.Join(" ", options);
-		if (oldOptions is null)
+		if (!string.IsNullOrWhiteSpace(oldOptions))
 			newOptions = string.Join(" ", oldOptions, newOptions);
 
 		SetEnvVar("JAVA_TOOL_OPTIONS", newOptions);
