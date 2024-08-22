@@ -4,7 +4,7 @@
 		<OutputType>Exe</OutputType>
 		<AssemblyName>android</AssemblyName>
 		<PackAsTool>true</PackAsTool>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFrameworks>net6.0;net8.0</TargetFrameworks>
 		<ToolCommandName>android</ToolCommandName>
 		<RollForward>Major</RollForward>
 	</PropertyGroup>
@@ -23,7 +23,7 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<DebugType>portable</DebugType>
-		<PackAsToolShimRuntimeIdentifiers>win-x64;win-x86;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64</PackAsToolShimRuntimeIdentifiers>
+		<!--<PackAsToolShimRuntimeIdentifiers>win-x64;win-x86;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64</PackAsToolShimRuntimeIdentifiers>-->
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' Or '$(TF_BUILD)' == 'true'">
@@ -31,17 +31,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-		<PackageReference Include="Spectre.Console.Cli" Version="0.46.0" />
-		<PackageReference Include="Spectre.Console" Version="0.46.0" />
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
+		<PackageReference Include="Spectre.Console" Version="0.49.1" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
 	</ItemGroup>
 	 
-	<PropertyGroup>
+	<!--<PropertyGroup>
 		<SigningTimestampServer>http://timestamp.entrust.net/TSS/RFC3161sha2TS</SigningTimestampServer>
 		<SignToolPath>C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe</SignToolPath>
 	</PropertyGroup>
@@ -56,6 +56,6 @@
 
 	<Target Name="NugetSignAfterPack" AfterTargets="Pack" Condition="'$(SigningCertificatePfxFile)' != ''">
 		<Exec Command="nuget sign $(PackageOutputAbsolutePath)\*.nupkg -CertificatePath $(SigningCertificatePfxFile) -Timestamper $(SigningTimestampServer)" />
-	</Target>
+	</Target>-->
 
 </Project>
