@@ -13,6 +13,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AndroidSdk.Adbd", "AndroidS
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AndroidSdk.Adbd.Tests", "AndroidSdk.Adbd.Tests\AndroidSdk.Adbd.Tests.csproj", "{61262BFD-2765-4574-A83C-87474C89D38A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{5A3A2587-3845-4F6F-9463-D5D35CFECE62}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\build-publish.yml = .github\workflows\build-publish.yml
+		.github\workflows\run.yml = .github\workflows\run.yml
+		.github\workflows\test.yml = .github\workflows\test.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
