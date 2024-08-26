@@ -5,7 +5,7 @@ namespace AndroidSdk
 {
 	public class JdkInfo
 	{
-		public JdkInfo(string javaCFile, string version)
+		public JdkInfo(string javaCFile, string version, bool setByEnvironmentVariable = false)
 		{
 			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
@@ -13,12 +13,15 @@ namespace AndroidSdk
 			Home = new DirectoryInfo(Path.Combine(JavaC.Directory.FullName, ".."));
 			Java = new FileInfo(Path.Combine(Home.FullName, "bin", "java" + (isWindows ? ".exe" : "")));
 			Version = version;
+			SetByEnvironmentVariable = setByEnvironmentVariable;
 		}
 
 		public FileInfo JavaC { get; private set; }
 		public FileInfo Java { get; private set; }
 
 		public DirectoryInfo Home { get; private set; }
+
+		public bool SetByEnvironmentVariable { get; private set; } = false;
 
 		public string Version { get; set; }
 	}
