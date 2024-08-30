@@ -36,7 +36,7 @@ namespace AndroidSdk
 				SearchDirectoryForJdks(paths, specificHome, true);
 			}
 
-			if (OperatingSystem.IsWindows()) {
+			if (IsWindows) {
 				// Try the registry entries known by the Xamarin SDK
 				var registryConfig = MonoDroidSdkLocator.ReadRegistry();
 				if (!string.IsNullOrEmpty(registryConfig.JavaJdkPath))

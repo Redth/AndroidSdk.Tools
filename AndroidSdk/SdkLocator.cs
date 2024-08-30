@@ -8,11 +8,14 @@ namespace AndroidSdk;
 
 public class SdkLocator : PathLocator
 {
+	protected bool IsWindows
+			=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
 	public override string[] PreferredPaths()
 	{
 		var paths = new List<string>();
 
-		if (OperatingSystem.IsWindows()) {
+		if (IsWindows) {
 			// Try the registry entries known by the Xamarin SDK
 			var registryConfig = MonoDroidSdkLocator.ReadRegistry();
 			if (!string.IsNullOrEmpty(registryConfig.AndroidSdkPath))

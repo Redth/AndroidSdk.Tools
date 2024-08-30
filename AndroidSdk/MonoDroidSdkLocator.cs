@@ -35,7 +35,7 @@ public static class MonoDroidSdkLocator
 			
 			return new MonoDroidSdkLocation(
 				doc.SelectSingleNode("//monodroid/android-sdk")?.Attributes?["path"]?.Value,
-				doc?.SelectSingleNode("//monodroid/java-sdk")?.Attributes?["path"]?.Value);
+				doc.SelectSingleNode("//monodroid/java-sdk")?.Attributes?["path"]?.Value);
 		}
 
 		return new MonoDroidSdkLocation();;
