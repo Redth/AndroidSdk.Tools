@@ -36,6 +36,20 @@ namespace AndroidSdk
 				SearchDirectoryForJdks(paths, specificHome, true);
 			}
 
+			if (OperatingSystem.IsWindows()) {
+				// Try the registry entries known by the Xamarin SDK
+				var registryConfig = MonoDroidSdkLocator.ReadRegistry();
+				if (!string.IsNullOrEmpty(registryConfig.JavaJdkPath))
+					SearchDirectoryForJdks(paths, registryConfig.JavaJdkPath, true);
+			}
+			else
+			{
+				// Try the monodroid-config.xml file known by the Xamarin SDK
+				var monodroidConfig = MonoDroidSdkLocator.ReadConfigFile();
+				if (!string.IsNullOrEmpty(monodroidConfig.JavaJdkPath))
+					SearchDirectoryForJdks(paths, monodroidConfig.JavaJdkPath, true);
+			}
+
 			if (IsWindows)
 			{
 				SearchDirectoryForJdks(paths,
