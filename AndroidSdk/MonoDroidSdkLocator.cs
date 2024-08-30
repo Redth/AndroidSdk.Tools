@@ -21,6 +21,29 @@ public static class MonoDroidSdkLocator
 	internal static bool IsWindows
 		=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
+	public static MonoDroidSdkLocation LocatePaths()
+		=> LocatePaths(false);
+
+	public static MonoDroidSdkLocation LocatePaths(bool forceUseMonoDroidConfigFileXml)
+		=> (!forceUseMonoDroidConfigFileXml && IsWindows)
+			? ReadRegistry()
+			: ReadConfigFile();
+
+
+	public static void UpdatePaths(MonoDroidSdkLocation location)
+		=> UpdatePaths(location, false);
+
+	public static void UpdatePaths(MonoDroidSdkLocation location, bool forceUseMonoDroidConfigFileXml)
+	{
+		if (!forceUseMonoDroidConfigFileXml && IsWindows)
+			WriteRegistry(location);
+		else
+			WriteConfigFile(location);
+	}
+
+	public static string MonoDroidConfigXmlFilename
+		=> Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "xbuild", "monodroid-config.xml");
+
 	/*
 	<?xml version="1.0" encoding="utf-8"?>
 	<monodroid>
@@ -31,7 +54,7 @@ public static class MonoDroidSdkLocator
 	public static MonoDroidSdkLocation ReadConfigFile()
 	{
 		// Load the XML file
-		var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "xbuild", "monodroid-config.xml");
+		var path = MonoDroidConfigXmlFilename;
 		if (File.Exists(path))
 		{
 			var doc = new System.Xml.XmlDocument();
@@ -48,47 +71,53 @@ public static class MonoDroidSdkLocator
 	public static void WriteConfigFile(MonoDroidSdkLocation location)
 	{
 		// Load the XML file
-		var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "xbuild", "monodroid-config.xml");
-		if (File.Exists(path))
+		var path = MonoDroidConfigXmlFilename;
+		if (!File.Exists(path))
 		{
-			var doc = new System.Xml.XmlDocument();
-			doc.Load(path);
+			var dir = Path.GetDirectoryName(path);
+			if (!Directory.Exists(dir))
+				Directory.CreateDirectory(dir);
 
-			var monodroidNode = doc.SelectSingleNode("//monodroid");
-			if (monodroidNode == null)
-			{
-				monodroidNode = doc.CreateElement("monodroid");
-				doc.AppendChild(monodroidNode);
-			}
-			
-			if (!string.IsNullOrEmpty(location.AndroidSdkPath))
-			{
-				var androidSdkNode = monodroidNode.SelectSingleNode("//monodroid/android-sdk");
-				if (androidSdkNode == null)
-				{
-					androidSdkNode = doc.CreateElement("android-sdk");
-					monodroidNode.AppendChild(androidSdkNode);
-				}
-				if (androidSdkNode.Attributes["path"] == null)
-					androidSdkNode.Attributes.Append(doc.CreateAttribute("path"));
-				androidSdkNode.Attributes["path"].Value = location.AndroidSdkPath;
-			}
-			
-			if (!string.IsNullOrEmpty(location.JavaJdkPath))
-			{
-				var javaSdkNode = doc.SelectSingleNode("//monodroid/java-sdk");
-				if (javaSdkNode == null)
-				{
-					javaSdkNode = doc.CreateElement("java-sdk");
-					monodroidNode.AppendChild(javaSdkNode);
-				}
-				if (javaSdkNode.Attributes["path"] == null)
-					javaSdkNode.Attributes.Append(doc.CreateAttribute("path"));
-				javaSdkNode.Attributes["path"].Value = location.JavaJdkPath;
-			}
-
-			doc.Save(path);
+			File.WriteAllText(path, "<?xml version=\"1.0\" encoding=\"utf-8\"?><monodroid></monodroid>");
 		}
+
+		var doc = new System.Xml.XmlDocument();
+		doc.Load(path);
+
+		var monodroidNode = doc.SelectSingleNode("//monodroid");
+		if (monodroidNode == null)
+		{
+			monodroidNode = doc.CreateElement("monodroid");
+			doc.AppendChild(monodroidNode);
+		}
+			
+		if (!string.IsNullOrEmpty(location.AndroidSdkPath))
+		{
+			var androidSdkNode = monodroidNode.SelectSingleNode("//monodroid/android-sdk");
+			if (androidSdkNode == null)
+			{
+				androidSdkNode = doc.CreateElement("android-sdk");
+				monodroidNode.AppendChild(androidSdkNode);
+			}
+			if (androidSdkNode.Attributes["path"] == null)
+				androidSdkNode.Attributes.Append(doc.CreateAttribute("path"));
+			androidSdkNode.Attributes["path"].Value = location.AndroidSdkPath;
+		}
+			
+		if (!string.IsNullOrEmpty(location.JavaJdkPath))
+		{
+			var javaSdkNode = doc.SelectSingleNode("//monodroid/java-sdk");
+			if (javaSdkNode == null)
+			{
+				javaSdkNode = doc.CreateElement("java-sdk");
+				monodroidNode.AppendChild(javaSdkNode);
+			}
+			if (javaSdkNode.Attributes["path"] == null)
+				javaSdkNode.Attributes.Append(doc.CreateAttribute("path"));
+			javaSdkNode.Attributes["path"].Value = location.JavaJdkPath;
+		}
+
+		doc.Save(path);
 	}
 
 	public static MonoDroidSdkLocation ReadRegistry()
@@ -115,6 +144,8 @@ public static class MonoDroidSdkLocator
 				androidSdkPath = key?.GetValue("AndroidSdkDirectory") as string;
 			if (string.IsNullOrEmpty(javaJdkPath))
 				javaJdkPath = key?.GetValue("JavaSdkDirectory") as string;
+
+			key?.Close();
 		}
 		
 		return new MonoDroidSdkLocation(androidSdkPath, javaJdkPath);
@@ -137,14 +168,15 @@ public static class MonoDroidSdkLocator
 		foreach (var registryPath in registryPaths)
 		{
 			// Open or create the registry key under HKCU (HKEY_CURRENT_USER)
-			using var key = Registry.CurrentUser.OpenSubKey(registryPath)
-				?? Registry.CurrentUser.CreateSubKey(registryPath);
+			using var key = Registry.CurrentUser.CreateSubKey(registryPath);
 
 			// Only set if we didn't get one yet
 			if (!string.IsNullOrEmpty(location.AndroidSdkPath))
 				key?.SetValue("AndroidSdkDirectory", location.AndroidSdkPath);
 			if (!string.IsNullOrEmpty(location.JavaJdkPath))
 				key?.SetValue("JavaSdkDirectory", location.JavaJdkPath);
+
+			key?.Close();
 		}
 	}
 }
