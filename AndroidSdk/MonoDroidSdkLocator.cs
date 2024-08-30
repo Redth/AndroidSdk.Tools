@@ -1,6 +1,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 public class MonoDroidSdkLocation
@@ -17,6 +18,9 @@ public class MonoDroidSdkLocation
 
 public static class MonoDroidSdkLocator
 {
+	internal static bool IsWindows
+		=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
 	/*
 	<?xml version="1.0" encoding="utf-8"?>
 	<monodroid>
@@ -89,7 +93,7 @@ public static class MonoDroidSdkLocator
 
 	public static MonoDroidSdkLocation ReadRegistry()
 	{
-		if (!OperatingSystem.IsWindows())
+		if (!IsWindows)
 			return new MonoDroidSdkLocation();
 
 		// Define the registry key path
@@ -118,7 +122,7 @@ public static class MonoDroidSdkLocator
 
 	public static void WriteRegistry(MonoDroidSdkLocation location)
 	{
-		if (!OperatingSystem.IsWindows())
+		if (!IsWindows)
 			return;
 
 		if (string.IsNullOrEmpty(location.AndroidSdkPath) && string.IsNullOrEmpty(location.JavaJdkPath))
