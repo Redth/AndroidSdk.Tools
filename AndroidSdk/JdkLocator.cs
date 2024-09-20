@@ -73,16 +73,13 @@ namespace AndroidSdk
 			}
 			else if (IsMac)
 			{
-				var ms11Dir = Path.Combine("/Library", "Java", "JavaVirtualMachines", "microsoft-11.jdk", "Contents", "Home");
-				SearchDirectoryForJdks(paths, ms11Dir, true);
-
 				var msDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "Xamarin", "jdk");
 				SearchDirectoryForJdks(paths, msDir, true);
 
 				// /Library/Java/JavaVirtualMachines/
 				try
 				{
-					var javaVmDir = Path.Combine("Library", "Java", "JavaVirtualMachines");
+					var javaVmDir = Path.Combine("/", "Library", "Java", "JavaVirtualMachines");
 
 					if (Directory.Exists(javaVmDir))
 					{
