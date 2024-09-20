@@ -53,10 +53,12 @@ jobs:
         uses: actions/download-artifact@v4.1.7
         with:
           name: NuGet
+      - name: Display structure of downloaded files
+        run: ls -R
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x'
       - name: Push NuGet
         run: |
-          dotnet nuget push NuGet\*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}
+          dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}
