@@ -40,14 +40,14 @@ namespace AndroidSdk
 				// Try the registry entries known by the Xamarin SDK
 				var registryConfig = MonoDroidSdkLocator.ReadRegistry();
 				if (!string.IsNullOrEmpty(registryConfig.JavaJdkPath))
-					SearchDirectoryForJdks(paths, registryConfig.JavaJdkPath, true);
+					SearchDirectoryForJdks(paths, registryConfig.JavaJdkPath, true, preferredByDotNet: true);
 			}
 			else
 			{
 				// Try the monodroid-config.xml file known by the Xamarin SDK
 				var monodroidConfig = MonoDroidSdkLocator.ReadConfigFile();
 				if (!string.IsNullOrEmpty(monodroidConfig.JavaJdkPath))
-					SearchDirectoryForJdks(paths, monodroidConfig.JavaJdkPath, true);
+					SearchDirectoryForJdks(paths, monodroidConfig.JavaJdkPath, true, preferredByDotNet: true);
 			}
 
 			if (IsWindows)
@@ -131,7 +131,7 @@ namespace AndroidSdk
 				.Select(g => g.First());
 		}
 
-		void SearchDirectoryForJdks(IList<JdkInfo> found, string directory, bool recursive = true, bool setByEnvironmentVariable = false)
+		void SearchDirectoryForJdks(IList<JdkInfo> found, string directory, bool recursive = true, bool setByEnvironmentVariable = false, bool preferredByDotNet = false)
 		{
 			if (string.IsNullOrEmpty(directory))
 				return;
@@ -144,7 +144,7 @@ namespace AndroidSdk
 
 				foreach (var file in files)
 				{
-					if (!found.Any(f => f.JavaC.FullName.Equals(file.FullName)) && TryGetJavaJdkInfo(file.FullName, setByEnvironmentVariable, out var jdkInfo) && jdkInfo is not null)
+					if (!found.Any(f => f.JavaC.FullName.Equals(file.FullName)) && TryGetJavaJdkInfo(file.FullName, setByEnvironmentVariable, preferredByDotNet, out var jdkInfo) && jdkInfo is not null)
 						found.Add(jdkInfo);
 				}
 			}
@@ -152,7 +152,7 @@ namespace AndroidSdk
 
 		static readonly Regex rxJavaCVersion = new Regex("[0-9\\.\\-_]+", RegexOptions.Singleline);
 
-		bool TryGetJavaJdkInfo(string javacFilename, bool setByEnvironmentVariable, out JdkInfo? javaJdkInfo)
+		bool TryGetJavaJdkInfo(string javacFilename, bool setByEnvironmentVariable, bool preferredByDotNet, out JdkInfo? javaJdkInfo)
 		{
 			var args = new ProcessArgumentBuilder();
 			args.Append("-version");
@@ -166,7 +166,7 @@ namespace AndroidSdk
 
 			if (!string.IsNullOrEmpty(v))
 			{
-				javaJdkInfo = new JdkInfo(javacFilename, v, setByEnvironmentVariable);
+				javaJdkInfo = new JdkInfo(javacFilename, v, setByEnvironmentVariable, preferredByDotNet);
 				return true;
 			}
 
