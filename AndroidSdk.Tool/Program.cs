@@ -38,6 +38,12 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "sdk", "info" });
 				});
 
+				config.AddBranch("jdk", jdkBranch => {
+					jdkBranch.AddCommand<JdkListCommand>("list")
+						.WithDescription("Searches for and lists JDK locations")
+						.WithExample([ "jdk", "list" ]);
+				});
+
 				config.AddBranch("device", sdkBranch =>
 				{
 					sdkBranch.AddCommand<DevicesListCommand>("list")
