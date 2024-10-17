@@ -27,13 +27,33 @@ namespace AndroidSdk
 			return jdks?.Select(j => j.Home)?.ToList() ?? new List<DirectoryInfo>();
 		}
 
-		public IEnumerable<JdkInfo> LocateJdk(string? specificHome = null, params string[]? additionalPossibleDirectories)
+		public IEnumerable<JdkInfo> LocateJdk(string? specificHome = null,
+			params string[]? additionalPossibleDirectories)
+			=> LocateJdk(specificHome, false, additionalPossibleDirectories);
+		
+		public IEnumerable<JdkInfo> LocateJdk(string? specificHome, bool returnOnlySpecified = false, params string[]? additionalPossibleDirectories)
 		{
 			var paths = new List<JdkInfo>();
 
 			if (specificHome != null)
 			{
 				SearchDirectoryForJdks(paths, specificHome, true);
+
+				if (returnOnlySpecified)
+				{
+					// We search additional paths later again if we aren't only returning specified possibilities
+					// Otherwise, we may check these additional paths here first too
+					if (additionalPossibleDirectories != null && additionalPossibleDirectories.Any())
+					{
+						foreach (var d in additionalPossibleDirectories)
+						{
+							SearchDirectoryForJdks(paths, d, true);
+						}
+					}
+
+					// If only returning specified, we should not search any further
+					return paths;
+				}
 			}
 
 			if (IsWindows) {

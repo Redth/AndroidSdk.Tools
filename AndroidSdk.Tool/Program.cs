@@ -36,12 +36,20 @@ namespace AndroidSdk.Tool
 					sdkBranch.AddCommand<SdkInfoCommand>("info")
 						.WithDescription("Android SDK Info")
 						.WithExample(new[] { "sdk", "info" });
+					
+					sdkBranch.AddCommand<SdkInfoCommand>("dotnet-prefer")
+						.WithDescription("Sets the DotNet (.NET) preferred SDK location")
+						.WithExample(new[] { "sdk", "dotnet-prefer", "--home /path/to/androidsdk" });
 				});
 
 				config.AddBranch("jdk", jdkBranch => {
 					jdkBranch.AddCommand<JdkListCommand>("list")
 						.WithDescription("Searches for and lists JDK locations")
 						.WithExample([ "jdk", "list" ]);
+					
+					jdkBranch.AddCommand<JdkDotNetPreferCommand>("dotnet-prefer")
+						.WithDescription("Sets the DotNet (.NET) preferred JDK location")
+						.WithExample([ "jdk", "dotnet-prefer", "--home /path/to/jdk" ]);
 				});
 
 				config.AddBranch("device", sdkBranch =>
