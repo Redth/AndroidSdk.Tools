@@ -1,4 +1,5 @@
-﻿using Spectre.Console;
+﻿using System;
+using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -25,6 +26,8 @@ namespace AndroidSdk.Tool
         public string Version { get; set; }
         public bool IsUpToDate { get; set; }
         public string Channel { get; set; }
+        
+        public bool DotNetPreferred { get; set; }
     }
 
     public class SdkInfoCommand : Command<SdkInfoCommandSettings>
@@ -33,14 +36,21 @@ namespace AndroidSdk.Tool
         {
             try
             {
+	            var dotnetPreferredPaths = MonoDroidSdkLocator.LocatePaths();
+	            
                 var m = new AndroidSdk.SdkManager(settings?.Home);
                 m.SkipVersionCheck = true;
 
+                var sep = System.IO.Path.PathSeparator;
+                
                 var result = new SdkInfoResult();
-                result.Path = m.AndroidSdkHome.FullName;
-                result.Version = m.GetVersion().ToString();
+                result.Path = m.AndroidSdkHome?.FullName;
+                result.Version = m.GetVersion()?.ToString();
                 result.IsUpToDate= m.IsUpToDate();
                 result.Channel = m.Channel.ToString();
+                result.DotNetPreferred = OperatingSystem.IsWindows()
+					? m.AndroidSdkHome?.FullName.TrimEnd(sep).Equals(dotnetPreferredPaths.AndroidSdkPath?.TrimEnd(sep)) ?? false
+					: m.AndroidSdkHome?.FullName.ToLower().TrimEnd(sep).Equals(dotnetPreferredPaths.AndroidSdkPath?.ToLower()?.TrimEnd(sep)) ?? false;
 
                 var jdks = m.Jdks;
 
@@ -52,8 +62,8 @@ namespace AndroidSdk.Tool
 
                     OutputHelper.OutputObject<SdkInfoResult>(
                         result,
-                        new[] { "Path", "Version", "IsUpToDate", "Channel" },
-                        i => new[] { i.Path, i.Version, i.IsUpToDate.ToString(), i.Channel});
+                        new[] { "Path", "Version", "IsUpToDate", "Channel", "DotNetPreferred" },
+                        i => new[] { i.Path, i.Version, i.IsUpToDate.ToString(), i.Channel, i.DotNetPreferred.ToString() });
 
 
                     if (jdks is not null && jdks.Length > 0)
