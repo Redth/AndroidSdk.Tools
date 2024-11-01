@@ -108,7 +108,7 @@ namespace AndroidSdk
 							SearchDirectoryForJdks(paths, javaVmDir, true);
 
 						javaVmJdkDirs = Directory.EnumerateDirectories(javaVmDir, "jdk-*", SearchOption.TopDirectoryOnly);
-						foreach (var javaVmJdkDir in javaVmJdkDirs)
+						 foreach (var javaVmJdkDir in javaVmJdkDirs)
 							SearchDirectoryForJdks(paths, javaVmDir, true);
 					}
 				}
