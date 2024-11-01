@@ -33,20 +33,31 @@ namespace AndroidSdk.Tool
 						.WithDescription("Downloads a new copy of the Android SDK cmdline-tools")
 						.WithExample(new[] { "sdk", "download", "--home /path/to/sdk" })
 						.WithExample(new[] { "sdk", "download", "--home /path/to/sdk", "--force" });
+					
 					sdkBranch.AddCommand<SdkInfoCommand>("info")
 						.WithDescription("Android SDK Info")
 						.WithExample(new[] { "sdk", "info" });
+
 					
 					sdkBranch.AddCommand<SdkInfoCommand>("dotnet-prefer")
 						.WithDescription("Sets the DotNet (.NET) preferred SDK location")
 						.WithExample(new[] { "sdk", "dotnet-prefer", "--home /path/to/androidsdk" });
+
+					sdkBranch.AddCommand<SdkFindCommand>("find")
+						.WithDescription("Searches for and returns the ANDROID_HOME path to best matching Android SDK")
+						.WithExample(new[] { "sdk", "find" });
 				});
 
 				config.AddBranch("jdk", jdkBranch => {
 					jdkBranch.AddCommand<JdkListCommand>("list")
 						.WithDescription("Searches for and lists JDK locations")
 						.WithExample([ "jdk", "list" ]);
-					
+
+					jdkBranch.AddCommand<JdkFindHomeCommand>("find")
+						.WithDescription("Searches for and returns the JAVA_HOME path to best matching JDK")
+						.WithExample(["jdk", "find"])
+						.WithExample(["jdk", "find", "--version 17"]);
+
 					jdkBranch.AddCommand<JdkDotNetPreferCommand>("dotnet-prefer")
 						.WithDescription("Sets the DotNet (.NET) preferred JDK location")
 						.WithExample([ "jdk", "dotnet-prefer", "--home /path/to/jdk" ]);
