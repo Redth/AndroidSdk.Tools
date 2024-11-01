@@ -81,7 +81,15 @@ namespace AndroidSdk.Tool
                 }
                 else
                 {
-                    var objr = new { SdkInfo = result, Jdks = jdks };
+                    var objr = new { SdkInfo = result, Jdks = (jdks ?? []).Select(j => new
+                    {
+	                    Version = j.Version.ToString(),
+	                    Path = j.Home.FullName,
+	                    JavaPath = j.Java.FullName,
+	                    JavaCPath = j.JavaC.FullName,
+	                    DotNetPreferred = j.PreferredByDotNet,
+	                    SetByEnvironmentVariable = j.SetByEnvironmentVariable,
+                    }) };
                     OutputHelper.Output(objr, settings.Format);
                 }
 
