@@ -30,7 +30,11 @@ jobs:
     - name: Create AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
     - name: Enabling more cores
-      run: printf 'hw.cpu.ncore=2\n' >> /home/runner/.android/avd/config.ini
+      run: |
+        ls -l /home/runner/
+        ls -l /home/runner/.android/
+        ls -l /home/runner/avd/
+        printf 'hw.cpu.ncore=2\n' >> /home/runner/.android/avd/config.ini
     - name: Start AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
     - name: Prove that it booted
