@@ -26,9 +26,15 @@ jobs:
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
     - name: Install Packages
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+      run: |
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+      run: |
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
     - name: Enabling more cores
       run: |
         ls -la /home/runner
