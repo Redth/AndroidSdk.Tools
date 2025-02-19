@@ -33,7 +33,7 @@ jobs:
       run: |
         ls -l /home/runner/
         ls -l /home/runner/.android/
-        ls -l /home/runner/avd/
+        ls -l /home/runner/.android/avd/
         printf 'hw.cpu.ncore=2\n' >> /home/runner/.android/avd/config.ini
     - name: Start AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
