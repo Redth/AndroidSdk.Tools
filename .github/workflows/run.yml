@@ -36,14 +36,14 @@ jobs:
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
       run: |
+        unset XDG_CONFIG_HOME
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
-        ANDROID_AVD_HOME=$HOME/.android/avd dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
     - name: Enabling more cores
       run: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
     - name: Start AVD
-      run: |
-        ANDROID_AVD_HOME=$HOME/.android/avd dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
+      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
     - name: Prove that it booted
       run: |
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- device list
@@ -54,4 +54,5 @@ jobs:
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
       run: |
-        ANDROID_AVD_HOME=$HOME/.android/avd dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
+        unset XDG_CONFIG_HOME
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
