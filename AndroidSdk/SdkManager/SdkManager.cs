@@ -79,12 +79,9 @@ namespace AndroidSdk
 
 			if (cmdlineToolsPath.Exists)
 			{
-				// The custom comparer will make sure that the version named
-				// "latest" is treated as the latest version as well as make sure
-				// that "11.0" comes after "7.0".
-				var dirs = cmdlineToolsPath.GetDirectories()
-					.OrderBy(d => d.Name, CmdLineToolsVersionComparer.Default)
-					.ToList();
+				// Sort the directories by version, first using the version in the source.properties
+				// file, then by the directory name.
+				var dirs = CmdLineToolsVersionComparer.Default.GetSortedDirectories(cmdlineToolsPath);
 				foreach (var dir in dirs)
 				{
 					var toolPath = new FileInfo(Path.Combine(dir.FullName, "bin", "sdkmanager" + ext));
@@ -715,17 +712,68 @@ namespace AndroidSdk
 				? path
 				: path + Path.DirectorySeparatorChar;
 
-		internal class CmdLineToolsVersionComparer : IComparer<string>
+		internal class CmdLineToolsVersionComparer : IComparer<DirectoryInfo>
 		{
+			private const string SourcePropertiesFilename = "source.properties";
+			private const string PkgRevisionPrefix = "Pkg.Revision=";
+
 			public static CmdLineToolsVersionComparer Default { get; } = new CmdLineToolsVersionComparer();
 
-			public int Compare(string? x, string? y)
+			public int Compare(DirectoryInfo? x, DirectoryInfo? y)
 			{
-				if (!Version.TryParse(x, out var vX))
+				var hasX = TryParseVersion(x, out var vX);
+				var hasY = TryParseVersion(y, out var vY);
+
+				if (!hasX && !hasY)
+					return 0;
+				else if (!hasX)
 					return 1;
-				if (!Version.TryParse(y, out var vY))
+				else if (!hasY)
 					return -1;
-				return vX.CompareTo(vY);
+				else
+					return vX!.CompareTo(vY);
+			}
+
+			private static bool TryParseVersion(DirectoryInfo? dir, out Version? version)
+			{
+				if (dir is null)
+				{
+					version = null;
+					return false;
+				}
+
+				// first look for the version in the source.properties file
+				var sourceProperties = new FileInfo(Path.Combine(dir.FullName, SourcePropertiesFilename));
+				if (sourceProperties.Exists)
+				{
+					using var stream = sourceProperties.OpenRead();
+					using var reader = new StreamReader(stream);
+					string? line;
+					while ((line = reader.ReadLine()) is not null)
+					{
+						if (line.StartsWith(PkgRevisionPrefix, StringComparison.OrdinalIgnoreCase))
+						{
+							var revision = line.Substring(PkgRevisionPrefix.Length).Trim();
+							if (Version.TryParse(revision, out var v))
+							{
+								version = v;
+								return true;
+							}
+						}
+					}
+				}
+
+				// if we didn't find the version in the source.properties file, use the directory name
+				return Version.TryParse(dir.Name, out version);
+			}
+
+			public DirectoryInfo[] GetSortedDirectories(DirectoryInfo cmdlineToolsPath)
+			{
+				var dirs = cmdlineToolsPath.GetDirectories();
+
+				Array.Sort(dirs, CmdLineToolsVersionComparer.Default);
+
+				return dirs;
 			}
 		}
 	}
