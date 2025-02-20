@@ -27,9 +27,10 @@ jobs:
         sudo udevadm trigger --name-match=kvm
     - name: Build the project
       run: dotnet build AndroidSdk.Tool
+    - name: Print SDK information
+      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
     - name: Install Packages
       run: |
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
@@ -42,6 +43,9 @@ jobs:
     - name: Enabling more cores
       run: |
         ls -la /home/runner
+        ls -la /home/runner/.config
+        ls -la /home/runner/.config/.android
+        ls -la /home/runner/.config/.android/avd
         printf 'hw.cpu.ncore=2\n' >> /home/runner/.android/avd/config.ini
     - name: Start AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
