@@ -29,7 +29,7 @@ jobs:
       run: dotnet build AndroidSdk.Tool
     # Set ANDROID_SDK_HOME to a consistent location because the AVD manager respects the XDG_CONFIG_HOME
     # but the emulator does not and fails.
-    - name: Set the ANDROID_SDK_HOME if it is not set to ~/.android
+    - name: Set the ANDROID_SDK_HOME envvar to '~/.android' if it is not already set
       run: |
         if [ -z "$ANDROID_SDK_HOME" ]; then
           echo "ANDROID_SDK_HOME=$HOME/.android" >> $GITHUB_ENV
