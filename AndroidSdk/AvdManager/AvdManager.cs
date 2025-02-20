@@ -187,7 +187,7 @@ namespace AndroidSdk
 			return r;
 		}
 
-		static Regex rxListAvds = new Regex(@"\s+Name:\s+(?<name>[^\n]+)\s+Device:\s+(?<device>[^\n]+)\s+Path:\s+(?<path>[^\n]+)\s+Target:\s+(?<target>[^\n]+)\s+Based on:\s+(?<basedon>[^\n]+)", RegexOptions.Compiled | RegexOptions.Multiline);
+		static Regex rxListAvds = new Regex(@"\s+Name:\s+(?<name>[^\n]+)(\s+Device:\s+(?<device>[^\n]+))?\s+Path:\s+(?<path>[^\n]+)\s+Target:\s+(?<target>[^\n]+)\s+Based on:\s+(?<basedon>[^\n]+)", RegexOptions.Compiled | RegexOptions.Multiline);
 		public IEnumerable<Avd> ListAvds()
 		{
 			var r = new List<Avd>();

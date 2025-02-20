@@ -10,21 +10,38 @@ namespace AndroidSdk
 	{
 		public override string[] PreferredPaths()
 		{
-			var paths = new List<string>
-			{
-				Environment.GetEnvironmentVariable("ANDROID_AVD_ROOT"),
-				Environment.GetEnvironmentVariable("ANDROID_AVD_HOME"),
-			};
+			var paths = new List<string>();
 
-			var prefsRoot = Environment.GetEnvironmentVariable("ANDROID_PREFS_ROOT");
-			if (IsValidDirectoryPath(prefsRoot))
-				paths.Add(Path.Combine(prefsRoot, ".android"));
+			TryAddPath("ANDROID_AVD_ROOT");
+			TryAddPath("ANDROID_AVD_HOME");
+
+			// Paths taken from computeAndroidFolder() in com\android\prefs\AbstractAndroidLocations.kt
+			// See https://github.com/jrodbx/agp-sources/blob/ed83b73500e037a15bfda72c8f72a77984b03ebb/8.7.2/com.android.tools/common/com/android/prefs/AbstractAndroidLocations.kt#L141
+			TryAddPath("ANDROID_USER_HOME", "avd");
+			TryAddPath("ANDROID_PREFS_ROOT", "avd"); // obsolete
+			TryAddPath("ANDROID_SDK_HOME", "avd"); // obsolete
+			TryAddPath("TEST_TMPDIR", ".android", "avd"); // should never be used
+			TryAddPath("XDG_CONFIG_HOME", ".android", "avd");
+			TryAddPath("HOME", ".android", "avd");
 
 			paths.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android", "avd"));
 
 			return paths.ToArray();
-		}
 
+			void TryAddPath(string envvarName, string? suffix1 = null, string? suffix2 = null)
+			{
+				var envvar = Environment.GetEnvironmentVariable(envvarName);
+				if (!IsValidDirectoryPath(envvar))
+					return;
+
+				if (string.IsNullOrEmpty(suffix1))
+					paths.Add(envvar);
+				else if (string.IsNullOrEmpty(suffix2))
+					paths.Add(Path.Combine(envvar, suffix1));
+				else
+					paths.Add(Path.Combine(envvar, suffix1, suffix2));
+			}
+		}
 
 		public IReadOnlyList<AvdInfo> ListAvds(string? specificHome)
 		{
