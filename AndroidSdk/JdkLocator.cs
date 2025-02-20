@@ -129,7 +129,7 @@ namespace AndroidSdk
 			}
 
 
-			var environmentPaths = Environment.GetEnvironmentVariable("PATH")?.Split(';') ?? Array.Empty<string>();
+			var environmentPaths = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? Array.Empty<string>();
 
 			foreach (var envPath in environmentPaths)
 			{

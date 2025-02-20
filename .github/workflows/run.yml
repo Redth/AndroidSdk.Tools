@@ -25,12 +25,23 @@ jobs:
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
+    - name: Build the project
+      run: dotnet build AndroidSdk.Tool
+    - name: Print SDK information
+      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
     - name: Install Packages
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+      run: |
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+      run: |
+        unset XDG_CONFIG_HOME
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
     - name: Enabling more cores
-      run: printf 'hw.cpu.ncore=2\n' >> /home/runner/.android/avd/config.ini
+      run: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
     - name: Start AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
     - name: Prove that it booted
@@ -42,4 +53,6 @@ jobs:
     - name: Uninstall an app
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
+      run: |
+        unset XDG_CONFIG_HOME
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test

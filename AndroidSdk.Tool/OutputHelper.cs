@@ -70,7 +70,7 @@ namespace AndroidSdk.Tool
 			for (int i = 0; i < properties.Length; i++)
 			{
 				var name = properties[i];
-				var val = values[i];
+				var val = values[i] ?? "";
 
 				table.AddRow(name, val);
 			}
