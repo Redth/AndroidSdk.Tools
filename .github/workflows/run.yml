@@ -36,7 +36,6 @@ jobs:
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
       run: |
-        env
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
