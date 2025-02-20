@@ -53,4 +53,6 @@ jobs:
     - name: Uninstall an app
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
+      run: |
+        unset XDG_CONFIG_HOME
+        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
