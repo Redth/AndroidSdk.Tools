@@ -27,13 +27,6 @@ jobs:
         sudo udevadm trigger --name-match=kvm
     - name: Build the project
       run: dotnet build AndroidSdk.Tool
-    # Set ANDROID_AVD_HOME to a consistent location because the AVD manager respects the XDG_CONFIG_HOME
-    # but the emulator does not and fails.
-    - name: Set the ANDROID_AVD_HOME envvar to '~/.android/avd' if it is not already set
-      run: |
-        if [ -z "$ANDROID_AVD_HOME" ]; then
-          echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> $GITHUB_ENV
-        fi
     - name: Print SDK information
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
     - name: Install Packages
@@ -43,11 +36,12 @@ jobs:
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
       run: |
+        unset XDG_CONFIG_HOME
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
     - name: Enabling more cores
-      run: printf 'hw.cpu.ncore=2\n' >> $ANDROID_AVD_HOME/config.ini
+      run: printf 'hw.cpu.ncore=2\n' >> ~/.android/config.ini
     - name: Start AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
     - name: Prove that it booted
