@@ -47,8 +47,7 @@ jobs:
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
         dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
     - name: Enabling more cores
-      run: |
-        printf 'hw.cpu.ncore=2\n' >> $ANDROID_SDK_HOME/avd/config.ini
+      run: printf 'hw.cpu.ncore=2\n' >> $ANDROID_SDK_HOME/avd/config.ini
     - name: Start AVD
       run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
     - name: Prove that it booted
