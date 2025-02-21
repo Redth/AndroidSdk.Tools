@@ -21,6 +21,7 @@ steps:
     sudo udevadm trigger --name-match=kvm
     echo "Done."
   displayName: Enable KVM
+  failOnStderr: true
 
 - task: UseDotNet@2
   displayName: Setup .NET
@@ -37,15 +38,18 @@ steps:
 
 - bash: dotnet build AndroidSdk.Tool
   displayName: Build the project
+  failOnStderr: true
 
 - bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
   displayName: Print SDK information
+  failOnStderr: true
 
 - bash: |
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
   displayName: Install Packages
+  failOnStderr: true
 
 - bash: |
     unset XDG_CONFIG_HOME
@@ -53,25 +57,32 @@ steps:
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
   displayName: Create AVD
+  failOnStderr: true
 
 - bash: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
   displayName: Enabling more cores
+  failOnStderr: true
 
 - bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
   displayName: Start AVD
+  failOnStderr: true
 
 - bash: |
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- device list
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- device info
   displayName: Prove that it booted
+  failOnStderr: true
 
 - bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
   displayName: Install an app
+  failOnStderr: true
 
 - bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
   displayName: Uninstall an app
+  failOnStderr: true
 
 - bash: |
     unset XDG_CONFIG_HOME
     dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
   displayName: Delete AVD
+  failOnStderr: true
