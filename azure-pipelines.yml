@@ -17,26 +17,23 @@ steps:
     sudo apt update
     sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
     
-    id
-    groups
+    # id
+    # groups
 
-    sudo usermod -aG kvm,libvirt $USER
+    # sudo usermod -aG kvm,libvirt $USER
 
     sudo service libvirtd restart
     service libvirtd status
     
-    sudo -E bash -c 'exec su -l '$USER
+    # sudo -E bash -c 'exec su -l '$USER
 
+    # id
+    # groups
+
+    sudo useradd test1
+    sudo usermod -a -G libvirt test1
+    sudo -E bash -c 'exec su -l 'test1
     id
-    groups
-
-    # $ sudo useradd test1
-    # $ sudo usermod -a -G libvirt test1
-    # $ sudo -E bash -c 'exec su -l 'test1
-    # su: warning: cannot change directory to /home/test1: No such file or directory
-    # $ id
-    # uid=1002(test1) gid=1002(test1) groups=1002(test1),135(libvirt)
-    # $ 
 
     echo "Setting rules..."
     echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
