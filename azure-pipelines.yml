@@ -22,6 +22,7 @@ steps:
   displayName: Setup JDK
   inputs:
     versionSpec: '21'
+    jdkArchitectureOption: x64
     jdkSourceOption: 'PreInstalled'
 
 - bash: |
