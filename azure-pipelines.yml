@@ -13,6 +13,10 @@ steps:
   displayName: Checkout
 
 - bash: |
+    grep -E 'vmx|svm' /proc/cpuinfo
+    sudo apt update
+    sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
+    
     echo "Setting rules..."
     echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
     echo "Running udevadm control..."
