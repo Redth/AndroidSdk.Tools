@@ -24,7 +24,7 @@ steps:
     sudo service libvirtd restart
     service libvirtd status
     
-    sudo -E bash -c 'exec su -l `id -un`'
+    sudo -E bash -c 'exec su -l '`id -un`
     id
     groups
 
