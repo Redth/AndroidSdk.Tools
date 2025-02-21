@@ -20,19 +20,19 @@ steps:
     # id
     # groups
 
-    # sudo usermod -aG kvm,libvirt $USER
+    sudo usermod -aG kvm,libvirt $USER
 
     sudo service libvirtd restart
     service libvirtd status
     
-    # sudo -E bash -c 'exec su -l '$USER
+    sudo -E bash -c "exec su -l $USER -c 'id ; exit'"
 
     # id
     # groups
 
-    sudo useradd test1
-    sudo usermod -a -G libvirt,kvm test1
-    sudo -E bash -c 'exec su -l test1 -c exit'
+    # sudo useradd test1
+    # sudo usermod -a -G libvirt,kvm test1
+    # sudo -E bash -c 'exec su -l test1 -c exit'
 
     # echo "Setting rules..."
     # echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
