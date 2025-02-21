@@ -1,0 +1,72 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+
+- checkout: self
+  displayName: Checkout
+
+- task: UseDotNet@2
+  displayName: Setup .NET
+  inputs:
+    packageType: 'sdk'
+    version: '8.0.x'
+
+- task: JavaToolInstaller@1
+  displayName: Setup JDK
+  inputs:
+    versionSpec: '21'
+    jdkSourceOption: 'PreInstalled'
+
+- bash: |
+    echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger --name-match=kvm
+  displayName: Enable KVM
+
+- bash: dotnet build AndroidSdk.Tool
+  displayName: Build the project
+
+- bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
+  displayName: Print SDK information
+
+- bash: |
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
+  displayName: Install Packages
+
+- bash: |
+    unset XDG_CONFIG_HOME
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
+  displayName: Create AVD
+
+- bash: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
+  displayName: Enabling more cores
+
+- bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
+  displayName: Start AVD
+
+- bash: |
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- device list
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- device info
+  displayName: Prove that it booted
+
+- bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+  displayName: Install an app
+
+- bash: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+  displayName: Uninstall an app
+
+- bash: |
+    unset XDG_CONFIG_HOME
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
+  displayName: Delete AVD
