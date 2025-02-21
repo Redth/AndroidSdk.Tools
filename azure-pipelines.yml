@@ -20,11 +20,13 @@ steps:
     id
     groups
 
-    sudo usermod -aG kvm,libvirt `id -un`
+    sudo usermod -aG kvm,libvirt $USER
+
     sudo service libvirtd restart
     service libvirtd status
     
-    sudo -E bash -c 'exec su -l '`id -un`
+    sudo -E bash -c 'exec su -l '$USER
+
     id
     groups
 
