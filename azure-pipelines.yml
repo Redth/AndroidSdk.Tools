@@ -35,11 +35,11 @@ steps:
     # sudo -E bash -c 'exec su -l test1 -c exit'
 
     # echo "Setting rules..."
-    # echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+    echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
     # echo "Running udevadm control..."
-    # sudo -E bash -c 'exec su -l test1 -c sudo udevadm control --reload-rules '
+    sudo -E bash -c "exec su -l $USER -c 'udevadm control --reload-rules ; exit'"
     # echo "Running udevadm trigger..."
-    # sudo udevadm trigger --name-match=kvm
+    sudo -E bash -c "exec su -l $USER -c 'udevadm trigger --name-match=kvm ; exit'"
     # echo "Done."
   displayName: Enable KVM
   # failOnStderr: true
@@ -85,7 +85,7 @@ steps:
   failOnStderr: true
 
 - bash: |
-    sudo -E bash -c 'exec su -l test1 -c "dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait"'
+    sudo -E bash -c "exec su -l $USER -c 'dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait; exit'"
 
   displayName: Start AVD
   failOnStderr: true
