@@ -42,7 +42,7 @@ steps:
     # sudo udevadm trigger --name-match=kvm
     # echo "Done."
   displayName: Enable KVM
-  failOnStderr: true
+  # failOnStderr: true
 
 - task: UseDotNet@2
   displayName: Setup .NET
