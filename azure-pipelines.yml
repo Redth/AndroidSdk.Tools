@@ -31,7 +31,7 @@ steps:
     # groups
 
     sudo useradd test1
-    sudo usermod -a -G libvirt test1
+    sudo usermod -a -G libvirt,kvm test1
     sudo -E bash -c 'exec su -l 'test1
     id
 
