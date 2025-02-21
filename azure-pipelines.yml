@@ -30,6 +30,7 @@ steps:
     sudo udevadm control --reload-rules
     sudo udevadm trigger --name-match=kvm
   displayName: Enable KVM
+  condition: false
 
 - bash: dotnet build AndroidSdk.Tool
   displayName: Build the project
