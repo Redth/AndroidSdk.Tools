@@ -6,9 +6,11 @@ strategy:
     linux:
       poolName: learning-pool-2
       imageName: ubuntu-22.04
+      emuGpu: swiftshader_indirect
     mac:
       poolName: Azure Pipelines
       imageName: macos-14
+      emuGpu: guest
 
 pool:
   name: $(poolName)
@@ -19,15 +21,13 @@ steps:
 - checkout: self
   displayName: Checkout
 
-- bash: env
-
 - bash: |
     echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
     sudo udevadm control --reload-rules
     sudo udevadm trigger --name-match=kvm
   displayName: Enable KVM
-  # condition: eq(variables['Build.Reason'], 'PullRequest')
-  # failOnStderr: true
+  condition: eq(variables['System.JobName'], 'linux')
+  failOnStderr: true
 
 - task: UseDotNet@2
   displayName: Setup .NET
@@ -70,7 +70,7 @@ steps:
   failOnStderr: true
 
 - bash: |
-    sudo -E bash -c "exec su -l $USER -c 'dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait; exit'"
+    dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu $(emuGpu) --no-snapshot --no-audio --no-boot-anim --wait
 
   displayName: Start AVD
   failOnStderr: true
