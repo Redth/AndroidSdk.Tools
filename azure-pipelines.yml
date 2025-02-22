@@ -37,8 +37,9 @@ steps:
     # echo "Setting rules..."
     echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
     # echo "Running udevadm control..."
-    sudo -E bash -c "exec su -l $USER -c 'udevadm control --reload-rules ; exit'"
+    sudo udevadm control --reload-rules
     # echo "Running udevadm trigger..."
+    sudo -E bash -c "exec su -l $USER -c 'ls -la /dev ; exit'"
     sudo -E bash -c "exec su -l $USER -c 'udevadm trigger --name-match=kvm ; exit'"
     # echo "Done."
   displayName: Enable KVM
