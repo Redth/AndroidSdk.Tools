@@ -2,6 +2,7 @@ trigger:
 - main
 
 pool:
+  name: Learning-Pool
   vmImage: ubuntu-latest
 
 variables:
@@ -13,10 +14,11 @@ steps:
   displayName: Checkout
 
 - bash: |
-    cat /proc/cpuinfo
     grep -E 'vmx|svm' /proc/cpuinfo
+    cat /proc/cpuinfo
     sudo apt update
     sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
+    sudo kvm-ok
     
     # id
     # groups
