@@ -2,8 +2,8 @@ trigger:
 - main
 
 pool:
-  name: Learning-Pool
-  vmImage: ubuntu-latest
+  name: learning-pool-2
+  vmImage: ubuntu-22.04
 
 variables:
   buildConfiguration: 'Release'
@@ -59,17 +59,12 @@ steps:
     packageType: 'sdk'
     version: '8.0.x'
 
-# - task: JavaToolInstaller@1
-#   displayName: Setup JDK
-#   inputs:
-#     versionSpec: '21'
-#     jdkArchitectureOption: x64
-#     jdkSourceOption: 'PreInstalled'
-
-- bash: |
-    echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME_21_X64"
-    echo "##vso[task.setvariable variable=PATH]$JAVA_HOME_21_X64/bin:$PATH"
+- task: JavaToolInstaller@1
   displayName: Setup JDK
+  inputs:
+    versionSpec: '21'
+    jdkArchitectureOption: x64
+    jdkSourceOption: 'PreInstalled'
 
 - bash: dotnet build AndroidSdk.Tool
   displayName: Build the project
