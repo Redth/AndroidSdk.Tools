@@ -128,6 +128,33 @@ namespace AndroidSdk
 			await downloader.DownloadAsync(destinationDirectory, specificVersionToFind, false, null, null, progressHandler);
 		}
 
+
+		public bool CanModify()
+		{
+			try
+			{
+				var path = AndroidSdkHome!.FullName;
+
+				// Check if path is a file or directory
+				if (File.Exists(path))
+					path = Path.GetDirectoryName(path); // Get the directory of the file
+
+				if (!Directory.Exists(path))
+					Directory.CreateDirectory(path!);
+
+				string tempFile = Path.Combine(path!, Path.GetRandomFileName());
+
+				// Try creating and deleting a file
+				using (FileStream fs = File.Create(tempFile, 1, FileOptions.DeleteOnClose)) { }
+
+				return true;
+			}
+			catch
+			{
+				return false;
+			}
+		}
+
 		public bool IsUpToDate()
 		{
 			if (SkipVersionCheck)
