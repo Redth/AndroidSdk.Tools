@@ -35,11 +35,26 @@ public class SdkManager_Download_Tests : TestsBase, IDisposable
 		var sdk = new SdkManager();
 		await sdk.DownloadSdk(destinationDirectory: new DirectoryInfo(path), specificVersion: version);
 
-		Assert.True(
-			File.Exists(Path.Combine(path, $"cmdline-tools/{installVersion}/lib/sdkmanager-classpath.jar")),
-			"The sdkmanager-classpath.jar file did not exist in the new SDK location.");
+		if (!string.IsNullOrEmpty(version))
+		{
+			Assert.True(
+				File.Exists(Path.Combine(path, $"cmdline-tools", installVersion, "lib", "sdkmanager-classpath.jar")),
+				"The sdkmanager-classpath.jar file did not exist in the new SDK location.");
+		}
+		else
+		{
+			var installPath = Path.Combine(path, $"cmdline-tools");
 
-		var isUpToDate = sdk.IsUpToDate();
+			foreach (var p in Directory.GetDirectories(installPath))
+			{
+				Assert.True(
+					File.Exists(Path.Combine(p, $"lib", "sdkmanager-classpath.jar")),
+					"The sdkmanager-classpath.jar file did not exist in the new SDK location.");
+			}
+			
+		}
+
+			var isUpToDate = sdk.IsUpToDate();
 
 		Assert.True(isUpToDate, "The new SDK was not up to date after updating.");
 	}

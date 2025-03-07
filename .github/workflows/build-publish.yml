@@ -19,7 +19,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 9.0.x
     - name: Build
       run: dotnet build --configuration Release
     - name: Package NuGets
@@ -33,6 +33,7 @@ jobs:
         echo "PACKAGE VERSION: $VERSION"
         
         New-Item -ItemType Directory -Force -Path .\artifacts
+        dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidRepository/AndroidRepository.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk/AndroidSdk.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Tool/AndroidSdk.Tool.csproj
         dotnet pack --output ./artifacts --configuration Release -p:PackageVersion=$VERSION ./AndroidSdk.Adbd/AndroidSdk.Adbd.csproj
@@ -58,7 +59,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
       - name: Push NuGet
         run: |
           dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}

@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\test.yml = .github\workflows\test.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AndroidRepository", "AndroidRepository\AndroidRepository.csproj", "{DB02B79F-576D-4C17-AC36-C04A99C9B5C7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{61262BFD-2765-4574-A83C-87474C89D38A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61262BFD-2765-4574-A83C-87474C89D38A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61262BFD-2765-4574-A83C-87474C89D38A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB02B79F-576D-4C17-AC36-C04A99C9B5C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB02B79F-576D-4C17-AC36-C04A99C9B5C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB02B79F-576D-4C17-AC36-C04A99C9B5C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB02B79F-576D-4C17-AC36-C04A99C9B5C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
