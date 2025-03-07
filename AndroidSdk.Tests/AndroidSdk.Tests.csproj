@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <DefineConstants Condition="'$(CI)' == 'true'">$(DefineConstants);IS_ON_CI</DefineConstants>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -20,12 +20,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AndroidRepository\AndroidRepository.csproj" />
     <ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="testdata\obj\**" />
-    <None Include="testdata\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="testdata\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
