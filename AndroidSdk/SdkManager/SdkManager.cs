@@ -125,7 +125,7 @@ namespace AndroidSdk
 				specificVersionToFind = (version.Major, version.Minor);
 			}
 
-			await downloader.DownloadAsync(destinationDirectory, specificVersionToFind, false, progressHandler);
+			await downloader.DownloadAsync(destinationDirectory, specificVersionToFind, false, null, null, progressHandler);
 		}
 
 		public bool IsUpToDate()
