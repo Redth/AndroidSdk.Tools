@@ -23,7 +23,7 @@ namespace AndroidSdk
 		/// <param name="context">The context.</param>
 		/// <param name="destinationDirectory">Destination directory, or ./tools/androidsdk if none is specified.</param>
 		/// <param name="specificVersion">Specific version, or latest if none is specified.</param>
-		public async Task DownloadAsync(DirectoryInfo destinationDirectory, (int? major, int? minor)? specificVersion = null, bool allowPreview = false, Action<int>? progressHandler = null)
+		public async Task DownloadAsync(DirectoryInfo destinationDirectory, (int? major, int? minor)? specificVersion = null, bool allowPreview = false, string? hostOs = null, string? hostArch = null, Action<int>? progressHandler = null)
 		{
 			if (destinationDirectory == null)
 				throw new DirectoryNotFoundException("Android SDK Directory was not specified.");
@@ -63,7 +63,7 @@ namespace AndroidSdk
 			var bestMatchVersion = $"{bestMatch.Revision.Major}.{bestMatch.Revision.Micro}";
 
 			// Get the host arch archive
-			var archive = bestMatch.Archives.GetHostArchive();
+			var archive = bestMatch.Archives.GetHostArchive(hostOs, hostArch);
 			var sdkUrl = archive.GetFullUrl(sdkRepo);
 
 

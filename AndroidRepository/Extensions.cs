@@ -149,10 +149,10 @@ public static class Extensions
 		=> LoadAsync<SdkAddon>(site, baseUrl);
 
 
-	public static ArchiveType GetHostArchive(this IEnumerable<Common_2.ArchiveType> archives)
+	public static ArchiveType GetHostArchive(this IEnumerable<Common_2.ArchiveType> archives, string? hostOS = null, string? hostArch = null)
 	{
-		var hostOS = GetHostOS();
-		var hostArch = GetHostArch();
+		hostOS ??= GetHostOS();
+		hostArch ??= GetHostArch();
 
 		var osArchives = new List<ArchiveType>();
 
