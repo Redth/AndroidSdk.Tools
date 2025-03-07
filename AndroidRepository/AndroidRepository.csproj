@@ -7,6 +7,26 @@
     <LangVersion>10.0</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>AndroidRepository</PackageId>
+	<Title>Android Repository Reader / Parser</Title>
+	<PackageDescription>Library for Android SDK Repository reading</PackageDescription>
+	<Authors>Redth</Authors>
+	<Owners>Redth</Owners>
+	<Copyright>Copyright © Redth</Copyright>
+	<PackageProjectUrl>https://github.com/redth/AndroidSdk.Tools</PackageProjectUrl>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<RepositoryUrl>https://github.com/redth/AndroidSdk.Tools</RepositoryUrl>
+	<AssemblyFileVersion>$(PackageVersion)</AssemblyFileVersion>
+	<PublishRepositoryUrl>true</PublishRepositoryUrl>
+	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	<DebugType>portable</DebugType>
+  </PropertyGroup>
+	
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' Or '$(TF_BUILD)' == 'true'">
+	<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="generated\" />
   </ItemGroup>
