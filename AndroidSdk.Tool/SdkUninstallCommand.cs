@@ -30,6 +30,7 @@ namespace AndroidSdk.Tool
 			try
 			{
 				var m = new SdkManager(settings?.Home);
+				m.SkipVersionCheck = true;
 
 				ok = m.Uninstall(settings.Package);
 

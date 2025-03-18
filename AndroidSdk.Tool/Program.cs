@@ -46,6 +46,17 @@ namespace AndroidSdk.Tool
 					sdkBranch.AddCommand<SdkFindCommand>("find")
 						.WithDescription("Searches for and returns the ANDROID_HOME path to best matching Android SDK")
 						.WithExample(new[] { "sdk", "find" });
+
+					sdkBranch.AddCommand<SdkLicenseCommand>("licenses")
+						.WithDescription("Lists Android SDK licenses")
+							.WithExample(new[] { "sdk", "licenses" })
+							.WithExample(new[] { "sdk", "licenses", "--unaccepted" })
+							.WithExample(new[] { "sdk", "licenses", "--accepted" });
+
+					sdkBranch.AddCommand<SdkAcceptLicenseCommand>("accept-licenses")
+						.WithDescription("Accepts Android SDK licenses")
+							.WithExample(new[] { "sdk", "accept-licenses" })
+							.WithExample(new[] { "sdk", "accept-licenses", "--force" });
 				});
 
 				config.AddBranch("jdk", jdkBranch => {
