@@ -29,4 +29,8 @@
 	  <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
 	  <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
 	</ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\AndroidRepository\AndroidRepository.csproj" />
+	</ItemGroup>
 </Project>
