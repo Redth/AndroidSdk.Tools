@@ -20,6 +20,9 @@ namespace AndroidSdk
 		protected bool IsMac
 			=> RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
+		protected bool IsLinux
+			=> RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
 		public IReadOnlyList<DirectoryInfo> Locate(string? specificHome = null, params string[]? additionalPossibleDirectories)
 		{
 			var jdks = LocateJdk(specificHome, additionalPossibleDirectories);
@@ -114,6 +117,21 @@ namespace AndroidSdk
 				}
 				catch
 				{
+				}
+			}
+			else if (IsLinux)
+			{
+				if (Directory.Exists("/usr/lib/jvm"))
+				{
+					// First look for msopenjdk
+					var jdkDirs = Directory.EnumerateDirectories("/usr/lib/jvm", "msopenjdk-*", SearchOption.TopDirectoryOnly);
+					foreach (var jdkDir in jdkDirs)
+						SearchDirectoryForJdks(paths, jdkDir, true);
+
+					// Second find others
+					jdkDirs = Directory.EnumerateDirectories("/usr/lib/jvm", "*-openjdk-*", SearchOption.TopDirectoryOnly);
+					foreach (var jdkDir in jdkDirs)
+						SearchDirectoryForJdks(paths, jdkDir, true);
 				}
 			}
 
