@@ -48,6 +48,9 @@ public class SdkLocator : PathLocator
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Android", "Sdk"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "android-sdk"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Android"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Android", "Sdk"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ".android"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ".android", "sdk"),
 		] :
 		[
 			// Xamarin.Android seems to check this path first
