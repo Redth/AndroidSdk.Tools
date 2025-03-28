@@ -28,6 +28,12 @@ android avd create --name MyEmulator --sdk "system-images;android-31;google_apis
 android avd start --name MyEmulator --wait-boot
 ```
 
+## Logging
+
+Sometimes it's helpful to see the direct output of the underlying tool calls that are being made.  To do this, you can set some environment variables:
+ - `ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH` - Path to a file to write the logs to
+ - `ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES` - A `|` delimited list of one or more of `stdio`, `stdin`, `stderr`.  Default is all of them.
+
 
 ## Library API Usage
 

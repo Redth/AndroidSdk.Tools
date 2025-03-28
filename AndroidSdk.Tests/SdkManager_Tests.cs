@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using Xunit;
 using Xunit.Abstractions;
@@ -93,5 +95,18 @@ public class SdkManager_Tests : AndroidSdkManagerTestsBase
 		var list = Sdk.SdkManager.List();
 
 		Assert.NotNull(list.InstalledPackages);
+	}
+
+	[Fact]
+	public void ProcessRunner_Logs()
+	{
+		var tmp = Path.GetTempFileName();
+		Environment.SetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", tmp);
+
+		var list = Sdk.SdkManager.List();
+
+		var logText = File.ReadAllText(tmp);
+
+		Assert.NotEmpty(logText);
 	}
 }
