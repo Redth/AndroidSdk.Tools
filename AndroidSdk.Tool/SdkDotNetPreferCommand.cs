@@ -25,7 +25,7 @@ namespace AndroidSdk.Tool
 
 				if (sdk != null)
 				{
-					MonoDroidSdkLocator.UpdatePaths(new MonoDroidSdkLocation(sdk.Root.FullName, null));
+					MonoDroidSdkLocator.UpdatePaths(new MonoDroidSdkLocation(sdk.FullName, null));
 					return 0;
 				}
 			}

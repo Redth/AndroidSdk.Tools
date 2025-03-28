@@ -39,7 +39,7 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "sdk", "info" });
 
 					
-					sdkBranch.AddCommand<SdkInfoCommand>("dotnet-prefer")
+					sdkBranch.AddCommand<SdkDotNetPreferCommand>("dotnet-prefer")
 						.WithDescription("Sets the DotNet (.NET) preferred SDK location")
 						.WithExample(new[] { "sdk", "dotnet-prefer", "--home /path/to/androidsdk" });
 

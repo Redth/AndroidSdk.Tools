@@ -25,9 +25,8 @@ public class SdkManager_Download_Tests : TestsBase, IDisposable
 
 	[Theory]
 	//[InlineData("latest", "13.0")] // TODO: the number will change
-	[InlineData("11.0", "11.0")]
-	[InlineData("8.0", "8.0")]
-	[InlineData(null, "8.0")]
+	[InlineData("13.0", "13.0")]
+	[InlineData("16.0", "16.0")]
 	public async Task Download(string? version, string installVersion)
 	{
 		var path = Path.Combine(tempSdkPath, $"android-sdk-{version}");

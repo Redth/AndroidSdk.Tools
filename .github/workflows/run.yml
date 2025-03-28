@@ -28,31 +28,31 @@ jobs:
     - name: Build the project
       run: dotnet build AndroidSdk.Tool
     - name: Print SDK information
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk info
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk info
     - name: Install Packages
       run: |
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- sdk list --installed
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk list --installed
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
       run: |
         unset XDG_CONFIG_HOME
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd list
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
     - name: Enabling more cores
       run: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
     - name: Start AVD
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
     - name: Prove that it booted
       run: |
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- device list
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- device info
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device list
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device info
     - name: Install an app
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
     - name: Uninstall an app
-      run: dotnet run --framework net8.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
       run: |
         unset XDG_CONFIG_HOME
-        dotnet run --framework net8.0 --project AndroidSdk.Tool -- avd delete -n test
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test
