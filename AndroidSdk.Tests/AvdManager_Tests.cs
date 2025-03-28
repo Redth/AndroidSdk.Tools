@@ -126,7 +126,7 @@ public class AvdManager_Tests : AvdManagerTestsBase, IClassFixture<AvdManager_Te
 	{
 		var oldHome = Environment.GetEnvironmentVariable("ANDROID_AVD_HOME");
 
-		var tempAvdPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdLocator_Tests), nameof(LocatedPathForEnvVar), "android-avd-home");
+		var tempAvdPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdManager_Tests), nameof(LocatedPathForEnvVar), "android-avd-home");
 		Directory.CreateDirectory(tempAvdPath);
 
 		try
