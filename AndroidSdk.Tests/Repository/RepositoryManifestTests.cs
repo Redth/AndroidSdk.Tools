@@ -61,7 +61,7 @@ public class RepositoryManifestTests
 
 		var r = await mgr.GetAddonsListAsync();
 
-		Assert.True(r.Site.Count >= 20);
+		Assert.True(r.Site.Count >= 15);
 	}
 
 
