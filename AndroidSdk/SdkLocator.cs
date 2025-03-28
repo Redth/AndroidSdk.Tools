@@ -57,6 +57,16 @@ public class SdkLocator : PathLocator
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "android-sdk-macosx"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Developer", "Xamarin", "android-sdk-macosx"),
 			Path.Combine("Developer", "Android", "android-sdk-macosx"),
+			
+			// Linux possibilities
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android", "sdk"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android", "sdk"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android", "Sdk"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "android"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "android", "sdk"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "android", "Sdk"),
 		];
 
 	
