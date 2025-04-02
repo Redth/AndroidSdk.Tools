@@ -2,7 +2,7 @@
   "profiles": {
     "AndroidSdk.Tool": {
       "commandName": "Project",
-      "commandLineArgs": "jdk find --version 17"
+      "commandLineArgs": "sdk info"
     }
   }
 }
