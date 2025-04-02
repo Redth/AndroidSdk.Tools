@@ -53,17 +53,20 @@ public static class MonoDroidSdkLocator
 	*/
 	public static MonoDroidSdkLocation ReadConfigFile()
 	{
-		// Load the XML file
-		var path = MonoDroidConfigXmlFilename;
-		if (File.Exists(path))
+		try
 		{
-			var doc = new System.Xml.XmlDocument();
-			doc.Load(path);
-			
-			return new MonoDroidSdkLocation(
-				doc.SelectSingleNode("//monodroid/android-sdk")?.Attributes?["path"]?.Value,
-				doc.SelectSingleNode("//monodroid/java-sdk")?.Attributes?["path"]?.Value);
-		}
+			// Load the XML file
+			var path = MonoDroidConfigXmlFilename;
+			if (File.Exists(path))
+			{
+				var doc = new System.Xml.XmlDocument();
+				doc.Load(path);
+
+				return new MonoDroidSdkLocation(
+					doc.SelectSingleNode("//monodroid/android-sdk")?.Attributes?["path"]?.Value,
+					doc.SelectSingleNode("//monodroid/java-sdk")?.Attributes?["path"]?.Value);
+			}
+		} catch { }
 
 		return new MonoDroidSdkLocation();;
 	}

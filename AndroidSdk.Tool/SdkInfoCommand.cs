@@ -27,6 +27,8 @@ namespace AndroidSdk.Tool
         public bool IsUpToDate { get; set; }
         public string Channel { get; set; }
         
+		public bool WriteAccess { get; set; }
+
         public bool DotNetPreferred { get; set; }
     }
 
@@ -52,6 +54,11 @@ namespace AndroidSdk.Tool
 					? m.AndroidSdkHome?.FullName.TrimEnd(sep).Equals(dotnetPreferredPaths.AndroidSdkPath?.TrimEnd(sep)) ?? false
 					: m.AndroidSdkHome?.FullName.ToLower().TrimEnd(sep).Equals(dotnetPreferredPaths.AndroidSdkPath?.ToLower()?.TrimEnd(sep)) ?? false;
 
+				try
+				{
+					result.WriteAccess = m.CanModify();
+				} catch { }
+
                 var jdks = m.Jdks;
 
                 if (settings.Format == OutputFormat.None)
@@ -62,8 +69,8 @@ namespace AndroidSdk.Tool
 
                     OutputHelper.OutputObject<SdkInfoResult>(
                         result,
-                        new[] { "Path", "Version", "IsUpToDate", "Channel", "DotNetPreferred" },
-                        i => new[] { i.Path, i.Version, i.IsUpToDate.ToString(), i.Channel, i.DotNetPreferred.ToString() });
+                        new[] { "Path", "Version", "IsUpToDate", "Channel", "DotNetPreferred", "WriteAccess" },
+                        i => new[] { i.Path, i.Version, i.IsUpToDate.ToString(), i.Channel, i.DotNetPreferred.ToString(), i.WriteAccess.ToString() });
 
 
                     if (jdks is not null && jdks.Length > 0)

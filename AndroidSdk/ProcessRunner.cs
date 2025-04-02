@@ -20,8 +20,65 @@ namespace AndroidSdk
 		{
 		}
 
+		/// <summary>
+		/// Parses the log types from the environment variable string.
+		/// </summary>
+		/// <param name="logTypesStr">The log types string from the environment variable.</param>
+		/// <returns>The parsed log types as flags.</returns>
+		private static AndroidToolProcessRunnerLogTypes ParseLogTypes(string? logTypesStr)
+		{
+			if (string.IsNullOrWhiteSpace(logTypesStr))
+				return AndroidToolProcessRunnerLogTypes.Stdout | AndroidToolProcessRunnerLogTypes.Stderr | AndroidToolProcessRunnerLogTypes.Stdin;
+
+			var result = (AndroidToolProcessRunnerLogTypes)0;
+			foreach (var type in logTypesStr.Split([ '|' ], StringSplitOptions.RemoveEmptyEntries))
+			{
+				if (type.Equals("stdout", StringComparison.OrdinalIgnoreCase))
+					result |= AndroidToolProcessRunnerLogTypes.Stdout;
+				else if (type.Equals("stderr", StringComparison.OrdinalIgnoreCase))
+					result |= AndroidToolProcessRunnerLogTypes.Stderr;
+				else if (type.Equals("stdin", StringComparison.OrdinalIgnoreCase))
+					result |= AndroidToolProcessRunnerLogTypes.Stdin;
+			}
+			return result;
+		}
+
+		/// <summary>
+		/// Logs a message to the specified log type.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		/// <param name="type">The log type.</param>
+		void Log(string message, string logPath, AndroidToolProcessRunnerLogTypes logType)
+		{
+			if (string.IsNullOrWhiteSpace(logPath))
+				return;
+
+			var m = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{logType.ToString().ToLowerInvariant()}] {message}";
+
+			try {
+				File.AppendAllText(logPath, m);
+			} catch { }
+		}
+
+		[Flags]
+		enum AndroidToolProcessRunnerLogTypes
+		{
+			/// <summary>Standard output logging</summary>
+			Stdout = 1,
+			/// <summary>Standard error logging</summary>
+			Stderr = 2,
+			/// <summary>Standard input logging</summary>
+			Stdin = 4
+		}
+
+		string? logPath = null;
+		AndroidToolProcessRunnerLogTypes logTypes = AndroidToolProcessRunnerLogTypes.Stdout | AndroidToolProcessRunnerLogTypes.Stderr | AndroidToolProcessRunnerLogTypes.Stdin;
+
 		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput = false)
 		{
+			logPath = Environment.GetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH");
+			logTypes = ParseLogTypes(Environment.GetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES"));
+
 			standardOutput = new List<string>();
 			standardError = new List<string>();
 			output = new List<string>();
@@ -49,6 +106,9 @@ namespace AndroidSdk
 				{
 					standardOutput.Add(e.Data);
 					output.Add(e.Data);
+
+					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stdout) != 0)
+						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stdout);
 				}
 			};
 			process.ErrorDataReceived += (s, e) =>
@@ -57,6 +117,9 @@ namespace AndroidSdk
 				{
 					standardError.Add(e.Data);
 					output.Add(e.Data);
+
+					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stderr) != 0)
+						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stderr);
 				}
 			};
 			process.Start();
@@ -88,6 +151,9 @@ namespace AndroidSdk
 				throw new InvalidOperationException();
 
 			process.StandardInput.Write(input);
+
+			if ((logTypes & AndroidToolProcessRunnerLogTypes.Stdin) != 0)
+				Log(input, logPath, AndroidToolProcessRunnerLogTypes.Stdin);
 		}
 
 		public void StandardInputWriteLine(string input)
@@ -96,6 +162,9 @@ namespace AndroidSdk
 				throw new InvalidOperationException();
 
 			process.StandardInput.WriteLine(input);
+
+			if ((logTypes & AndroidToolProcessRunnerLogTypes.Stdin) != 0)
+				Log(input + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stdin);
 		}
 
 		public void StandardInputFlush()
