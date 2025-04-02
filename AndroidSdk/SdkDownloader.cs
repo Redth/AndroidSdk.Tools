@@ -90,10 +90,11 @@ namespace AndroidSdk
 				await webClient.DownloadFileTaskAsync(sdkUrl, sdkZipFile.FullName);
 			}
 
+			// Read the revision from the source.properties file
+			var toolsVersion = bestMatchVersion;
+
 			using (var zip = ZipFile.OpenRead(sdkZipFile.FullName))
 			{
-				// Read the revision from the source.properties file
-				var toolsVersion = bestMatchVersion;
 				try
 				{
 					var sourceProperties = zip.GetEntry("cmdline-tools/source.properties");
@@ -121,7 +122,9 @@ namespace AndroidSdk
 				{
 					var name = entry.FullName;
 					if (name.StartsWith("cmdline-tools"))
-						name = $"cmdline-tools/{toolsVersion}" + name.Substring(13);
+						name = $"cmdline-tools/default" + name.Substring(13);
+					else
+						continue;
 
 					name = name.Replace('/', Path.DirectorySeparatorChar);
 
@@ -141,6 +144,30 @@ namespace AndroidSdk
 					}
 				}
 			}
+
+			// Try and delete the zip file after extraction
+			try {
+				File.Delete(sdkZipFile.FullName);
+			} catch { }
+
+			// So, the cmdline-tools we end up with does not contain the packages.xml file so it's not 
+			// really seen by the sdk itself as an installed package.
+			// Eg: If we downloaded cmdline-tools;13.0 and then we install that package after, it will install
+			// another copy to cmdline-tools/13.0 even though we have cmdline-tools/default containing 13.0 bits
+			// which causes more problems later for the SDK
+			// So, let's install 13.0 then delete the "default" folder we extracted.
+			var sdkManager = new SdkManager(new SdkManagerToolOptions {
+				AndroidSdkHome = destinationDirectory,
+				SkipVersionCheck= true
+			});
+
+			sdkManager.Install($"cmdline-tools;{toolsVersion}");
+
+			// Delete the default folder we extracted
+			var defaultDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "cmdline-tools", "default"));
+			try {
+				Directory.Delete(defaultDir.FullName, true);
+			} catch {}
 		}
 	}
 }
