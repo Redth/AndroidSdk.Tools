@@ -123,6 +123,16 @@ namespace AndroidSdk.Tool
 		[DefaultValue(false)]
 		public bool Verbose { get; set; }
 
+		[Description("gRPC port number")]
+		[CommandOption("--grpc")]
+		[DefaultValue(null)]
+		public uint? GrpcPort { get; set; }
+
+		[Description("Use JWT with gRPC")]
+		[CommandOption("--grpc-use-jwt")]
+		[DefaultValue(null)]
+		public bool? GrpcUseJwt { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -190,6 +200,8 @@ namespace AndroidSdk.Tool
 						MemoryMegabytes = (int?)settings.Memory,
 						PartitionSizeMegabytes = (int?)settings.PartitionSize,
 						CacheSizeMegabytes = (int?)settings.CacheSize,
+						GrpcPort = (int?)settings.GrpcPort,
+						GrpcUseJwt = settings.GrpcUseJwt,
 					});
 
 					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
