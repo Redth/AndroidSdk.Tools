@@ -152,6 +152,8 @@ namespace AndroidSdk
 			if (options.Screen.HasValue)
 				builder.Append($"-screen {options.Screen.Value.ToString().ToLowerInvariant()}");
 
+			if (options.GrpcPort.HasValue)
+				builder.Append($"-grpc {options.GrpcPort.Value}");
 			//var uuid = Guid.NewGuid().ToString("D");
 			//builder.Append($"-prop emu.uuid={uuid}");
 

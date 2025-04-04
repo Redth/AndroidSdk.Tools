@@ -123,6 +123,11 @@ namespace AndroidSdk.Tool
 		[DefaultValue(false)]
 		public bool Verbose { get; set; }
 
+		[Description("gRPC port number")]
+		[CommandOption("--grpc")]
+		[DefaultValue(null)]
+		public uint? GrpcPort { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -190,6 +195,7 @@ namespace AndroidSdk.Tool
 						MemoryMegabytes = (int?)settings.Memory,
 						PartitionSizeMegabytes = (int?)settings.PartitionSize,
 						CacheSizeMegabytes = (int?)settings.CacheSize,
+						GrpcPort = (int?)settings.GrpcPort,
 					});
 
 					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;

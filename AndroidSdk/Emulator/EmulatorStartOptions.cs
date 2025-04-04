@@ -89,6 +89,8 @@ namespace AndroidSdk
 
 			public string[] ExtraArgs { get; set; }
 
+			public int? GrpcPort { get; set; }
+
 			internal static string ValidateCamera(string paramName, string value)
 			{
 				if (value is null)
