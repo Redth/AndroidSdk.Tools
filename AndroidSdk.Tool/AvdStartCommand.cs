@@ -128,6 +128,11 @@ namespace AndroidSdk.Tool
 		[DefaultValue(null)]
 		public uint? GrpcPort { get; set; }
 
+		[Description("Use JWT with gRPC")]
+		[CommandOption("--grpc-use-jwt")]
+		[DefaultValue(null)]
+		public bool? GrpcUseJwt { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -196,6 +201,7 @@ namespace AndroidSdk.Tool
 						PartitionSizeMegabytes = (int?)settings.PartitionSize,
 						CacheSizeMegabytes = (int?)settings.CacheSize,
 						GrpcPort = (int?)settings.GrpcPort,
+						GrpcUseJwt = settings.GrpcUseJwt,
 					});
 
 					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;

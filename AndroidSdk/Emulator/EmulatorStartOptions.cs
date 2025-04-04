@@ -91,6 +91,8 @@ namespace AndroidSdk
 
 			public int? GrpcPort { get; set; }
 
+			public bool? GrpcUseJwt { get; set; }
+
 			internal static string ValidateCamera(string paramName, string value)
 			{
 				if (value is null)

@@ -154,6 +154,10 @@ namespace AndroidSdk
 
 			if (options.GrpcPort.HasValue)
 				builder.Append($"-grpc {options.GrpcPort.Value}");
+
+			if (options.GrpcUseJwt.HasValue)
+				builder.Append("-grpc-use-jwt");
+
 			//var uuid = Guid.NewGuid().ToString("D");
 			//builder.Append($"-prop emu.uuid={uuid}");
 
