@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AndroidSdk.Tool
@@ -164,9 +165,9 @@ namespace AndroidSdk.Tool
 		}
 	}
 
-	public class AvdStartCommand : Command<AvdStartCommandSettings>
+	public class AvdStartCommand : CancellableAsyncCommand<AvdStartCommandSettings>
 	{
-		public override int Execute([NotNull] CommandContext context, [NotNull] AvdStartCommandSettings settings)
+		public override Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] AvdStartCommandSettings settings, CancellationToken cancellationToken)
 		{
 			var ok = true;
 
@@ -204,6 +205,12 @@ namespace AndroidSdk.Tool
 						GrpcUseJwt = settings.GrpcUseJwt,
 					});
 
+					cancellationToken.Register(() =>
+					{
+						ctx.Status($"Stopping {settings.Name}...");
+						process?.Shutdown();
+					});
+
 					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
 
 					if (settings.WaitForBoot)
@@ -215,7 +222,8 @@ namespace AndroidSdk.Tool
 					if (settings.WaitForExit)
 					{
 						ctx.Status($"Booted, waiting for {settings.Name} to exit...");
-						ok = process.WaitForExit() == 0;
+						var exitCode = process.WaitForExit();
+						ok = exitCode == 0 || exitCode == 1;
 					}
 				});
 
@@ -228,10 +236,10 @@ namespace AndroidSdk.Tool
 			catch (SdkToolFailedExitException sdkEx)
 			{
 				Program.WriteException(sdkEx);
-				return 1;
+				return Task.FromResult(1);
 			}
 
-			return ok ? 0 : 1;
+			return Task.FromResult(ok ? 0 : 1);
 		}
 	}
 }
