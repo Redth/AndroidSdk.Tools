@@ -216,8 +216,8 @@ namespace AndroidSdk
 			{
 				result = process.WaitForExit();
 
-				if (result.ExitCode != 0)
-					throw new SdkToolFailedExitException("avdmanager", result.ExitCode, result.StandardError, result.StandardOutput);
+				if (result.ExitCode != 0 && result.ExitCode != 1)
+					throw new SdkToolFailedExitException("emulator", result.ExitCode, result.StandardError, result.StandardOutput);
 
 				return result.ExitCode;
 			}
