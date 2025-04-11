@@ -1,19 +1,14 @@
 ﻿using AndroidRepository;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Xml;
 
 namespace AndroidSdk
 {
-	public class SdkDownloader
+	public class SdkDownloader(DirectoryInfo? jdkHome = null)
 	{
 		readonly Regex rxPkgRevision = new Regex(@"^Pkg\.Revision=(?<rev>.+)$", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -33,7 +28,7 @@ namespace AndroidSdk
 
 			
 
-			var repositoryManager = new AndroidRepository.RepositoryManager();
+			var repositoryManager = new RepositoryManager();
 			var sdkRepo = await repositoryManager.GetSdkRepositoryAsync();
 			var stableChannel = sdkRepo.Channel.FirstOrDefault(c => c.Value == ChannelTypes.Stable);
 
@@ -60,6 +55,9 @@ namespace AndroidSdk
 				.ThenByDescending(p => p.Revision.Preview)
 				.FirstOrDefault();
 
+			if (bestMatch is null)
+				throw new InvalidOperationException("No cmdline-tools package found in the SDK repository.");
+
 			var bestMatchVersion = $"{bestMatch.Revision.Major}.{bestMatch.Revision.Micro}";
 
 			// Get the host arch archive
@@ -76,6 +74,7 @@ namespace AndroidSdk
 			if (!sdkZipFile.Exists)
 			{
 				int prevProgress = 0;
+#pragma warning disable SYSLIB0014 // Type or member is obsolete
 				var webClient = new System.Net.WebClient();
 
 				webClient.DownloadProgressChanged += (s, e) =>
@@ -88,6 +87,7 @@ namespace AndroidSdk
 					prevProgress = progress;
 				};
 				await webClient.DownloadFileTaskAsync(sdkUrl, sdkZipFile.FullName);
+#pragma warning restore SYSLIB0014
 			}
 
 			// Read the revision from the source.properties file
@@ -150,24 +150,25 @@ namespace AndroidSdk
 				File.Delete(sdkZipFile.FullName);
 			} catch { }
 
-			// So, the cmdline-tools we end up with does not contain the packages.xml file so it's not 
-			// really seen by the sdk itself as an installed package.
-			// Eg: If we downloaded cmdline-tools;13.0 and then we install that package after, it will install
-			// another copy to cmdline-tools/13.0 even though we have cmdline-tools/default containing 13.0 bits
-			// which causes more problems later for the SDK
-			// So, let's install 13.0 then delete the "default" folder we extracted.
-			var sdkManager = new SdkManager(new SdkManagerToolOptions {
-				AndroidSdkHome = destinationDirectory,
-				SkipVersionCheck= true
-			});
+			// We need the JDK Home to run the tool
+			if (jdkHome is not null)
+			{
+				// So, the cmdline-tools we end up with does not contain the packages.xml file so it's not 
+				// really seen by the sdk itself as an installed package.
+				// Eg: If we downloaded cmdline-tools;13.0 and then we install that package after, it will install
+				// another copy to cmdline-tools/13.0 even though we have cmdline-tools/default containing 13.0 bits
+				// which causes more problems later for the SDK
+				// So, let's install 13.0 then delete the "default" folder we extracted.
+				var sdkManager = new SdkManager(destinationDirectory, jdkHome);
 
-			sdkManager.Install($"cmdline-tools;{toolsVersion}");
+				sdkManager.Install($"cmdline-tools;{toolsVersion}");
 
-			// Delete the default folder we extracted
-			var defaultDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "cmdline-tools", "default"));
-			try {
-				Directory.Delete(defaultDir.FullName, true);
-			} catch {}
+				// Delete the default folder we extracted
+				var defaultDir = new DirectoryInfo(Path.Combine(destinationDirectory.FullName, "cmdline-tools", "default"));
+				try {
+					Directory.Delete(defaultDir.FullName, true);
+				} catch { }
+			}
 		}
 	}
 }

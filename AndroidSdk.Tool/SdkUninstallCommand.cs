@@ -1,6 +1,7 @@
 ﻿using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace AndroidSdk.Tool
 {
@@ -18,7 +19,11 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 	}
 
 	public class SdkUninstallCommand : Command<SdkUninstallCommandSettings>
@@ -29,10 +34,11 @@ namespace AndroidSdk.Tool
 
 			try
 			{
-				var m = new SdkManager(settings?.Home);
-				m.SkipVersionCheck = true;
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
 
-				ok = m.Uninstall(settings.Package);
+				sdk.SdkManager.SkipVersionCheck = true;
+
+				ok = sdk.SdkManager.Uninstall(settings.Package);
 
 			}
 			catch (SdkToolFailedExitException sdkEx)

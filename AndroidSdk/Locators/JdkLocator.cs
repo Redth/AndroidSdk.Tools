@@ -12,10 +12,13 @@ namespace AndroidSdk
 
 	public class JdkLocator : IPathLocator
 	{
-		string PlatformJavaCExtension => IsWindows ? ".exe" : string.Empty;
+		static string PlatformJavaCExtension => IsWindowsPlatform ? ".exe" : string.Empty;
 
 		protected bool IsWindows
-			=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+			=> IsWindowsPlatform;
+			
+		static bool IsWindowsPlatform =>
+			RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
 		protected bool IsMac
 			=> RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
@@ -34,6 +37,17 @@ namespace AndroidSdk
 			params string[]? additionalPossibleDirectories)
 			=> LocateJdk(specificHome, false, additionalPossibleDirectories);
 		
+		public static bool TryGetJdkInfo(DirectoryInfo jdkHome, out JdkInfo? jdkInfo)
+		{
+			var paths = new List<JdkInfo>();
+
+			SearchDirectoryForJdks(paths, jdkHome.FullName, true);
+
+			jdkInfo = paths.FirstOrDefault();
+
+			return jdkInfo is not null;
+		}
+
 		public IEnumerable<JdkInfo> LocateJdk(string? specificHome, bool returnOnlySpecified = false, params string[]? additionalPossibleDirectories)
 		{
 			var paths = new List<JdkInfo>();
@@ -63,14 +77,14 @@ namespace AndroidSdk
 				// Try the registry entries known by the Xamarin SDK
 				var registryConfig = MonoDroidSdkLocator.ReadRegistry();
 				if (!string.IsNullOrEmpty(registryConfig.JavaJdkPath))
-					SearchDirectoryForJdks(paths, registryConfig.JavaJdkPath, true, preferredByDotNet: true);
+					SearchDirectoryForJdks(paths, registryConfig.JavaJdkPath!, true, preferredByDotNet: true);
 			}
 			else
 			{
 				// Try the monodroid-config.xml file known by the Xamarin SDK
 				var monodroidConfig = MonoDroidSdkLocator.ReadConfigFile();
 				if (!string.IsNullOrEmpty(monodroidConfig.JavaJdkPath))
-					SearchDirectoryForJdks(paths, monodroidConfig.JavaJdkPath, true, preferredByDotNet: true);
+					SearchDirectoryForJdks(paths, monodroidConfig.JavaJdkPath!, true, preferredByDotNet: true);
 			}
 
 			if (IsWindows)
@@ -169,7 +183,7 @@ namespace AndroidSdk
 				.Select(g => g.First());
 		}
 
-		void SearchDirectoryForJdks(IList<JdkInfo> found, string directory, bool recursive = true, bool setByEnvironmentVariable = false, bool preferredByDotNet = false)
+		static void SearchDirectoryForJdks(IList<JdkInfo> found, string directory, bool recursive = true, bool setByEnvironmentVariable = false, bool preferredByDotNet = false)
 		{
 			if (string.IsNullOrEmpty(directory))
 				return;
@@ -190,7 +204,7 @@ namespace AndroidSdk
 
 		static readonly Regex rxJavaCVersion = new Regex("[0-9\\.\\-_]+", RegexOptions.Singleline);
 
-		bool TryGetJavaJdkInfo(string javacFilename, bool setByEnvironmentVariable, bool preferredByDotNet, out JdkInfo? javaJdkInfo)
+		static bool TryGetJavaJdkInfo(string javacFilename, bool setByEnvironmentVariable, bool preferredByDotNet, out JdkInfo? javaJdkInfo)
 		{
 			var args = new ProcessArgumentBuilder();
 			args.Append("-version");
@@ -204,7 +218,7 @@ namespace AndroidSdk
 
 			if (!string.IsNullOrEmpty(v))
 			{
-				javaJdkInfo = new JdkInfo(javacFilename, v, setByEnvironmentVariable, preferredByDotNet);
+				javaJdkInfo = new JdkInfo(javacFilename, v!, setByEnvironmentVariable, preferredByDotNet);
 				return true;
 			}
 

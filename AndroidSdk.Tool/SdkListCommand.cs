@@ -2,6 +2,7 @@
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 
 namespace AndroidSdk.Tool
@@ -28,7 +29,11 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 	}
 
 	public class SdkListCommand : Command<SdkListCommandSettings>
@@ -37,9 +42,9 @@ namespace AndroidSdk.Tool
 		{
 			try
 			{
-				var m = new AndroidSdk.SdkManager(settings?.Home);
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
 
-				var sdkList = m.List();
+				var sdkList = sdk.SdkManager.List();
 
 				if (settings.Available || settings.Installed)
 				{
@@ -57,7 +62,9 @@ namespace AndroidSdk.Tool
 						rule.Centered();
 						AnsiConsole.Write(rule);
 
-						OutputHelper.OutputTable(sdkList.AvailablePackages, new[] { "Package", "Version", "Description" }, i => new[] { i.Path, i.Version, i.Description });
+						OutputHelper.OutputTable(sdkList.AvailablePackages,
+							[ "Package", "Version", "Description" ],
+							i => [ i.Path, i.Version, i.Description ?? string.Empty ]);
 					}
 
 					if (sdkList.InstalledPackages.Any())
@@ -68,13 +75,13 @@ namespace AndroidSdk.Tool
 
 						OutputHelper.OutputTable(
 							sdkList.InstalledPackages,
-							new[] { "Package", "Version", "Description", "Location" },
-							i => new[] { i.Path, i.Version, i.Description, i.Location });
+							[ "Package", "Version", "Description", "Location" ],
+							i => [ i.Path, i.Version, i.Description ?? string.Empty, i.Location ]);
 					}
 				}
 				else
 				{
-					OutputHelper.Output<AndroidSdk.SdkManager.SdkManagerList>(sdkList, settings.Format);
+					OutputHelper.Output(sdkList, settings.Format);
 				}
 
 			}

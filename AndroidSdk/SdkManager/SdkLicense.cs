@@ -1,14 +1,13 @@
 ﻿
 using System.Collections.Generic;
 
-namespace AndroidSdk
+namespace AndroidSdk;
+
+public class SdkLicense(string id, List<string>? license = null, bool accepted = false)
 {
-	public class SdkLicense
-	{
-		public string Id { get; set; }
+	public string Id { get; set; } = id;
 
-		public List<string> License { get; set; } = new();
+	public List<string> License { get; set; } = license ?? new List<string>();
 
-		public bool Accepted { get; set; }
-	}
+	public bool Accepted { get; set; } = accepted;
 }

@@ -2,9 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using static AndroidSdk.SdkManager;
 
 namespace AndroidSdk;
+
 
 public class SdkLocator : PathLocator
 {
@@ -19,14 +22,14 @@ public class SdkLocator : PathLocator
 			// Try the registry entries known by the Xamarin SDK
 			var registryConfig = MonoDroidSdkLocator.ReadRegistry();
 			if (!string.IsNullOrEmpty(registryConfig.AndroidSdkPath))
-				paths.Add(registryConfig.AndroidSdkPath);
+				paths.Add(registryConfig.AndroidSdkPath!);
 		}
 		else
 		{
 			// Try the monodroid-config.xml file known by the Xamarin SDK
 			var monodroidConfig = MonoDroidSdkLocator.ReadConfigFile();
 			if (!string.IsNullOrEmpty(monodroidConfig.AndroidSdkPath))
-				paths.Add(monodroidConfig.AndroidSdkPath);
+				paths.Add(monodroidConfig.AndroidSdkPath!);
 		}
 
 		var androidSdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
@@ -38,6 +41,15 @@ public class SdkLocator : PathLocator
 			paths.Add(androidHome);
 
 		return paths.ToArray();
+	}
+
+	SdkManagerToolLocator locator = new SdkManagerToolLocator();
+
+	public override bool IsValid(string path)
+	{
+		var d = new DirectoryInfo(path);
+		var t = locator.FindTool(d);
+		return t is not null;
 	}
 
 	public override string[] AdditionalPaths()

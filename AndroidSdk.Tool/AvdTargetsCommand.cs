@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace AndroidSdk.Tool
 {
@@ -15,7 +16,11 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 	}
 
 	public class AvdTargetsCommand : Command<AvdTargetsCommandSettings>
@@ -24,19 +29,20 @@ namespace AndroidSdk.Tool
 		{
 			try
 			{
-				var avd = new AvdManager(settings?.Home);
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
 
-				var targets = avd.ListTargets();
+				var targets = sdk.AvdManager.ListTargets();
 
 				OutputHelper.Output(targets, settings?.Format,
-					new[] { "Name", "Id", "Numeric Id", "API Level", "Type", "Revision" },
-					i => new[] { i.Name, i.Id, i.NumericId?.ToString() ?? string.Empty, i.ApiLevel.ToString(), i.Type, i.Revision.ToString() });
+					[ "Name", "Id", "Numeric Id", "API Level", "Type", "Revision" ],
+					i => [ i.Name, i.Id, i.NumericId?.ToString() ?? string.Empty, i.ApiLevel?.ToString() ?? string.Empty, i.Type, i.Revision?.ToString() ?? string.Empty ]);
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{
 				Program.WriteException(sdkEx);
 				return 1;
 			}
+
 			return 0;
 		}
 	}

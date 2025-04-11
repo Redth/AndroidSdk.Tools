@@ -7,11 +7,9 @@ namespace AndroidSdk
 	{
 		public JdkInfo(string javaCFile, string version, bool setByEnvironmentVariable = false, bool preferredByDotNet = false)
 		{
-			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
 			JavaC = new FileInfo(javaCFile);
-			Home = new DirectoryInfo(Path.Combine(JavaC.Directory.FullName, ".."));
-			Java = new FileInfo(Path.Combine(Home.FullName, "bin", "java" + (isWindows ? ".exe" : "")));
+			Home = new DirectoryInfo(Path.Combine(JavaC.Directory!.FullName, ".."));
+			Java = GetJavaPath(Home);
 			Version = version;
 			SetByEnvironmentVariable = setByEnvironmentVariable;
 			PreferredByDotNet = preferredByDotNet;
@@ -27,5 +25,8 @@ namespace AndroidSdk
 		public bool PreferredByDotNet {get; private set; } = false;
 
 		public string Version { get; set; }
+
+		internal static FileInfo GetJavaPath(DirectoryInfo jdkHome)
+			=> new (Path.Combine(jdkHome.FullName, "bin", "java" + (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : "")));
 	}
 }

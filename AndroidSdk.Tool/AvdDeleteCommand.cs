@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,11 +15,15 @@ namespace AndroidSdk.Tool
 	{
 		[Description("Name of the AVD/Emulator")]
 		[CommandOption("-n|--name")]
-		public string Name { get; set; }
+		public string? Name { get; set; }
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 
 		public override ValidationResult Validate()
 		{
@@ -35,9 +40,9 @@ namespace AndroidSdk.Tool
 		{
 			try
 			{
-				var avd = new AvdManager(settings?.Home);
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
 
-				avd.Delete(settings.Name);
+				sdk.AvdManager.Delete(settings.Name!);
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{

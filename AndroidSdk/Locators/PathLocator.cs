@@ -15,7 +15,11 @@ public abstract class PathLocator : IPathLocator
 
 	protected PathLocator() { }
 
-	protected bool IsValidDirectoryPath(string path)
+
+	public virtual bool IsValid(string path)
+		=> true;
+
+	protected bool IsValidDirectoryPath(string? path)
 	{
 		var invalidChars = Path.GetInvalidPathChars();
 
@@ -62,7 +66,7 @@ public abstract class PathLocator : IPathLocator
 
 		foreach (var c in candidates)
 		{
-			if (!string.IsNullOrWhiteSpace(c) && Directory.Exists(c))
+			if (!string.IsNullOrWhiteSpace(c) && Directory.Exists(c) && IsValid(c))
 				found.Add(new DirectoryInfo(c));
 		}
 

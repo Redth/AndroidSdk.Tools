@@ -40,6 +40,8 @@ public class AndroidSdkManagerFixture : IAsyncLifetime
 
 	async Task<AndroidSdkManager> GetAndroidSdk()
 	{
+		var jdk = new JdkLocator().LocateJdk().First();
+
 		if (TryUsingGlobalSdk)
 		{
 			var locator = new SdkLocator();
@@ -64,13 +66,19 @@ public class AndroidSdkManagerFixture : IAsyncLifetime
 
 			MessageSink.OnMessage(new DiagnosticMessage("Using TEMP android sdk: {0}", AndroidSdkHome));
 
-			var s = new AndroidSdkManager(AndroidSdkHome);
+			var existingSdk = new SdkLocator().Locate(AndroidSdkHome.FullName)?.FirstOrDefault();
 
-			await s.Acquire();
+			if (existingSdk is null || !existingSdk.Exists)
+			{
+				var downloader = new SdkDownloader(jdk.Home);
+				await downloader.DownloadAsync(AndroidSdkHome);
+			}
+
+			var s = new AndroidSdkManager(AndroidSdkHome);
 
 			Assert.True(s.SdkManager.IsUpToDate());
 		}
 
-		return new AndroidSdkManager(AndroidSdkHome);
+		return new AndroidSdkManager(AndroidSdkHome, jdk.Home);
 	}
 }

@@ -1,57 +1,38 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
 	public class AndroidSdkManager
 	{
-		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
-		public static IEnumerable<DirectoryInfo> FindHome()
-			=> new SdkLocator().Locate();
-
-		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
-		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo specificHome = null)
-			=> new SdkLocator().Locate(specificHome?.FullName, null);
-
-		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
-		public static IEnumerable<DirectoryInfo> FindHome(DirectoryInfo specificHome = null, params string[] additionalPossibleDirectories)
-			=> new SdkLocator().Locate(specificHome?.FullName, additionalPossibleDirectories);
-
-		[Obsolete("Use AndroidSdkLocator.Locate instead.")]
-		public static IEnumerable<DirectoryInfo> FindHome(string specificHome = null, params string[] additionalPossibleDirectories)
-			=> new SdkLocator().Locate(specificHome, additionalPossibleDirectories);
-
-		public AndroidSdkManager(DirectoryInfo home = null)
+		public AndroidSdkManager(DirectoryInfo? androidSdkHome = null, DirectoryInfo? jdkHome = null, SdkManagerToolOptions? options = null)
 		{
-			Home = new SdkLocator().Locate(home?.FullName)?.FirstOrDefault();
+			Home = new SdkLocator().Locate(androidSdkHome?.FullName)?.FirstOrDefault()
+				?? throw new DirectoryNotFoundException("Unable to find Android SDK");
 
-			SdkManager = new SdkManager(new SdkManagerToolOptions { AndroidSdkHome = Home });
-			AvdManager = new AvdManager(Home);
-			PackageManager = new PackageManager(Home);
-			Adb = new Adb(Home);
-			Emulator = new Emulator(Home);
-		}
-
-		public async Task Acquire()
-		{
-			await SdkManager.Acquire();
+			JdkHome = new JdkLocator().Locate(jdkHome?.FullName)?.FirstOrDefault()
+				?? throw new DirectoryNotFoundException("Unable to find Java JDK");
 		}
 
 		public readonly DirectoryInfo Home;
 
-		public readonly SdkManager SdkManager;
+		public readonly DirectoryInfo JdkHome;
 
-		public readonly AvdManager AvdManager;
+		SdkManager? sdkManager;
+		AvdManager? avdManager;
+		PackageManager? packageManager;
+		Emulator? emulator;
+		Adb? adb;
 
-		public readonly PackageManager PackageManager;
+		public SdkManager SdkManager => sdkManager ??= new SdkManager(Home, JdkHome);
 
-		public readonly Emulator Emulator;
+		public AvdManager AvdManager => avdManager ??= new AvdManager(Home, JdkHome);
 
-		public readonly Adb Adb;
+		public PackageManager PackageManager => packageManager ??= new PackageManager(Home, JdkHome);
+
+		public Emulator Emulator => emulator ??= new Emulator(Home);
+		
+		public Adb Adb => adb ??= new Adb(Home);
 	}
 }

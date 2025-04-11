@@ -31,7 +31,7 @@ namespace AndroidSdk
 			void TryAddPath(string envvarName, string? suffix1 = null, string? suffix2 = null)
 			{
 				var envvar = Environment.GetEnvironmentVariable(envvarName);
-				if (!IsValidDirectoryPath(envvar))
+				if (string.IsNullOrEmpty(envvar) || !IsValidDirectoryPath(envvar))
 					return;
 
 				if (string.IsNullOrEmpty(suffix1))
@@ -53,6 +53,9 @@ namespace AndroidSdk
 
 			foreach (var iniFile in home.EnumerateFiles("*.ini", SearchOption.TopDirectoryOnly))
 			{
+				if (iniFile.Directory is null)
+					continue;
+
 				// File:        Pixel_5_API_31.ini
 				// AVD Name:    Pixel_5_API_31
 				var avdName = Path.GetFileNameWithoutExtension(iniFile.Name);

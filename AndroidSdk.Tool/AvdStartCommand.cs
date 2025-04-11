@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -16,7 +17,7 @@ namespace AndroidSdk.Tool
 	{
 		[Description("Name of the AVD/Emulator")]
 		[CommandOption("-n|--name")]
-		public string Name { get; set; }
+		public string? Name { get; set; }
 
 		[Description("Wait for emulator to boot")]
 		[CommandOption("-w|--wait|--wait-boot")]
@@ -39,7 +40,11 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK home/root path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 
 		[Description("Disable Snapshot load/save")]
 		[CommandOption("--no-snapshot")]
@@ -112,7 +117,7 @@ namespace AndroidSdk.Tool
 
 		[Description("GPU emulation mode")]
 		[CommandOption("--gpu")]
-		public string Gpu { get; set; }
+		public string? Gpu { get; set; }
 
 		[Description("Disable extended Java Native Interface (JNI) checks")]
 		[CommandOption("--no-jni")]
@@ -144,7 +149,7 @@ namespace AndroidSdk.Tool
 
 		class EmulatorScreenModeTypeConverter : TypeConverter
 		{
-			public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+			public override object? ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object? value)
 			{
 				if (value is string stringValue)
 				{
@@ -158,7 +163,7 @@ namespace AndroidSdk.Tool
 
 		class EmulatorCameraTypeConverter : TypeConverter
 		{
-			public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+			public override object? ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object? value)
 			{
 				return Emulator.EmulatorStartOptions.ValidateCamera(nameof(ScreenMode), value?.ToString());
 			}
@@ -173,14 +178,15 @@ namespace AndroidSdk.Tool
 
 			try
 			{
-				var emu = new Emulator(settings?.Home);
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
+				var emu = sdk.Emulator;
 
 				Emulator.AndroidEmulatorProcess process = null;
 
 				AnsiConsole.Status()
 				.Start($"Starting {settings.Name}...", ctx =>
 				{
-					process = emu.Start(settings.Name, new Emulator.EmulatorStartOptions
+					process = emu.Start(settings.Name!, new Emulator.EmulatorStartOptions
 					{
 						WipeData = settings.WipeData,
 						NoSnapshot = settings.NoSnapshot,

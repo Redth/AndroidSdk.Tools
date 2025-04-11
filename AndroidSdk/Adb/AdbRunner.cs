@@ -1,48 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+﻿using System.IO;
+using System.Threading;
 
 namespace AndroidSdk
 {
-	internal class AdbRunner
+	internal class AdbRunner(SdkTool sdkTool)
 	{
-		public AdbRunner(SdkTool sdkTool)
-		{
-			this.sdkTool = sdkTool;
-		}
-
-		SdkTool sdkTool;
-
-		internal void AddSerial(string serial, ProcessArgumentBuilder builder)
+		internal void AddSerial(string? serial, ProcessArgumentBuilder builder)
 		{
 			if (!string.IsNullOrEmpty(serial))
 			{
 				builder.Append("-s");
-				builder.AppendQuoted(serial);
+				builder.AppendQuoted(serial!);
 			}
 		}
 
-		internal ProcessResult RunAdb(DirectoryInfo androidSdkHome, ProcessArgumentBuilder builder)
-			=> RunAdb(androidSdkHome, builder, System.Threading.CancellationToken.None);
+		FileInfo? adbToolPath;
 
-		internal ProcessResult RunAdb(DirectoryInfo androidSdkHome, ProcessArgumentBuilder builder, System.Threading.CancellationToken cancelToken)
+		internal ProcessResult RunAdb(ProcessArgumentBuilder builder, CancellationToken cancelToken = default)
 		{
-			var adbToolPath = sdkTool.FindToolPath(androidSdkHome);
+			var locator = new AdbToolLocator();
+
+			adbToolPath ??= locator.FindTool(sdkTool.AndroidSdkHome);
 			if (adbToolPath == null || !File.Exists(adbToolPath.FullName))
-				throw new FileNotFoundException("Could not find adb", adbToolPath?.FullName);
+				throw new FileNotFoundException($"Could not find {locator.ToolName}", adbToolPath?.FullName);
 
 			var p = new ProcessRunner(adbToolPath, builder, cancelToken);
 
 			var r = p.WaitForExit();
 
 			if (r.ExitCode != 0)
-			{
-				throw new SdkToolFailedExitException("adb", r.ExitCode, r.StandardError, r.StandardOutput);
-			}
+				throw new SdkToolFailedExitException(locator.ToolName, r.ExitCode, r.StandardError, r.StandardOutput);
 
 			return r;
 		}

@@ -78,7 +78,7 @@ public static class MonoDroidSdkLocator
 		if (!File.Exists(path))
 		{
 			var dir = Path.GetDirectoryName(path);
-			if (!Directory.Exists(dir))
+			if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
 				Directory.CreateDirectory(dir);
 
 			File.WriteAllText(path, "<?xml version=\"1.0\" encoding=\"utf-8\"?><monodroid></monodroid>");
@@ -102,9 +102,12 @@ public static class MonoDroidSdkLocator
 				androidSdkNode = doc.CreateElement("android-sdk");
 				monodroidNode.AppendChild(androidSdkNode);
 			}
-			if (androidSdkNode.Attributes["path"] == null)
-				androidSdkNode.Attributes.Append(doc.CreateAttribute("path"));
-			androidSdkNode.Attributes["path"].Value = location.AndroidSdkPath;
+			if (androidSdkNode is not null && androidSdkNode.Attributes is not null)
+			{
+				if (androidSdkNode.Attributes["path"] == null)
+					androidSdkNode.Attributes.Append(doc.CreateAttribute("path"));
+				androidSdkNode.Attributes["path"]!.Value = location.AndroidSdkPath;
+			}
 		}
 			
 		if (!string.IsNullOrEmpty(location.JavaJdkPath))
@@ -115,9 +118,12 @@ public static class MonoDroidSdkLocator
 				javaSdkNode = doc.CreateElement("java-sdk");
 				monodroidNode.AppendChild(javaSdkNode);
 			}
-			if (javaSdkNode.Attributes["path"] == null)
-				javaSdkNode.Attributes.Append(doc.CreateAttribute("path"));
-			javaSdkNode.Attributes["path"].Value = location.JavaJdkPath;
+			if (javaSdkNode is not null && javaSdkNode.Attributes is not null)
+			{
+				if (javaSdkNode.Attributes["path"] == null)
+					javaSdkNode.Attributes.Append(doc.CreateAttribute("path"));
+				javaSdkNode.Attributes["path"]!.Value = location.JavaJdkPath;
+			}			
 		}
 
 		doc.Save(path);
@@ -139,6 +145,7 @@ public static class MonoDroidSdkLocator
 
 		foreach (var registryPath in registryPaths)
 		{
+#pragma warning disable CA1416
 			// Open the registry key under HKCU (HKEY_CURRENT_USER)
 			using var key = Registry.CurrentUser.OpenSubKey(registryPath);
 			
@@ -149,8 +156,9 @@ public static class MonoDroidSdkLocator
 				javaJdkPath = key?.GetValue("JavaSdkDirectory") as string;
 
 			key?.Close();
+#pragma warning restore CA1416
 		}
-		
+
 		return new MonoDroidSdkLocation(androidSdkPath, javaJdkPath);
 	}
 
@@ -170,16 +178,18 @@ public static class MonoDroidSdkLocator
 
 		foreach (var registryPath in registryPaths)
 		{
+#pragma warning disable CA1416
 			// Open or create the registry key under HKCU (HKEY_CURRENT_USER)
 			using var key = Registry.CurrentUser.CreateSubKey(registryPath);
 
 			// Only set if we didn't get one yet
 			if (!string.IsNullOrEmpty(location.AndroidSdkPath))
-				key?.SetValue("AndroidSdkDirectory", location.AndroidSdkPath);
+				key?.SetValue("AndroidSdkDirectory", location.AndroidSdkPath!);
 			if (!string.IsNullOrEmpty(location.JavaJdkPath))
-				key?.SetValue("JavaSdkDirectory", location.JavaJdkPath);
+				key?.SetValue("JavaSdkDirectory", location.JavaJdkPath!);
 
 			key?.Close();
+#pragma warning restore CA1416
 		}
 	}
 }

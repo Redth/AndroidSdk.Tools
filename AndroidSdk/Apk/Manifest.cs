@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Xml;
+using System.Xml.Linq;
 
 namespace AndroidSdk.Apk;
 
@@ -6,9 +7,11 @@ public class Manifest
 {
     public Manifest(XElement element)
     {
-		PackageId = element?.Attribute("package")?.Value;
+		PackageId = element?.Attribute("package")?.Value
+			?? throw new XmlException("Missing package attribute");
 
-		VersionName = element?.Attribute("versionName")?.Value;
+		VersionName = element?.Attribute("versionName")?.Value
+			?? throw new XmlException("Missing versionName attribute");
 
 		if (int.TryParse(element?.Attribute("versionCode")?.Value, out var versionCode))
 			VersionCode = versionCode;
@@ -31,5 +34,5 @@ public class Manifest
 
 	public int VersionCode { get; set; }
 
-    public UsesSdk UsesSdk { get; set; }
+    public UsesSdk? UsesSdk { get; set; }
 }

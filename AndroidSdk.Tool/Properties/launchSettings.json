@@ -2,7 +2,7 @@
   "profiles": {
     "AndroidSdk.Tool": {
       "commandName": "Project",
-      "commandLineArgs": "sdk info"
+      "commandLineArgs": "sdk info --home=\"X:\\androidsdktemp\""
     }
   }
 }

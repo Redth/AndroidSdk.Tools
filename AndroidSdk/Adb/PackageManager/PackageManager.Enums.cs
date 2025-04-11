@@ -2,65 +2,64 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace AndroidSdk
+namespace AndroidSdk;
+
+public partial class PackageManager
 {
-	public partial class PackageManager
+	/// <summary>
+	/// Enabled/Disabled state of packages.
+	/// </summary>
+	public enum PackageListState
 	{
 		/// <summary>
-		/// Enabled/Disabled state of packages.
+		/// All - Enabled and Disabled.
 		/// </summary>
-		public enum PackageListState
-		{
-			/// <summary>
-			/// All - Enabled and Disabled.
-			/// </summary>
-			All,
-			/// <summary>
-			/// Only enabled.
-			/// </summary>
-			OnlyEnabled,
-			/// <summary>
-			/// Only Disabled.
-			/// </summary>
-			OnlyDisabled
-		}
-
+		All,
 		/// <summary>
-		/// Source type of packages
+		/// Only enabled.
 		/// </summary>
-		public enum PackageSourceType
-		{
-			/// <summary>
-			/// All - System and Third Party.
-			/// </summary>
-			All,
-			/// <summary>
-			/// Only System.
-			/// </summary>
-			OnlySystem,
-			/// <summary>
-			/// Only Third Party.
-			/// </summary>
-			OnlyThirdParty
-		}
-
+		OnlyEnabled,
 		/// <summary>
-		/// Install Location of packages.
+		/// Only Disabled.
 		/// </summary>
-		public enum PackageInstallLocation
-		{
-			/// <summary>
-			/// Auto - Let the system automatically decide.
-			/// </summary>
-			Auto = 0,
-			/// <summary>
-			/// Internal - System Memory.
-			/// </summary>
-			Internal = 1,
-			/// <summary>
-			/// External - Mass Storage Device.
-			/// </summary>
-			External = 2
-		}
+		OnlyDisabled
+	}
+
+	/// <summary>
+	/// Source type of packages
+	/// </summary>
+	public enum PackageSourceType
+	{
+		/// <summary>
+		/// All - System and Third Party.
+		/// </summary>
+		All,
+		/// <summary>
+		/// Only System.
+		/// </summary>
+		OnlySystem,
+		/// <summary>
+		/// Only Third Party.
+		/// </summary>
+		OnlyThirdParty
+	}
+
+	/// <summary>
+	/// Install Location of packages.
+	/// </summary>
+	public enum PackageInstallLocation
+	{
+		/// <summary>
+		/// Auto - Let the system automatically decide.
+		/// </summary>
+		Auto = 0,
+		/// <summary>
+		/// Internal - System Memory.
+		/// </summary>
+		Internal = 1,
+		/// <summary>
+		/// External - Mass Storage Device.
+		/// </summary>
+		External = 2
 	}
 }

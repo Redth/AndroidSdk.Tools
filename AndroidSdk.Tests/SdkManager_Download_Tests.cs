@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
@@ -29,20 +30,23 @@ public class SdkManager_Download_Tests : TestsBase, IDisposable
 	[InlineData("16.0", "16.0")]
 	public async Task Download(string? version, string installVersion)
 	{
-		var path = Path.Combine(tempSdkPath, $"android-sdk-{version}");
+		var path = new DirectoryInfo(Path.Combine(tempSdkPath, $"android-sdk-{version}"));
+		var jdk = new JdkLocator().Locate().First();
 
-		var sdk = new SdkManager();
-		await sdk.DownloadSdk(destinationDirectory: new DirectoryInfo(path), specificVersion: version);
+		var sdkDownloader = new SdkDownloader(jdk);
+		var v = Version.Parse(installVersion);
+
+		await sdkDownloader.DownloadAsync(destinationDirectory: path, specificVersion: (v.Major, v.Minor));
 
 		if (!string.IsNullOrEmpty(version))
 		{
 			Assert.True(
-				File.Exists(Path.Combine(path, $"cmdline-tools", installVersion, "lib", "sdkmanager-classpath.jar")),
+				File.Exists(Path.Combine(path.FullName, $"cmdline-tools", installVersion, "lib", "sdkmanager-classpath.jar")),
 				"The sdkmanager-classpath.jar file did not exist in the new SDK location.");
 		}
 		else
 		{
-			var installPath = Path.Combine(path, $"cmdline-tools");
+			var installPath = Path.Combine(path.FullName, $"cmdline-tools");
 
 			foreach (var p in Directory.GetDirectories(installPath))
 			{
@@ -53,7 +57,9 @@ public class SdkManager_Download_Tests : TestsBase, IDisposable
 			
 		}
 
-			var isUpToDate = sdk.IsUpToDate();
+		
+		var sdk = new SdkManager(path, jdk);
+		var isUpToDate = sdk.IsUpToDate();
 
 		Assert.True(isUpToDate, "The new SDK was not up to date after updating.");
 	}

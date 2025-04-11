@@ -1,32 +1,38 @@
 ﻿using System;
 using System.IO;
 
-namespace AndroidSdk
+namespace AndroidSdk;
+
+public partial class PackageManager
 {
-	public partial class PackageManager
+	/// <summary>
+	/// Android Package Information
+	/// </summary>
+	public class PackageListInfo
 	{
-		/// <summary>
-		/// Android Package Information
-		/// </summary>
-		public class PackageListInfo
+		public PackageListInfo(FileInfo installPath, string packageName, string? installer)
 		{
-			/// <summary>
-			/// Gets or sets the install path.
-			/// </summary>
-			/// <value>The install path.</value>
-			public FileInfo InstallPath { get; set; }
-
-			/// <summary>
-			/// Gets or sets the installer.
-			/// </summary>
-			/// <value>The installer.</value>
-			public string Installer { get; set; }
-
-			/// <summary>
-			/// Gets or sets the name of the package.
-			/// </summary>
-			/// <value>The name of the package.</value>
-			public string PackageName { get; set; }
+			InstallPath = installPath;
+			PackageName = packageName;
+			Installer = installer;
 		}
+
+		/// <summary>
+		/// Gets or sets the install path.
+		/// </summary>
+		/// <value>The install path.</value>
+		public FileInfo InstallPath { get; set; }
+
+		/// <summary>
+		/// Gets or sets the installer.
+		/// </summary>
+		/// <value>The installer.</value>
+		public string? Installer { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the package.
+		/// </summary>
+		/// <value>The name of the package.</value>
+		public string PackageName { get; set; }
 	}
 }

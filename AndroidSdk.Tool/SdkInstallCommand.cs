@@ -1,6 +1,8 @@
-﻿using Spectre.Console.Cli;
+﻿using Spectre.Console;
+using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace AndroidSdk.Tool
 {
@@ -8,7 +10,7 @@ namespace AndroidSdk.Tool
 	{
 		[Description("Package to install")]
 		[CommandOption("-p|--package")]
-		public string[] Package { get; set; }
+		public string[] Package { get; set; } = [];
 
 		[Description("Output Format")]
 		[CommandOption("-f|--format")]
@@ -18,7 +20,19 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
+
+		public override ValidationResult Validate()
+		{
+			if (Package is null || Package.Length <= 0)
+				return ValidationResult.Error("One or more --package argumentss are required");
+
+			return base.Validate();
+		}
 	}
 
 	public class SdkInstallCommand : Command<SdkInstallCommandSettings>
@@ -28,9 +42,9 @@ namespace AndroidSdk.Tool
 			var ok = true;
 			try
 			{
-				var m = new SdkManager(settings?.Home);
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
 
-				ok = m.Install(settings.Package);
+				ok = sdk.SdkManager.Install(settings.Package);
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{

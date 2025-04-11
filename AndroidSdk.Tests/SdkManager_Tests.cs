@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -108,5 +109,15 @@ public class SdkManager_Tests : AndroidSdkManagerTestsBase
 		var logText = File.ReadAllText(tmp);
 
 		Assert.NotEmpty(logText);
+	}
+
+	[Fact]
+	public async Task Grpc_Battery_Level()
+	{
+		var e = new EmulatorControllerGrpcClient("http://127.0.0.1:8554");
+
+		var b = await e.CheckIsBootedAsync();
+
+		Assert.True(b);
 	}
 }

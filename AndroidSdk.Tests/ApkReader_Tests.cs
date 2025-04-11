@@ -80,7 +80,7 @@ public class ApkReader_Tests : TestsBase
 
 		var maxSdkVersion = reader.ReadManifest().Manifest.UsesSdk.MaxSdkVersion;
 
-		Assert.Equal(0, maxSdkVersion);
+		Assert.Null(maxSdkVersion);
 	}
 
 }

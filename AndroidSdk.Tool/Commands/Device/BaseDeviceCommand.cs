@@ -2,6 +2,7 @@
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace AndroidSdk.Tool;
 
@@ -15,7 +16,11 @@ public class BaseDeviceCommandSettings : CommandSettings
 
 	[Description("Android SDK Home/Root Path")]
 	[CommandOption("-h|--home")]
-	public string? Home { get; set; }
+	public DirectoryInfo? Home { get; set; }
+
+	[Description("Java JDK Home Path")]
+	[CommandOption("-j|--jdk")]
+	public DirectoryInfo? JdkHome { get; set; }
 }
 
 public abstract class BaseDeviceCommand<TSettings> : Command<TSettings>
@@ -27,8 +32,9 @@ public abstract class BaseDeviceCommand<TSettings> : Command<TSettings>
 	{
 		try
 		{
-			var adb = new Adb(settings.Home);
-			return Execute(context, settings, adb);
+			var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
+			
+			return Execute(context, settings, sdk.Adb);
 		}
 		catch (SdkToolFailedExitException sdkEx)
 		{

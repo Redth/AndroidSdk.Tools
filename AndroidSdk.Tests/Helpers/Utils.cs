@@ -10,10 +10,10 @@ public static class Utils
 	{
 		get
 		{
-			var codeBase = typeof(TestsBase).Assembly.CodeBase;
+			var codeBase = typeof(TestsBase).Assembly.Location;
 			var uri = new UriBuilder(codeBase);
 			var path = Uri.UnescapeDataString(uri.Path);
-			return Path.GetDirectoryName(path);
+			return Path.GetDirectoryName(path) ?? throw new DirectoryNotFoundException();
 		}
 	}
 

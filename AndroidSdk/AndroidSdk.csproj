@@ -3,6 +3,8 @@
 	<PropertyGroup>
 		<TargetFrameworks>netstandard2.0;net6.0;net8.0</TargetFrameworks>
 		<LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <NoWarn>$(NoWarn);NU1510</NoWarn>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -24,10 +26,21 @@
 	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' Or '$(TF_BUILD)' == 'true'">
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 	</PropertyGroup>
+
+    <ItemGroup>
+        <Protobuf Include="Emulator\emulator_controller.proto" />
+    </ItemGroup>
 	
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
-	  <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+        <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+        <PackageReference Include="Grpc.Core" Version="2.46.6" />
+        <PackageReference Include="Grpc.Net.Client" Version="2.70.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.71.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
 	</ItemGroup>
 	
 	<ItemGroup>

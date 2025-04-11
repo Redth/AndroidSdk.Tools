@@ -33,7 +33,7 @@ namespace AndroidSdk
 			/// Gets or sets the file to write log message output to.  The default is stdout.
 			/// </summary>
 			/// <value>The output file.</value>
-			public FileInfo OutputFile { get; set; }
+			public FileInfo? OutputFile { get; set; }
 
 			//-g Prints the size of the specified log buffer and exits.
 			/// <summary>

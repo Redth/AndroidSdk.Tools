@@ -19,14 +19,13 @@ public class AdbdClient
 {
 	public const int DefaultAdbdPort = 5037;
 
-	public AdbdClient(string androidSdkHome = null, string? host = null, int? port = null, ILogger? logger = default)
+	public AdbdClient(DirectoryInfo androidSdkHome, string? host = null, int? port = null, ILogger? logger = default)
 	{
-		AndroidSdkHome = androidSdkHome;
 		Host = host ?? IPAddress.Loopback.ToString();
 		Port = port ?? 5037;
 		Logger = logger ?? NullLogger.Instance;
 
-		adb = new Adb(AndroidSdkHome);
+		adb = new Adb(androidSdkHome);
 	}
 
 	public string? Transport { get; private set; }
@@ -35,7 +34,8 @@ public class AdbdClient
 	public readonly string Host;
 	public readonly int Port;
 
-	public readonly string AndroidSdkHome;
+	public string? AndroidSdkHome => adb.AndroidSdkHome?.FullName;
+
 	TcpClient tcpClient = new TcpClient();
 	readonly Adb adb;
 	NetworkStream? stream;
@@ -346,10 +346,7 @@ public class AdbdClient
 			{
 				var parts = Regex.Split(line.Trim(), "\\s+");
 
-				var d = new AdbDevice
-				{
-					Serial = parts[0].Trim()
-				};
+				var d = new AdbDevice(parts[0].Trim());
 
 				if (parts.Length > 1 && (parts[1]?.ToLowerInvariant() ?? "offline") == "offline")
 					continue;
@@ -505,7 +502,7 @@ public class AdbdClient
 			if (cancellationToken.IsCancellationRequested)
 				break;
 
-			var parts = rxWhitespace.Split(reply);
+			var parts = rxWhitespace.Split(reply ?? string.Empty);
 
 			if (parts.Length > 1)
 			{

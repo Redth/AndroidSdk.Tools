@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 
 namespace AndroidSdk.Tool
@@ -18,7 +19,11 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 
 		[Description("Force license accept without display license text or requiring any user interaction")]
 		[CommandOption("--force")]
@@ -33,16 +38,12 @@ namespace AndroidSdk.Tool
 			{
 				var dotnetPreferredPaths = MonoDroidSdkLocator.LocatePaths();
 
-				var m = new AndroidSdk.SdkManager(settings?.Home);
-				m.SkipVersionCheck = true;
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
+				sdk.SdkManager.SkipVersionCheck = true;
 
-				var licenses = m.GetLicenses().Select(l =>
-					new SdkLicenseInfo
-					{
-						Id = l.Id,
-						LicenseText = string.Join(Environment.NewLine, l.License),
-						IsAccepted = l.Accepted
-					}).Where(l => !l.IsAccepted).ToList();
+				var licenses = sdk.SdkManager.GetLicenses().Select(l =>
+					new SdkLicenseInfo(l.Id, string.Join(Environment.NewLine, l.License), l.Accepted))
+					.Where(l => !l.IsAccepted).ToList();
 
 				var doAccept = true;
 
@@ -65,7 +66,7 @@ namespace AndroidSdk.Tool
 
 				if (doAccept)
 				{
-					m.AcceptLicenses();
+					sdk.SdkManager.AcceptLicenses();
 					return 0;
 				}
 			}

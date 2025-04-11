@@ -69,9 +69,9 @@ public class ApkManifestInfoCommand : Command<ApkManifestInfoCommandSettings>
 						i.PackageId,
 						i.VersionCode.ToString("0", CultureInfo.InvariantCulture),
 						i.VersionName,
-						i.UsesSdk.MinSdkVersion == 0 ? "" : i.UsesSdk.MinSdkVersion.ToString("0", CultureInfo.InvariantCulture),
-						i.UsesSdk.TargetSdkVersion == 0 ? "" : i.UsesSdk.TargetSdkVersion.ToString("0", CultureInfo.InvariantCulture),
-						i.UsesSdk.MaxSdkVersion == 0 ? "" : i.UsesSdk.MaxSdkVersion.ToString("0", CultureInfo.InvariantCulture)
+						(i.UsesSdk?.MinSdkVersion ?? 0) == 0 ? "" : (i.UsesSdk?.MinSdkVersion?.ToString("0", CultureInfo.InvariantCulture) ?? ""),
+						(i.UsesSdk?.TargetSdkVersion ?? 0) == 0 ? "" : (i.UsesSdk?.TargetSdkVersion?.ToString("0", CultureInfo.InvariantCulture) ?? ""),
+						(i.UsesSdk?.MaxSdkVersion ?? 0) == 0 ? "" : (i.UsesSdk ?.MaxSdkVersion ?.ToString("0", CultureInfo.InvariantCulture) ?? "")
 					});
 			}
 		}

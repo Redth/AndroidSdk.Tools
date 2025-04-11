@@ -13,7 +13,7 @@ public class SdkToolFailedExitException : Exception
 	}
 
 	public SdkToolFailedExitException(string name, int exitCode, IEnumerable<string> stdErr, IEnumerable<string> stdOut)
-		: this(name, exitCode, stdErr, stdOut, null)
+		: this(name, exitCode, stdErr, stdOut, [])
 	{
 	}
 
@@ -21,9 +21,9 @@ public class SdkToolFailedExitException : Exception
 		: base($"{name} exited with an error status")
 	{
 		ExitCode = exitCode;
-		StdErr = stdErr?.ToArray() ?? new string[0];
-		StdOut = stdOut?.ToArray() ?? new string[0];
-		AllOut = output?.ToArray() ?? new string[0];
+		StdErr = stdErr?.ToArray() ?? [];
+		StdOut = stdOut?.ToArray() ?? [];
+		AllOut = output?.ToArray() ?? [];
 	}
 
 	public readonly int ExitCode;

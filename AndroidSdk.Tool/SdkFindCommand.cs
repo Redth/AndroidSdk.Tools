@@ -1,9 +1,6 @@
-﻿using System;
-using Spectre.Console;
+﻿using Spectre.Console;
 using Spectre.Console.Cli;
-using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace AndroidSdk.Tool
 {
@@ -17,14 +14,12 @@ namespace AndroidSdk.Tool
 		{
 			try
 			{
-				var dotnetPreferredPaths = MonoDroidSdkLocator.LocatePaths();
+				var sdk = new AndroidSdkManager();
+				sdk.SdkManager.SkipVersionCheck = true;
 
-				var m = new AndroidSdk.SdkManager();
-				m.SkipVersionCheck = true;
-
-				if (!string.IsNullOrEmpty(m?.AndroidSdkHome?.FullName))
+				if (!string.IsNullOrEmpty(sdk.Home?.FullName))
 				{
-					AnsiConsole.WriteLine(m.AndroidSdkHome.FullName);
+					AnsiConsole.WriteLine(sdk.Home.FullName);
 				}
 			}
 			catch (SdkToolFailedExitException sdkEx)

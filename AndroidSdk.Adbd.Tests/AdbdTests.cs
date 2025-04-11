@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,13 +12,16 @@ namespace AndroidSdk.Tests
 		public Adbd_Tests(ITestOutputHelper outputHelper)
 			: base(outputHelper)
 		{
+			AndroidSdkHome = new SdkLocator().Locate().First();
 		}
+
+		DirectoryInfo AndroidSdkHome;
 
 		// TODO: this needs to be written for a CI scenario
 		[Fact(Skip = SkipOnCI)]
 		public async Task GetVersion()
 		{
-			var adbclient = new AdbdClient();
+			var adbclient = new AdbdClient(AndroidSdkHome);
 
 			var v = await adbclient.GetHostVersionAsync();
 
@@ -32,7 +34,7 @@ namespace AndroidSdk.Tests
 		[Fact(Skip = SkipOnCI)]
 		public async Task GetShellProps()
 		{
-			var adbclient = new AdbdClient();
+			var adbclient = new AdbdClient(AndroidSdkHome);
 
 			var avdName = await adbclient.GetPropAsync("emulator-5554", AdbdClient.ShellProperties.AvdName);
 			var arch = await adbclient.GetPropAsync("emulator-5554", AdbdClient.ShellProperties.ProductCpuAbi);
@@ -46,15 +48,16 @@ namespace AndroidSdk.Tests
 		[Fact(Skip = SkipOnCI)]
 		public async Task WatchDevices()
 		{
-			var a = new AdbdClient();
+			var a = new AdbdClient(AndroidSdkHome);
 
 			var cts = new CancellationTokenSource();
 			cts.CancelAfter(60000);
 
-			await a.WatchDevicesAsync(cts.Token, async d =>
+			await a.WatchDevicesAsync(cts.Token, d =>
 			{
 				OutputHelper.WriteLine($"{d.Serial} -> {d.Device} -> {d.State}");
-			}).ConfigureAwait(false);
+				return Task.CompletedTask;
+			});
 		}
 	}
 }

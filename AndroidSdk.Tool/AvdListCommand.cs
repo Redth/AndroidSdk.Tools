@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace AndroidSdk.Tool
 {
@@ -15,7 +16,11 @@ namespace AndroidSdk.Tool
 
 		[Description("Android SDK Home/Root Path")]
 		[CommandOption("-h|--home")]
-		public string Home { get; set; }
+		public DirectoryInfo? Home { get; set; }
+
+		[Description("Java JDK Home Path")]
+		[CommandOption("-j|--jdk")]
+		public DirectoryInfo? JdkHome { get; set; }
 	}
 
 	public class AvdListCommand : Command<AvdListCommandSettings>
@@ -24,19 +29,20 @@ namespace AndroidSdk.Tool
 		{
 			try
 			{
-				var avd = new AvdManager(settings?.Home);
+				var sdk = new AndroidSdkManager(settings.Home, settings.JdkHome);
 
-				var avds = avd.ListAvds();
+				var avds = sdk.AvdManager.ListAvds();
 
 				OutputHelper.Output(avds, settings?.Format,
-					new[] { "Name", "Target", "Device", "Based On", "Path" },
-					i => new[] { i.Name, i.Target, i.Device, i.BasedOn, i.Path });
+					[ "Name", "Target", "Device", "Based On", "Path" ],
+					i => [ i.Name, i.Target, i.Device, i.BasedOn ?? string.Empty, i.Path ]);
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{
 				Program.WriteException(sdkEx);
 				return 1;
 			}
+
 			return 0;
 		}
 	}

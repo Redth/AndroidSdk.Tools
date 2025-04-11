@@ -2,6 +2,7 @@
 using System.IO.Compression;
 using System.IO;
 using System.Xml.Linq;
+using System.Xml;
 
 namespace AndroidSdk.Apk;
 
@@ -15,6 +16,8 @@ public class AndroidManifest
 		ApkFile = apkFile;
 
 		using var zip = ZipFile.OpenRead(apkFile);
+		
+		XElement? manifestElement = null;
 
 		foreach (var entry in zip.Entries)
 		{
@@ -30,16 +33,20 @@ public class AndroidManifest
 				var manifestReader = new AndroidManifestReader(data);
 				RawXml = manifestReader.Manifest.ToString();
 
-				ManifestElement = manifestReader.Manifest.Element("root")?.Element("manifest");
-
-				Manifest = new Manifest(ManifestElement);
+				manifestElement = manifestReader?.Manifest?.Element("root")?.Element("manifest");
 			}
 		}
+
+		if (manifestElement == null)
+			throw new XmlException("Manifest element at path //root/manifest not found in APK file");
+
+		ManifestElement = manifestElement;
+		Manifest = new Manifest(ManifestElement);
 	}
 
 	public readonly string ApkFile;
 
-	public readonly string RawXml;
+	public readonly string? RawXml;
 
 	public readonly XElement ManifestElement;
 
