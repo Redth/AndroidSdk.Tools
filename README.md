@@ -3,8 +3,9 @@
 
 ![.NET Core](https://github.com/Redth/AndroidSdk.Tools/workflows/.NET%20Core/badge.svg)
 
-[![NuGet - AndroidSDK.Tool](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=NuGet&color=blue)](https://www.nuget.org/packages/AndroidSdk.Tool)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/AndroidSdk.Tool?color=blue)](https://www.nuget.org/packages/AndroidSdk.Tool)
+![.NET Tool - AndroidSDK.Tool](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=AndroidSDK.Tool&color=blue)
+[![.NET Library - AndroidSDK](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=AndroidSDK&color=blue)](https://www.nuget.org/packages/AndroidSDK.Tool)
+
 
 
 ## DotNet Tool
