@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -17,13 +18,21 @@ public class RepositoryManager
 
 	public RepositoryManager(HttpClient? httpClient = null)
 	{
-		if (this.httpClient is null)
+		if (httpClient is null)
 		{
-			this.httpClient = new HttpClient();
+			var handler = new HttpClientHandler
+			{
+				AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+			};
+			this.httpClient = new HttpClient(handler);
 			this.httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
 			this.httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
 			this.httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
 			this.httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
+		}
+		else
+		{
+			this.httpClient = httpClient;
 		}
 	}
 
