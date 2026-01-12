@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using AndroidSdk;
 
@@ -159,12 +160,13 @@ public class AvdTools
     /// </summary>
     [McpServerTool(Name = "avd_start")]
     [Description("Starts an Android emulator by AVD name. Can optionally wait for the emulator to fully boot before returning.")]
-    public static string StartAvd(
+    public static async Task<string> StartAvd(
         [Description("Name of the AVD to start.")] string name,
         [Description("Wait for the emulator to fully boot before returning.")] bool waitBoot = false,
         [Description("Start without loading/saving snapshots (cold boot).")] bool noSnapshot = false,
         [Description("Run emulator without a visible window (headless mode).")] bool noWindow = false,
-        [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
+        [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null,
+        IProgress<ProgressNotificationValue>? progress = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("AVD name is required.", nameof(name));
@@ -173,6 +175,13 @@ public class AvdTools
 
         try
         {
+            progress?.Report(new ProgressNotificationValue
+            {
+                Progress = 0,
+                Total = 100,
+                Message = $"Starting emulator '{name}'..."
+            });
+
             var options = new Emulator.EmulatorStartOptions
             {
                 NoSnapshot = noSnapshot,
@@ -181,9 +190,91 @@ public class AvdTools
 
             var process = sdkManager.Emulator.Start(name, options);
 
+            progress?.Report(new ProgressNotificationValue
+            {
+                Progress = 20,
+                Total = 100,
+                Message = $"Emulator process started, serial: {process.Serial}"
+            });
+
             if (waitBoot)
             {
-                process.WaitForBootComplete();
+                progress?.Report(new ProgressNotificationValue
+                {
+                    Progress = 30,
+                    Total = 100,
+                    Message = "Waiting for emulator to boot..."
+                });
+
+                // Poll for boot completion with progress updates
+                var bootStartTime = DateTime.UtcNow;
+                var maxWaitTime = TimeSpan.FromMinutes(5);
+                var checkInterval = TimeSpan.FromSeconds(3);
+                var bootComplete = false;
+
+                while (!bootComplete && (DateTime.UtcNow - bootStartTime) < maxWaitTime)
+                {
+                    await Task.Delay(checkInterval);
+                    
+                    try
+                    {
+                        // Check if boot completed
+                        var bootPropLines = sdkManager.Adb.Shell("getprop sys.boot_completed", process.Serial);
+                        var bootProp = bootPropLines?.FirstOrDefault()?.Trim();
+                        bootComplete = bootProp == "1";
+                    }
+                    catch
+                    {
+                        // Device might not be ready yet
+                    }
+
+                    if (!bootComplete)
+                    {
+                        var elapsed = DateTime.UtcNow - bootStartTime;
+                        var progressPct = Math.Min(90, 30 + (int)(elapsed.TotalSeconds / maxWaitTime.TotalSeconds * 60));
+                        progress?.Report(new ProgressNotificationValue
+                        {
+                            Progress = progressPct,
+                            Total = 100,
+                            Message = $"Still booting... ({(int)elapsed.TotalSeconds}s elapsed)"
+                        });
+                    }
+                }
+
+                if (!bootComplete)
+                {
+                    progress?.Report(new ProgressNotificationValue
+                    {
+                        Progress = 100,
+                        Total = 100,
+                        Message = "Boot wait timeout - emulator may still be booting."
+                    });
+
+                    return JsonSerializer.Serialize(new
+                    {
+                        success = true,
+                        name,
+                        serial = process.Serial,
+                        bootComplete = false,
+                        message = $"Emulator '{name}' started but boot wait timed out. Device may still be booting."
+                    }, JsonOptions);
+                }
+
+                progress?.Report(new ProgressNotificationValue
+                {
+                    Progress = 100,
+                    Total = 100,
+                    Message = "Boot completed!"
+                });
+            }
+            else
+            {
+                progress?.Report(new ProgressNotificationValue
+                {
+                    Progress = 100,
+                    Total = 100,
+                    Message = "Emulator started (not waiting for boot)."
+                });
             }
 
             return JsonSerializer.Serialize(new
@@ -191,6 +282,7 @@ public class AvdTools
                 success = true,
                 name,
                 serial = process.Serial,
+                bootComplete = waitBoot,
                 message = waitBoot 
                     ? $"Emulator '{name}' started and boot completed."
                     : $"Emulator '{name}' starting. Use device_list to check status."

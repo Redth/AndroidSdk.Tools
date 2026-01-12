@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using AndroidSdk;
+using AndroidSdk.Mcp.Resources;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -19,7 +20,7 @@ builder.Services.AddSingleton(sp =>
     return new AndroidSdkManager(string.IsNullOrEmpty(home) ? null : new DirectoryInfo(home));
 });
 
-// Configure MCP server with stdio transport and tools from this assembly
+// Configure MCP server with stdio transport, tools, and resources from this assembly
 builder.Services
     .AddMcpServer(options =>
     {
@@ -30,6 +31,7 @@ builder.Services
         };
     })
     .WithStdioServerTransport()
-    .WithToolsFromAssembly();
+    .WithToolsFromAssembly()
+    .WithResources<SdkResources>();
 
 await builder.Build().RunAsync();

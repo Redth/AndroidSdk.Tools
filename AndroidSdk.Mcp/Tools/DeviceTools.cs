@@ -52,27 +52,40 @@ public class DeviceTools
         [Description("Property names or patterns to include (e.g., 'ro.product.model', 'ro.build.*'). If not specified, returns common properties.")] string[]? properties = null,
         [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
     {
-        var sdkManager = CreateSdkManager(home);
-        var serial = ResolveDeviceSerial(sdkManager, device);
-
-        // Default to common useful properties if none specified
-        var propsToGet = properties ?? new[]
+        try
         {
-            "ro.product.model",
-            "ro.product.brand",
-            "ro.product.name",
-            "ro.build.version.release",
-            "ro.build.version.sdk",
-            "ro.product.cpu.abi"
-        };
+            var sdkManager = CreateSdkManager(home);
+            var serial = ResolveDeviceSerial(sdkManager, device);
 
-        var props = sdkManager.Adb.GetProperties(serial, propsToGet);
+            // Default to common useful properties if none specified
+            var propsToGet = properties ?? new[]
+            {
+                "ro.product.model",
+                "ro.product.brand",
+                "ro.product.name",
+                "ro.build.version.release",
+                "ro.build.version.sdk",
+                "ro.product.cpu.abi"
+            };
 
-        return JsonSerializer.Serialize(new
+            var props = sdkManager.Adb.GetProperties(serial, propsToGet);
+
+            return JsonSerializer.Serialize(new
+            {
+                success = true,
+                device = serial,
+                properties = props
+            }, JsonOptions);
+        }
+        catch (Exception ex)
         {
-            device = serial,
-            properties = props
-        }, JsonOptions);
+            return JsonSerializer.Serialize(new
+            {
+                success = false,
+                device = device,
+                message = ex.Message
+            }, JsonOptions);
+        }
     }
 
     /// <summary>
@@ -89,13 +102,22 @@ public class DeviceTools
         [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
     {
         if (string.IsNullOrWhiteSpace(action))
-            throw new ArgumentException("Action is required. Use 'install' or 'uninstall'.", nameof(action));
+            return JsonSerializer.Serialize(new { success = false, message = "Action is required. Use 'install' or 'uninstall'." }, JsonOptions);
 
         if (string.IsNullOrWhiteSpace(package))
-            throw new ArgumentException("Package (APK path or package name) is required.", nameof(package));
+            return JsonSerializer.Serialize(new { success = false, message = "Package (APK path or package name) is required." }, JsonOptions);
 
-        var sdkManager = CreateSdkManager(home);
-        var serial = ResolveDeviceSerial(sdkManager, device);
+        AndroidSdkManager sdkManager;
+        string? serial;
+        try
+        {
+            sdkManager = CreateSdkManager(home);
+            serial = ResolveDeviceSerial(sdkManager, device);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { success = false, device = device, message = ex.Message }, JsonOptions);
+        }
 
         switch (action.ToLowerInvariant())
         {
@@ -168,10 +190,19 @@ public class DeviceTools
         [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
     {
         if (string.IsNullOrWhiteSpace(command))
-            throw new ArgumentException("Command is required.", nameof(command));
+            return JsonSerializer.Serialize(new { success = false, message = "Command is required." }, JsonOptions);
 
-        var sdkManager = CreateSdkManager(home);
-        var serial = ResolveDeviceSerial(sdkManager, device);
+        string? serial;
+        AndroidSdkManager sdkManager;
+        try
+        {
+            sdkManager = CreateSdkManager(home);
+            serial = ResolveDeviceSerial(sdkManager, device);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { success = false, device = device, command, message = ex.Message }, JsonOptions);
+        }
 
         try
         {
@@ -200,34 +231,86 @@ public class DeviceTools
     /// Captures a screenshot from a device.
     /// </summary>
     [McpServerTool(Name = "device_screenshot")]
-    [Description("Captures a screenshot from a connected Android device and saves it to a local file.")]
+    [Description("Captures a screenshot from a connected Android device. Can save to a file and/or return base64-encoded image data.")]
     public static string CaptureScreenshot(
-        [Description("Local file path to save the screenshot (PNG format).")] string outputPath,
+        [Description("Local file path to save the screenshot (PNG format). If not specified, uses a temp file.")] string? outputPath = null,
+        [Description("If true, returns the screenshot as base64-encoded PNG data.")] bool returnBase64 = false,
         [Description("Device serial number. If not specified, uses the first available device.")] string? device = null,
         [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
     {
-        if (string.IsNullOrWhiteSpace(outputPath))
-            throw new ArgumentException("Output path is required.", nameof(outputPath));
+        // At least one output method must be specified
+        var saveToFile = !string.IsNullOrWhiteSpace(outputPath);
+        if (!saveToFile && !returnBase64)
+        {
+            // Default to returning base64 if no output path specified
+            returnBase64 = true;
+        }
 
-        var sdkManager = CreateSdkManager(home);
-        var serial = ResolveDeviceSerial(sdkManager, device);
+        string? serial;
+        AndroidSdkManager sdkManager;
+        try
+        {
+            sdkManager = CreateSdkManager(home);
+            serial = ResolveDeviceSerial(sdkManager, device);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { success = false, device = device, message = ex.Message }, JsonOptions);
+        }
 
         try
         {
-            // Ensure directory exists
-            var dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
+            string actualPath;
 
-            sdkManager.Adb.ScreenCapture(new FileInfo(outputPath), serial);
-
-            return JsonSerializer.Serialize(new
+            if (saveToFile)
             {
-                success = true,
-                device = serial,
-                path = Path.GetFullPath(outputPath),
-                message = "Screenshot captured successfully."
-            }, JsonOptions);
+                actualPath = outputPath!;
+                // Ensure directory exists
+                var dir = Path.GetDirectoryName(actualPath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+            }
+            else
+            {
+                // Use temp file
+                actualPath = Path.Combine(Path.GetTempPath(), $"screenshot_{Guid.NewGuid()}.png");
+            }
+
+            sdkManager.Adb.ScreenCapture(new FileInfo(actualPath), serial);
+
+            string? base64Data = null;
+            if (returnBase64)
+            {
+                var imageBytes = File.ReadAllBytes(actualPath);
+                base64Data = Convert.ToBase64String(imageBytes);
+
+                // Clean up temp file if we created one
+                if (!saveToFile)
+                {
+                    try { File.Delete(actualPath); } catch { /* ignore cleanup errors */ }
+                    actualPath = null!;
+                }
+            }
+
+            var result = new Dictionary<string, object?>
+            {
+                ["success"] = true,
+                ["device"] = serial,
+                ["message"] = "Screenshot captured successfully."
+            };
+
+            if (saveToFile)
+            {
+                result["path"] = Path.GetFullPath(outputPath!);
+            }
+
+            if (returnBase64)
+            {
+                result["base64"] = base64Data;
+                result["mimeType"] = "image/png";
+            }
+
+            return JsonSerializer.Serialize(result, JsonOptions);
         }
         catch (Exception ex)
         {
@@ -250,8 +333,17 @@ public class DeviceTools
         [Description("Maximum number of lines to return (default: 100).")] int maxLines = 100,
         [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
     {
-        var sdkManager = CreateSdkManager(home);
-        var serial = ResolveDeviceSerial(sdkManager, device);
+        string? serial;
+        AndroidSdkManager sdkManager;
+        try
+        {
+            sdkManager = CreateSdkManager(home);
+            serial = ResolveDeviceSerial(sdkManager, device);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { success = false, device = device, message = ex.Message }, JsonOptions);
+        }
 
         try
         {

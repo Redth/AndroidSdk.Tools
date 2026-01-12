@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using AndroidSdk;
 
@@ -118,7 +119,8 @@ public class SdkTools
     public static string ManagePackage(
         [Description("Action to perform: 'install' or 'uninstall'.")] string action,
         [Description("Package path(s) to install or uninstall (e.g., 'platform-tools', 'build-tools;34.0.0').")] string[] packages,
-        [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null)
+        [Description("Android SDK home path. If not specified, auto-detects from environment.")] string? home = null,
+        IProgress<ProgressNotificationValue>? progress = null)
     {
         if (string.IsNullOrWhiteSpace(action))
             throw new ArgumentException("Action is required. Use 'install' or 'uninstall'.", nameof(action));
@@ -129,9 +131,20 @@ public class SdkTools
         var sdkManager = CreateSdkManager(home);
 
         var results = new List<PackageActionResult>();
+        var totalPackages = packages.Length;
 
-        foreach (var package in packages)
+        for (int i = 0; i < packages.Length; i++)
         {
+            var package = packages[i];
+            
+            // Report progress at start of each package
+            progress?.Report(new ProgressNotificationValue
+            {
+                Progress = i,
+                Total = totalPackages,
+                Message = $"{action}ing package {i + 1}/{totalPackages}: {package}..."
+            });
+
             var result = new PackageActionResult { Package = package, Action = action };
             try
             {
@@ -164,6 +177,14 @@ public class SdkTools
             results.Add(result);
         }
 
+        // Report completion
+        progress?.Report(new ProgressNotificationValue
+        {
+            Progress = totalPackages,
+            Total = totalPackages,
+            Message = $"Completed {action} for {totalPackages} package(s)."
+        });
+
         return JsonSerializer.Serialize(new { results }, JsonOptions);
     }
 
@@ -174,7 +195,8 @@ public class SdkTools
     [Description("Downloads and installs the Android SDK command-line tools to the specified directory. Use this to bootstrap a new SDK installation or update cmdline-tools.")]
     public static async Task<string> DownloadSdk(
         [Description("Directory to install the Android SDK. This will become ANDROID_HOME.")] string home,
-        [Description("Force download even if cmdline-tools already exist.")] bool force = false)
+        [Description("Force download even if cmdline-tools already exist.")] bool force = false,
+        IProgress<ProgressNotificationValue>? progress = null)
     {
         if (string.IsNullOrWhiteSpace(home))
             throw new ArgumentException("Home directory is required.", nameof(home));
@@ -196,7 +218,40 @@ public class SdkTools
 
         try
         {
-            await sdkManager.DownloadSdk(homeDir);
+            // Report starting download
+            progress?.Report(new ProgressNotificationValue
+            {
+                Progress = 0,
+                Total = 100,
+                Message = "Starting Android SDK download..."
+            });
+
+            // Create a progress handler that forwards to the MCP progress
+            Action<int>? downloadProgress = null;
+            if (progress != null)
+            {
+                downloadProgress = (percent) =>
+                {
+                    progress.Report(new ProgressNotificationValue
+                    {
+                        Progress = percent,
+                        Total = 100,
+                        Message = percent < 100 
+                            ? $"Downloading Android SDK cmdline-tools... {percent}%"
+                            : "Download complete, extracting..."
+                    });
+                };
+            }
+
+            await sdkManager.DownloadSdk(homeDir, null, downloadProgress);
+
+            progress?.Report(new ProgressNotificationValue
+            {
+                Progress = 100,
+                Total = 100,
+                Message = "Android SDK download completed."
+            });
+
             return JsonSerializer.Serialize(new
             {
                 success = true,

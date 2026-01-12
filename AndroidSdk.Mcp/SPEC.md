@@ -108,7 +108,7 @@ To minimize the number of tools exposed to AI agents (reducing context overhead)
 | `device_info` | Get device properties | `device?: string`, `properties?: string[]`, `home?: string` | JSON object with properties |
 | `device_app` | Install or uninstall app on device | `action: "install" \| "uninstall"`, `package: string`, `device?: string`, `replace?: bool`, `keepData?: bool`, `home?: string` | Success/failure message |
 | `device_shell` | Execute shell command on device | `command: string`, `device?: string`, `home?: string` | Command output |
-| `device_screenshot` | Capture device screenshot | `outputPath: string`, `device?: string`, `home?: string` | Path to saved screenshot |
+| `device_screenshot` | Capture device screenshot | `outputPath?: string`, `device?: string`, `returnBase64?: bool`, `home?: string` | Path to saved screenshot or base64 PNG data |
 | `device_logcat` | Get device logs | `device?: string`, `maxLines?: int`, `home?: string` | Log lines |
 | `adb_connection` | Connect or disconnect device over network | `action: "connect" \| "disconnect"`, `ip: string`, `port?: int`, `home?: string` | Success/failure message |
 
@@ -124,9 +124,9 @@ To minimize the number of tools exposed to AI agents (reducing context overhead)
 |-----------|-------------|------------|---------|
 | `apk_info` | Get APK manifest information | `apkPath: string` | JSON with package name, version, permissions, etc. |
 
-## MCP Resources (Optional)
+## MCP Resources
 
-Resources provide read-only access to information:
+Resources provide read-only access to information (8 resources implemented):
 
 | Resource URI | Description |
 |--------------|-------------|
@@ -135,6 +135,9 @@ Resources provide read-only access to information:
 | `android://sdk/packages/available` | List of available packages |
 | `android://devices` | Currently connected devices |
 | `android://avds` | Available AVDs |
+| `android://avd/devices` | AVD device types (hardware profiles for emulator creation) |
+| `android://devices/{device}/screenshot` | Capture screenshot from device (base64 PNG) |
+| `android://devices/{device}/files/{+path}` | Pull file from device (text or base64 binary) |
 
 ## Implementation Details
 
@@ -288,43 +291,43 @@ Then configure:
 
 ## Implementation Plan
 
-### Phase 1: Foundation (Priority: High)
-- [ ] Create `AndroidSdk.Mcp` project with basic structure (.NET 10)
-- [ ] Implement MCP server host with stdio transport
-- [ ] Implement `sdk_info` tool (validates setup, returns SDK path + environment info)
-- [ ] Add to solution file
-- [ ] Basic README documentation
+### Phase 1: Foundation ✅ COMPLETE
+- [x] Create `AndroidSdk.Mcp` project with basic structure (.NET 10)
+- [x] Implement MCP server host with stdio transport
+- [x] Implement `sdk_info` tool (validates setup, returns SDK path + environment info)
+- [x] Add to solution file
+- [x] Basic README documentation
 
-### Phase 2: SDK Management (Priority: High)
-- [ ] Implement `sdk_list` tool
-- [ ] Implement `sdk_package` tool (install/uninstall)
-- [ ] Implement `sdk_download` tool
-- [ ] Implement `sdk_licenses` tool (list/accept)
+### Phase 2: SDK Management ✅ COMPLETE
+- [x] Implement `sdk_list` tool
+- [x] Implement `sdk_package` tool (install/uninstall) with progress notifications
+- [x] Implement `sdk_download` tool with progress notifications
+- [x] Implement `sdk_licenses` tool (list/accept)
 
-### Phase 3: AVD Management (Priority: High)
-- [ ] Implement `avd_list` tool (avds/targets/devices)
-- [ ] Implement `avd_manage` tool (create/delete)
-- [ ] Implement `avd_start` tool
+### Phase 3: AVD Management ✅ COMPLETE
+- [x] Implement `avd_list` tool (avds/targets/devices)
+- [x] Implement `avd_manage` tool (create/delete)
+- [x] Implement `avd_start` tool with boot wait progress notifications
 
-### Phase 4: Device Operations (Priority: Medium)
-- [ ] Implement `device_list` tool
-- [ ] Implement `device_info` tool
-- [ ] Implement `device_app` tool (install/uninstall)
-- [ ] Implement `device_shell` tool
-- [ ] Implement `device_screenshot` tool
-- [ ] Implement `device_logcat` tool
-- [ ] Implement `adb_connection` tool (connect/disconnect)
+### Phase 4: Device Operations ✅ COMPLETE
+- [x] Implement `device_list` tool
+- [x] Implement `device_info` tool
+- [x] Implement `device_app` tool (install/uninstall)
+- [x] Implement `device_shell` tool
+- [x] Implement `device_screenshot` tool (with optional base64 output)
+- [x] Implement `device_logcat` tool
+- [x] Implement `adb_connection` tool (connect/disconnect)
 
-### Phase 5: Supporting Tools (Priority: Medium)
-- [ ] Implement `jdk_info` tool
-- [ ] Implement `apk_info` tool
+### Phase 5: Supporting Tools ✅ COMPLETE
+- [x] Implement `jdk_info` tool
+- [x] Implement `apk_info` tool
 
-### Phase 6: Resources & Polish (Priority: Low)
-- [ ] Implement MCP resources (optional read-only data)
-- [ ] Add HTTP transport support (ASP.NET Core)
-- [ ] Create global tool packaging
-- [ ] Comprehensive documentation
-- [ ] CI/CD pipeline integration
+### Phase 6: Resources & Polish ✅ COMPLETE
+- [x] Implement MCP resources (7 resources for read-only data)
+- [x] Create global tool packaging (`dotnet tool install -g AndroidSdk.Mcp.Server`)
+- [x] Comprehensive documentation
+- [ ] Add HTTP transport support (ASP.NET Core) - Future
+- [ ] CI/CD pipeline integration - Future
 
 ## Security Considerations
 
@@ -348,7 +351,8 @@ Then configure:
 
 ## Future Enhancements
 
-1. **Progress Notifications**: Stream progress for long-running operations (SDK download, emulator boot)
+1. ~~**Progress Notifications**: Stream progress for long-running operations (SDK download, emulator boot)~~ ✅ Implemented
 2. **Prompts**: Pre-built prompts for common Android development tasks
 3. **Watch Mode**: Real-time device/emulator status updates
 4. **Build Integration**: Integration with Gradle/MSBuild for project building
+5. **HTTP Transport**: ASP.NET Core based HTTP/SSE transport for web-based clients

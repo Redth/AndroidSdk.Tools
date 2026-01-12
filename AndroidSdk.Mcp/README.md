@@ -169,6 +169,54 @@ Parameters:
   outputPath: "/path/to/screenshot.png"
 ```
 
+Or get the image directly as base64:
+
+```
+Tool: device_screenshot
+Parameters:
+  returnBase64: true
+```
+
+## MCP Resources
+
+The server also exposes read-only resources for querying information:
+
+| Resource URI | Description |
+|--------------|-------------|
+| `android://sdk/info` | Current SDK installation information |
+| `android://sdk/packages/installed` | List of installed packages |
+| `android://sdk/packages/available` | List of available packages |
+| `android://devices` | Currently connected devices |
+| `android://avds` | Available AVDs |
+| `android://avd/devices` | AVD device types (hardware profiles) |
+| `android://devices/{device}/screenshot` | Capture screenshot from device |
+| `android://devices/{device}/files/{+path}` | Pull file from device |
+
+### Resource Examples
+
+Read installed packages:
+```
+Resource: android://sdk/packages/installed
+```
+
+Get screenshot from a specific device:
+```
+Resource: android://devices/emulator-5554/screenshot
+```
+
+Pull a file from device:
+```
+Resource: android://devices/emulator-5554/files/sdcard/Download/data.json
+```
+
+## Progress Notifications
+
+Long-running operations report progress to MCP clients:
+
+- **`sdk_package`**: Reports progress during package installation/uninstallation
+- **`sdk_download`**: Reports download progress (0-100%)
+- **`avd_start`** (with `waitBoot: true`): Reports boot progress while waiting for emulator
+
 ## License
 
 MIT License - see LICENSE file in repository root.
