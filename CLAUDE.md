@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AndroidSdk.Tools is a .NET library and global dotnet tool for Android SDK management, providing programmatic access to ADB, AVD, Emulator, and SDK Manager functionality. The project consists of:
 
-- **AndroidSdk** - Core library (netstandard2.0, net6.0, net8.0) providing Android SDK management APIs
-- **AndroidSdk.Tool** - Global dotnet tool (net6.0, net8.0, net9.0) exposing CLI commands via the `android` command
+- **AndroidSdk** - Core library (netstandard2.0, net8.0) providing Android SDK management APIs
+- **AndroidSdk.Tool** - Global dotnet tool (net8.0, net9.0, net10.0) exposing CLI commands via the `android` command
 - **AndroidSdk.Adbd** - ADB daemon client library
 - **AndroidRepository** - XML deserialization for Android SDK repository manifests (generated code)
 

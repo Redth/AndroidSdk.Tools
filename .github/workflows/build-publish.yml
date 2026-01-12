@@ -15,11 +15,11 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
     - name: Build
       run: dotnet build --configuration Release -maxcpucount:1
     - name: Package NuGets
@@ -29,7 +29,7 @@ jobs:
         if ($env:GITHUB_EVENT_NAME -eq "release") {
           $VERSION = $env:GITHUB_REF.Substring($env:GITHUB_REF.LastIndexOf('/') + 1)
         }
-        echo "::set-output name=pkgverci::$VERSION"
+        echo "pkgverci=$VERSION" >> $env:GITHUB_OUTPUT
         echo "PACKAGE VERSION: $VERSION"
         
         New-Item -ItemType Directory -Force -Path .\artifacts
@@ -51,15 +51,15 @@ jobs:
     if: github.event_name == 'release'
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: NuGet
       - name: Display structure of downloaded files
         run: ls -R
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
       - name: Push NuGet
         run: |
           dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}
