@@ -505,35 +505,44 @@ public class AdbdClient
 			if (cancellationToken.IsCancellationRequested)
 				break;
 
-			var parts = rxWhitespace.Split(reply);
+			// Each reply contains the full device list (one device per line).
+			// Split by newlines first, then parse each line individually.
+			var lines = reply?.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				?? Array.Empty<string>();
 
-			if (parts.Length > 1)
+			foreach (var line in lines)
 			{
-				string serial = parts[0];
-				DeviceState state = ParseState(parts[1]);
+				var parts = rxWhitespace.Split(line);
 
-				var extra = new Dictionary<string, string>();
-
-				for (int i = 2; i < parts.Length; i++)
+				if (parts.Length > 1)
 				{
-					var kvp = parts[i].Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
+					string serial = parts[0];
+					DeviceState state = ParseState(parts[1]);
 
-					if (kvp.Length > 1)
+					var extra = new Dictionary<string, string>();
+
+					for (int i = 2; i < parts.Length; i++)
 					{
-						extra[kvp[0].Trim().ToLowerInvariant()] = kvp[1].Trim();
+						var kvp = parts[i].Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
+
+						if (kvp.Length > 1)
+						{
+							extra[kvp[0].Trim().ToLowerInvariant()] = kvp[1].Trim();
+						}
 					}
+
+					if (!extra.TryGetValue("transport_id", out var tidstr) || !int.TryParse(tidstr, out var transportId))
+						transportId = -1;
+
+					extra.TryGetValue("product", out var product);
+					extra.TryGetValue("model", out var model);
+					extra.TryGetValue("device", out var device);
+
+					var d = new DeviceInfo(serial, state, product, model, device, transportId);
+
+					if (handle is not null)
+						await handle.Invoke(d);
 				}
-
-				if (!extra.TryGetValue("transport_id", out var tidstr) || !int.TryParse(tidstr, out var transportId))
-					transportId = -1;
-
-				extra.TryGetValue("product", out var product);
-				extra.TryGetValue("model", out var model);
-				extra.TryGetValue("device", out var device);
-
-				var d = new DeviceInfo(serial, state, product, model, device, transportId);
-
-				handle?.Invoke(d);
 			}
 		}
 	}
