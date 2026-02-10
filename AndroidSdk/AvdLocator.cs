@@ -18,8 +18,8 @@ namespace AndroidSdk
 			// Paths taken from computeAndroidFolder() in com\android\prefs\AbstractAndroidLocations.kt
 			// See https://github.com/jrodbx/agp-sources/blob/ed83b73500e037a15bfda72c8f72a77984b03ebb/8.7.2/com.android.tools/common/com/android/prefs/AbstractAndroidLocations.kt#L141
 			TryAddPath("ANDROID_USER_HOME", "avd");
-			TryAddPath("ANDROID_PREFS_ROOT", "avd"); // obsolete
-			TryAddPath("ANDROID_SDK_HOME", "avd"); // obsolete
+			TryAddPath("ANDROID_PREFS_ROOT", ".android", "avd"); // obsolete
+			TryAddPath("ANDROID_SDK_HOME", ".android", "avd"); // obsolete
 			TryAddPath("TEST_TMPDIR", ".android", "avd"); // should never be used
 			TryAddPath("XDG_CONFIG_HOME", ".android", "avd");
 			TryAddPath("HOME", ".android", "avd");
