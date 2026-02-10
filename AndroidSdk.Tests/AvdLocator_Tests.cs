@@ -27,7 +27,8 @@ public class AvdLocator_Tests
 		finally
 		{
 			Environment.SetEnvironmentVariable("ANDROID_SDK_HOME", oldVal);
-			Directory.Delete(tempRoot, true);
+			if (Directory.Exists(tempRoot))
+				Directory.Delete(tempRoot, true);
 		}
 	}
 
@@ -52,7 +53,8 @@ public class AvdLocator_Tests
 		finally
 		{
 			Environment.SetEnvironmentVariable("ANDROID_PREFS_ROOT", oldVal);
-			Directory.Delete(tempRoot, true);
+			if (Directory.Exists(tempRoot))
+				Directory.Delete(tempRoot, true);
 		}
 	}
 
@@ -77,7 +79,8 @@ public class AvdLocator_Tests
 		finally
 		{
 			Environment.SetEnvironmentVariable("ANDROID_USER_HOME", oldVal);
-			Directory.Delete(tempRoot, true);
+			if (Directory.Exists(tempRoot))
+				Directory.Delete(tempRoot, true);
 		}
 	}
 
@@ -105,7 +108,8 @@ public class AvdLocator_Tests
 		}
 		finally
 		{
-			Directory.Delete(tempRoot, true);
+			if (Directory.Exists(tempRoot))
+				Directory.Delete(tempRoot, true);
 		}
 	}
 }
