@@ -226,6 +226,29 @@ namespace AndroidSdk
 				}
 			}
 
+			// Fallback to AvdLocator file-system scanning when Java-based approach returns empty
+			if (r.Count == 0)
+			{
+				var locator = new AvdLocator();
+				var locatedAvds = locator.ListAvds(null);
+
+				foreach (var avdInfo in locatedAvds)
+				{
+					var a = new Avd
+					{
+						Name = avdInfo.Name,
+						Device = avdInfo.DeviceName,
+						Path = avdInfo.Path,
+						Target = avdInfo.Target,
+					};
+
+					foreach (var prop in avdInfo.Properties)
+						a.Properties[prop.Key] = prop.Value;
+
+					r.Add(a);
+				}
+			}
+
 			return r;
 		}
 
