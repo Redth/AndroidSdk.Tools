@@ -18,7 +18,11 @@ namespace AndroidSdk
 			=> RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
 		protected bool IsMac
-			=> RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+			=> RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+#if NET6_0_OR_GREATER
+			|| OperatingSystem.IsMacCatalyst()
+#endif
+			;
 
 		protected bool IsLinux
 			=> RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
@@ -108,11 +112,11 @@ namespace AndroidSdk
 					{
 						var javaVmJdkDirs = Directory.EnumerateDirectories(javaVmDir, "*.jdk", SearchOption.TopDirectoryOnly);
 						foreach (var javaVmJdkDir in javaVmJdkDirs)
-							SearchDirectoryForJdks(paths, javaVmDir, true);
+							SearchDirectoryForJdks(paths, javaVmJdkDir, true);
 
 						javaVmJdkDirs = Directory.EnumerateDirectories(javaVmDir, "jdk-*", SearchOption.TopDirectoryOnly);
-						 foreach (var javaVmJdkDir in javaVmJdkDirs)
-							SearchDirectoryForJdks(paths, javaVmDir, true);
+						foreach (var javaVmJdkDir in javaVmJdkDirs)
+							SearchDirectoryForJdks(paths, javaVmJdkDir, true);
 					}
 				}
 				catch
