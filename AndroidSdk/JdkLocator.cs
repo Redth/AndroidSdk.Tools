@@ -82,6 +82,10 @@ namespace AndroidSdk
 				SearchDirectoryForJdks(paths,
 					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Android", "Jdk"), true);
 
+				// Android OpenJDK installed by Android Studio or MAUI workload
+				SearchDirectoryForJdks(paths,
+					Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Android", "openjdk"), true);
+
 				var pfmsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft");
 
 				try
