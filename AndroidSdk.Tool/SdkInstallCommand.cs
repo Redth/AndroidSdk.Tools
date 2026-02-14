@@ -29,6 +29,8 @@ namespace AndroidSdk.Tool
 			try
 			{
 				var m = new SdkManager(settings?.Home);
+				m.OutputHandler = line => Console.WriteLine(line);
+				m.ErrorHandler = line => Console.Error.WriteLine(line);
 
 				ok = m.Install(settings.Package);
 			}

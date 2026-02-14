@@ -174,85 +174,85 @@ namespace AndroidSdk.Tool
 			try
 			{
 				var emu = new Emulator(settings?.Home);
+				emu.OutputHandler = line => Console.WriteLine(line);
+				emu.ErrorHandler = line => Console.Error.WriteLine(line);
 
 				Emulator.AndroidEmulatorProcess process = null;
 
-				AnsiConsole.Status()
-				.Start($"Starting {settings.Name}...", ctx =>
+				Console.WriteLine($"Starting {settings.Name}...");
+
+				process = emu.Start(settings.Name, new Emulator.EmulatorStartOptions
 				{
-					process = emu.Start(settings.Name, new Emulator.EmulatorStartOptions
-					{
-						WipeData = settings.WipeData,
-						NoSnapshot = settings.NoSnapshot,
-						Acceleration = settings.Acceleration,
-						Engine = settings.Engine,
-						NoWindow = settings.NoWindow,
-						NoAudio = settings.NoAudio,
-						NoJni = settings.NoJni,
-						NoBootAnim = settings.NoBootAnimation,
-						Gpu = settings.Gpu,
-						Port = settings.Port,
-						CameraBack = settings.CameraBack,
-						CameraFront = settings.CameraFront,
-						NoSnapshotLoad = settings.NoSnapshotLoad,
-						NoSnapshotSave = settings.NoSnapshotSave,
-						Verbose = settings.Verbose,
-						Screen = settings.ScreenMode,
-						MemoryMegabytes = (int?)settings.Memory,
-						PartitionSizeMegabytes = (int?)settings.PartitionSize,
-						CacheSizeMegabytes = (int?)settings.CacheSize,
-						GrpcPort = (int?)settings.GrpcPort,
-						GrpcUseJwt = settings.GrpcUseJwt,
-					});
-
-					cancellationToken.Register(() =>
-					{
-						ctx.Status($"Stopping {settings.Name}...");
-						process?.Shutdown();
-					});
-
-					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
-
-					if (settings.WaitForBoot)
-					{
-						ctx.Status($"Waiting for {settings.Name} to finish booting...");
-						ok = process.WaitForBootComplete(timeout);
-					}
-
-					if (settings.WaitForExit)
-					{
-						ctx.Status($"Booted, waiting for {settings.Name} to exit...");
-						var exitCode = process.WaitForExit();
-						ok = exitCode == 0 || exitCode == 1;
-					}
+					WipeData = settings.WipeData,
+					NoSnapshot = settings.NoSnapshot,
+					Acceleration = settings.Acceleration,
+					Engine = settings.Engine,
+					NoWindow = settings.NoWindow,
+					NoAudio = settings.NoAudio,
+					NoJni = settings.NoJni,
+					NoBootAnim = settings.NoBootAnimation,
+					Gpu = settings.Gpu,
+					Port = settings.Port,
+					CameraBack = settings.CameraBack,
+					CameraFront = settings.CameraFront,
+					NoSnapshotLoad = settings.NoSnapshotLoad,
+					NoSnapshotSave = settings.NoSnapshotSave,
+					Verbose = settings.Verbose,
+					Screen = settings.ScreenMode,
+					MemoryMegabytes = (int?)settings.Memory,
+					PartitionSizeMegabytes = (int?)settings.PartitionSize,
+					CacheSizeMegabytes = (int?)settings.CacheSize,
+					GrpcPort = (int?)settings.GrpcPort,
+					GrpcUseJwt = settings.GrpcUseJwt,
 				});
+
+				cancellationToken.Register(() =>
+				{
+					Console.WriteLine($"Stopping {settings.Name}...");
+					process?.Shutdown();
+				});
+
+				var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
+
+				if (settings.WaitForBoot)
+				{
+					Console.WriteLine($"Waiting for {settings.Name} to finish booting...");
+					ok = process.WaitForBootComplete(timeout);
+				}
+
+				if (settings.WaitForExit)
+				{
+					Console.WriteLine($"Booted, waiting for {settings.Name} to exit...");
+					var exitCode = process.WaitForExit();
+					ok = exitCode == 0 || exitCode == 1;
+				}
 
 				if (ok)
 				{
 					var serial = process?.Serial;
 					if (!string.IsNullOrEmpty(serial))
-						AnsiConsole.MarkupLine($"[green]Emulator started: {serial}[/]");
+						Console.WriteLine($"Emulator started: {serial}");
 					else
-						AnsiConsole.MarkupLine($"[green]Emulator started[/]");
+						Console.WriteLine("Emulator started");
 				}
 				else
 				{
-					AnsiConsole.MarkupLine($"[red]Failed to start AVD '{settings.Name}'[/]");
+					Console.Error.WriteLine($"Failed to start AVD '{settings.Name}'");
 					
 					var stdErr = process?.GetStandardError()?.ToList();
 					if (stdErr?.Count > 0)
 					{
-						AnsiConsole.MarkupLine("[red]Emulator stderr:[/]");
+						Console.Error.WriteLine("Emulator stderr:");
 						foreach (var line in stdErr)
-							AnsiConsole.WriteLine(line);
+							Console.Error.WriteLine(line);
 					}
 					
 					var stdOut = process?.GetStandardOutput()?.ToList();
 					if (stdOut?.Count > 0)
 					{
-						AnsiConsole.MarkupLine("[dim]Emulator stdout:[/]");
+						Console.WriteLine("Emulator stdout:");
 						foreach (var line in stdOut)
-							AnsiConsole.WriteLine(line);
+							Console.WriteLine(line);
 					}
 				}
 

@@ -32,6 +32,9 @@ namespace AndroidSdk
 
 		JdkInfo? jdk = null;
 
+		public Action<string> OutputHandler { get; set; }
+		public Action<string> ErrorHandler { get; set; }
+
 		public SdkManager()
 			: this((SdkManagerToolOptions?)null)
 		{
@@ -561,7 +564,7 @@ namespace AndroidSdk
 			// lib folder is our working dir
 			javaArgs.SetWorkingDirectory(libPath);
 
-			var runner = new JavaProcessRunner(jdk, javaArgs, default, redirectStandardInput);
+			var runner = new JavaProcessRunner(jdk, javaArgs, default, redirectStandardInput, OutputHandler, ErrorHandler);
 
 			return runner;
 		}
