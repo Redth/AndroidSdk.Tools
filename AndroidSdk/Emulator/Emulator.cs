@@ -12,9 +12,6 @@ namespace AndroidSdk
 {
 	public partial class Emulator : SdkTool
 	{
-		public Action<string> OutputHandler { get; set; }
-		public Action<string> ErrorHandler { get; set; }
-
 		public Emulator()
 			: this((DirectoryInfo)null)
 		{ }
@@ -203,7 +200,7 @@ namespace AndroidSdk
 					builder.Append(arg);
 			}
 
-			var p = new ProcessRunner(emulator, builder, CancellationToken.None, false, OutputHandler, ErrorHandler);
+			var p = new ProcessRunner(emulator, builder);
 			return p;
 		}
 
@@ -284,20 +281,18 @@ namespace AndroidSdk
 				var booted = false;
 				Serial = null;
 
-				// Phase 1: Find the emulator device in adb
-				Console.WriteLine("Phase 1: Waiting for emulator to appear in adb...");
+				// Keep trying to see if the boot complete prop is set
 				while (string.IsNullOrEmpty(Serial) && !token.IsCancellationRequested)
 				{
 					if (process.HasExited)
-					{
-						Console.Error.WriteLine("Emulator process exited before device was found in adb.");
 						return false;
-					}
 
 					Thread.Sleep(1000);
 
+					// Get a list of devices, we need to find the device we started
 					var devices = adb.GetDevices();
 
+					// Find the device we just started and get it's adb serial
 					foreach (var d in devices)
 					{
 						try
@@ -306,7 +301,6 @@ namespace AndroidSdk
 							if (name.Equals(AvdName, StringComparison.OrdinalIgnoreCase))
 							{
 								Serial = d.Serial;
-								Console.WriteLine($"Phase 1: Found emulator device: {Serial}");
 								break;
 							}
 						}
@@ -314,21 +308,15 @@ namespace AndroidSdk
 					}
 				}
 
-				// Phase 2: Wait for boot_completed property
-				Console.WriteLine("Phase 2: Waiting for boot_completed property...");
 				while (!token.IsCancellationRequested)
 				{
 					if (process.HasExited)
-					{
-						Console.Error.WriteLine("Emulator process exited before boot completed.");
 						return false;
-					}
 
 					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")) ||
 					    adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
 					{
 						booted = true;
-						Console.WriteLine("Phase 2: Boot completed.");
 						break;
 					}
 					else
@@ -340,15 +328,11 @@ namespace AndroidSdk
 				if (!booted)
 					return false;
 
-				// Phase 3: Wait for system services to settle
-				Console.WriteLine("Phase 3: Waiting for system to settle...");
+				// Wait for system services to settle before declaring ready
 				WaitForSystemSettle(adb, token);
-				Console.WriteLine("Phase 3: System settled.");
 
-				// Phase 4: Prepare emulator for testing
-				Console.WriteLine("Phase 4: Preparing emulator for testing...");
+				// Prepare emulator for testing (disable animations, etc.)
 				PrepareForTesting(adb);
-				Console.WriteLine("Phase 4: Emulator ready.");
 
 				return true;
 			}

@@ -71,8 +71,6 @@ namespace AndroidSdk.Tool
 			try
 			{
 				var avd = new AvdManager(settings?.Home);
-				avd.OutputHandler = line => Console.WriteLine(line);
-				avd.ErrorHandler = line => Console.Error.WriteLine(line);
 
 				string sdcard = null;
 				if (!string.IsNullOrEmpty(settings.SdCardPath))

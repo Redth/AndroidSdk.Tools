@@ -75,11 +75,6 @@ namespace AndroidSdk
 		AndroidToolProcessRunnerLogTypes logTypes = AndroidToolProcessRunnerLogTypes.Stdout | AndroidToolProcessRunnerLogTypes.Stderr | AndroidToolProcessRunnerLogTypes.Stdin;
 
 		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput = false)
-			: this(executable, builder, cancelToken, redirectStandardInput, null, null)
-		{
-		}
-
-		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput, Action<string> outputHandler, Action<string> errorHandler)
 		{
 			logPath = Environment.GetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH");
 			logTypes = ParseLogTypes(Environment.GetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES"));
@@ -111,7 +106,6 @@ namespace AndroidSdk
 				{
 					standardOutput.Add(e.Data);
 					output.Add(e.Data);
-					outputHandler?.Invoke(e.Data);
 
 					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stdout) != 0)
 						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stdout);
@@ -123,7 +117,6 @@ namespace AndroidSdk
 				{
 					standardError.Add(e.Data);
 					output.Add(e.Data);
-					errorHandler?.Invoke(e.Data);
 
 					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stderr) != 0)
 						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stderr);

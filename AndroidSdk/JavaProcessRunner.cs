@@ -13,9 +13,4 @@ internal class JavaProcessRunner : ProcessRunner
 		: base(jdk.Java, builder, cancelToken, redirectStandardInput)
 	{
 	}
-
-	public JavaProcessRunner(JdkInfo jdk, JavaProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput, Action<string> outputHandler, Action<string> errorHandler)
-		: base(jdk.Java, builder, cancelToken, redirectStandardInput, outputHandler, errorHandler)
-	{
-	}
 }

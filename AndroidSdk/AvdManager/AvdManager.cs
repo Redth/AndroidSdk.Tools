@@ -12,9 +12,6 @@ namespace AndroidSdk
 {
 	public partial class AvdManager : SdkTool
 	{
-		public Action<string> OutputHandler { get; set; }
-		public Action<string> ErrorHandler { get; set; }
-
 		public AvdManager()
 			: this((DirectoryInfo)null)
 		{ }
@@ -64,17 +61,10 @@ namespace AndroidSdk
 		public void Create(string name, string sdkId, string device = null, string path = null, bool force = false, string sdCardPath = null, string sdCardSize = null) =>
 			Create(name, sdkId, new AvdCreateOptions { Device = device, Path = path, Force = force, SdCardPathOrSize = string.IsNullOrEmpty(sdCardPath) ? sdCardSize : sdCardPath });
 
-		public void Create(string name, string sdkId, AvdCreateOptions options) =>
-			Create(name, sdkId, options, null, null);
-
-		public void Create(string name, string sdkId, AvdCreateOptions options, Action<string> outputHandler, Action<string> errorHandler)
+		public void Create(string name, string sdkId, AvdCreateOptions options)
 		{
 			if (options == null)
 				options = new AvdCreateOptions();
-
-			// Use instance-level handlers as fallback
-			outputHandler ??= OutputHandler;
-			errorHandler ??= ErrorHandler;
 
 			var args = new List<string> {
 				"create", "avd", "-n", name, "-k", $"\"{sdkId}\""
@@ -120,7 +110,7 @@ namespace AndroidSdk
 				// Sending "no" too soon will cause an error...
 				input.WriteLine();
 				input.Flush();
-			}, outputHandler, errorHandler);
+			});
 		}
 
 		public void Delete(string name)
@@ -333,7 +323,7 @@ namespace AndroidSdk
 		IEnumerable<string> run(params string[] args) =>
 			runWithInput(args, null);
 
-		IEnumerable<string> runWithInput(string[] args, Action<StreamWriter> inputAction = null, Action<string> outputHandler = null, Action<string> errorHandler = null)
+		IEnumerable<string> runWithInput(string[] args, Action<StreamWriter> inputAction = null)
 		{
 			if (jdk == null)
 				jdk = Jdks.FirstOrDefault();
@@ -380,7 +370,6 @@ namespace AndroidSdk
 				{
 					output.Add(e.Data);
 					stdout.Add(e.Data);
-					outputHandler?.Invoke(e.Data);
 				}
 			};
 			proc.ErrorDataReceived += (s, e) =>
@@ -389,7 +378,6 @@ namespace AndroidSdk
 				{
 					output.Add(e.Data);
 					stderr.Add(e.Data);
-					errorHandler?.Invoke(e.Data);
 				}
 			};
 

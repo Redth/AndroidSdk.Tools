@@ -174,71 +174,63 @@ namespace AndroidSdk.Tool
 			try
 			{
 				var emu = new Emulator(settings?.Home);
-				emu.OutputHandler = line => Console.WriteLine(line);
-				emu.ErrorHandler = line => Console.Error.WriteLine(line);
 
 				Emulator.AndroidEmulatorProcess process = null;
 
-				Console.WriteLine($"Starting {settings.Name}...");
-
-				process = emu.Start(settings.Name, new Emulator.EmulatorStartOptions
+				AnsiConsole.Status()
+				.Start($"Starting {settings.Name}...", ctx =>
 				{
-					WipeData = settings.WipeData,
-					NoSnapshot = settings.NoSnapshot,
-					Acceleration = settings.Acceleration,
-					Engine = settings.Engine,
-					NoWindow = settings.NoWindow,
-					NoAudio = settings.NoAudio,
-					NoJni = settings.NoJni,
-					NoBootAnim = settings.NoBootAnimation,
-					Gpu = settings.Gpu,
-					Port = settings.Port,
-					CameraBack = settings.CameraBack,
-					CameraFront = settings.CameraFront,
-					NoSnapshotLoad = settings.NoSnapshotLoad,
-					NoSnapshotSave = settings.NoSnapshotSave,
-					Verbose = settings.Verbose,
-					Screen = settings.ScreenMode,
-					MemoryMegabytes = (int?)settings.Memory,
-					PartitionSizeMegabytes = (int?)settings.PartitionSize,
-					CacheSizeMegabytes = (int?)settings.CacheSize,
-					GrpcPort = (int?)settings.GrpcPort,
-					GrpcUseJwt = settings.GrpcUseJwt,
+					process = emu.Start(settings.Name, new Emulator.EmulatorStartOptions
+					{
+						WipeData = settings.WipeData,
+						NoSnapshot = settings.NoSnapshot,
+						Acceleration = settings.Acceleration,
+						Engine = settings.Engine,
+						NoWindow = settings.NoWindow,
+						NoAudio = settings.NoAudio,
+						NoJni = settings.NoJni,
+						NoBootAnim = settings.NoBootAnimation,
+						Gpu = settings.Gpu,
+						Port = settings.Port,
+						CameraBack = settings.CameraBack,
+						CameraFront = settings.CameraFront,
+						NoSnapshotLoad = settings.NoSnapshotLoad,
+						NoSnapshotSave = settings.NoSnapshotSave,
+						Verbose = settings.Verbose,
+						Screen = settings.ScreenMode,
+						MemoryMegabytes = (int?)settings.Memory,
+						PartitionSizeMegabytes = (int?)settings.PartitionSize,
+						CacheSizeMegabytes = (int?)settings.CacheSize,
+						GrpcPort = (int?)settings.GrpcPort,
+						GrpcUseJwt = settings.GrpcUseJwt,
+					});
+
+					cancellationToken.Register(() =>
+					{
+						ctx.Status($"Stopping {settings.Name}...");
+						process?.Shutdown();
+					});
+
+					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
+
+					if (settings.WaitForBoot)
+					{
+						ctx.Status($"Waiting for {settings.Name} to finish booting...");
+						ok = process.WaitForBootComplete(timeout);
+					}
+
+					if (settings.WaitForExit)
+					{
+						ctx.Status($"Booted, waiting for {settings.Name} to exit...");
+						var exitCode = process.WaitForExit();
+						ok = exitCode == 0 || exitCode == 1;
+					}
 				});
 
-				cancellationToken.Register(() =>
-				{
-					Console.WriteLine($"Stopping {settings.Name}...");
-					process?.Shutdown();
-				});
-
-				var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
-
-				if (settings.WaitForBoot)
-				{
-					Console.WriteLine($"Waiting for {settings.Name} to finish booting...");
-					ok = process.WaitForBootComplete(timeout);
-				}
-
-				if (settings.WaitForExit)
-				{
-					Console.WriteLine($"Booted, waiting for {settings.Name} to exit...");
-					var exitCode = process.WaitForExit();
-					ok = exitCode == 0 || exitCode == 1;
-				}
-
-				if (ok)
-				{
-					var serial = process?.Serial;
-					if (!string.IsNullOrEmpty(serial))
-						Console.WriteLine($"Emulator started: {serial}");
-					else
-						Console.WriteLine("Emulator started");
-				}
-				else
+				if (!ok)
 				{
 					Console.Error.WriteLine($"Failed to start AVD '{settings.Name}'");
-					
+
 					var stdErr = process?.GetStandardError()?.ToList();
 					if (stdErr?.Count > 0)
 					{
@@ -246,7 +238,7 @@ namespace AndroidSdk.Tool
 						foreach (var line in stdErr)
 							Console.Error.WriteLine(line);
 					}
-					
+
 					var stdOut = process?.GetStandardOutput()?.ToList();
 					if (stdOut?.Count > 0)
 					{
