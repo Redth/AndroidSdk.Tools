@@ -120,6 +120,10 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "avd", "start", "--name MyEmulator" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot", "--no-snapshot" });
+					sdkBranch.AddCommand<AvdTeardownCommand>("teardown")
+						.WithDescription("Collects logs and shuts down a running emulator")
+						.WithExample(new[] { "avd", "teardown", "--serial emulator-5554" })
+						.WithExample(new[] { "avd", "teardown", "--serial emulator-5554", "--output-directory ./logs" });
 				});
 
 				config.AddBranch("apk", sdkBranch =>

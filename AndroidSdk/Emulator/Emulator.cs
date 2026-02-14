@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
@@ -130,6 +131,14 @@ namespace AndroidSdk
 			
 			if (!string.IsNullOrEmpty(options.Gpu))
 				builder.Append($"-gpu {options.Gpu.ToLowerInvariant()}");
+			else
+			{
+				// Auto-detect GPU mode based on OS
+				var autoGpu = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+					? "swiftshader_indirect"
+					: "guest";
+				builder.Append($"-gpu {autoGpu}");
+			}
 
 			if (options.NoWindow)
 				builder.Append("-no-window");
@@ -272,7 +281,7 @@ namespace AndroidSdk
 				var booted = false;
 				Serial = null;
 
-				// Keep trying to see if the boot complete prop is set
+				// Phase 1: Find the emulator device in adb
 				while (string.IsNullOrEmpty(Serial) && !token.IsCancellationRequested)
 				{
 					if (process.HasExited)
@@ -280,10 +289,8 @@ namespace AndroidSdk
 
 					Thread.Sleep(1000);
 
-					// Get a list of devices, we need to find the device we started
 					var devices = adb.GetDevices();
 
-					// Find the device we just started and get it's adb serial
 					foreach (var d in devices)
 					{
 						try
@@ -299,6 +306,7 @@ namespace AndroidSdk
 					}
 				}
 
+				// Phase 2: Wait for boot_completed property
 				while (!token.IsCancellationRequested)
 				{
 					if (process.HasExited)
@@ -316,7 +324,77 @@ namespace AndroidSdk
 					}
 				}
 
-				return booted;
+				if (!booted)
+					return false;
+
+				// Phase 3: Wait for system services to settle
+				WaitForSystemSettle(adb, token);
+
+				// Phase 4: Prepare emulator for testing
+				PrepareForTesting(adb);
+
+				return true;
+			}
+
+			void WaitForSystemSettle(Adb adb, CancellationToken token)
+			{
+				// Wait for launcher/home to be in the foreground
+				var launcherAttempts = 0;
+				while (launcherAttempts < 30 && !token.IsCancellationRequested)
+				{
+					try
+					{
+						var focusLines = adb.Shell("dumpsys window displays", Serial);
+						var focusText = string.Join("\n", focusLines);
+						if (focusText.Contains("Launcher") || focusText.Contains("launcher") ||
+						    focusText.Contains("HomeActivity") || focusText.Contains("home"))
+							break;
+					}
+					catch { }
+
+					launcherAttempts++;
+					Thread.Sleep(2000);
+				}
+
+				// Wait for CPU load to drop below threshold
+				var loadAttempts = 0;
+				while (loadAttempts < 30 && !token.IsCancellationRequested)
+				{
+					try
+					{
+						var loadLines = adb.Shell("cat /proc/loadavg", Serial);
+						if (loadLines.Count > 0)
+						{
+							var parts = loadLines[0].Split(' ');
+							if (parts.Length > 0 && double.TryParse(parts[0],
+								System.Globalization.NumberStyles.Float,
+								System.Globalization.CultureInfo.InvariantCulture,
+								out var load1Min) && load1Min < 3.0)
+								break;
+						}
+					}
+					catch { }
+
+					loadAttempts++;
+					Thread.Sleep(2000);
+				}
+
+				// Final settling pause
+				Thread.Sleep(10000);
+			}
+
+			void PrepareForTesting(Adb adb)
+			{
+				// Disable animations for more reliable UI testing
+				try { adb.Shell("settings put global window_animation_scale 0", Serial); } catch { }
+				try { adb.Shell("settings put global transition_animation_scale 0", Serial); } catch { }
+				try { adb.Shell("settings put global animator_duration_scale 0", Serial); } catch { }
+
+				// Dismiss lock screen
+				try { adb.Shell("input keyevent 82", Serial); } catch { }
+
+				// Increase logcat buffer for better diagnostics
+				try { adb.Shell("logcat -G 16M", Serial); } catch { }
 			}
 		}
 	}
