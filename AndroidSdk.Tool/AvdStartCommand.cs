@@ -227,9 +227,33 @@ namespace AndroidSdk.Tool
 					}
 				});
 
-				if (!ok)
+				if (ok)
 				{
-					AnsiConsole.WriteException(new Exception("Failed to start AVD." + Environment.NewLine + string.Join(Environment.NewLine, process.GetOutput())));
+					var serial = process?.Serial;
+					if (!string.IsNullOrEmpty(serial))
+						AnsiConsole.MarkupLine($"[green]Emulator started: {serial}[/]");
+					else
+						AnsiConsole.MarkupLine($"[green]Emulator started[/]");
+				}
+				else
+				{
+					AnsiConsole.MarkupLine($"[red]Failed to start AVD '{settings.Name}'[/]");
+					
+					var stdErr = process?.GetStandardError()?.ToList();
+					if (stdErr?.Count > 0)
+					{
+						AnsiConsole.MarkupLine("[red]Emulator stderr:[/]");
+						foreach (var line in stdErr)
+							AnsiConsole.WriteLine(line);
+					}
+					
+					var stdOut = process?.GetStandardOutput()?.ToList();
+					if (stdOut?.Count > 0)
+					{
+						AnsiConsole.MarkupLine("[dim]Emulator stdout:[/]");
+						foreach (var line in stdOut)
+							AnsiConsole.WriteLine(line);
+					}
 				}
 
 			}
