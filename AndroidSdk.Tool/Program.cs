@@ -11,7 +11,7 @@ namespace AndroidSdk.Tool
 {
 	class Program
 	{
-		public static void Main(string[] args)
+		public static int Main(string[] args)
 		{
 			var app = new CommandApp();
 			app.Configure(config =>
@@ -141,11 +141,12 @@ namespace AndroidSdk.Tool
 
 			try
 			{
-				app.Run(args);
+				return app.Run(args);
 			}
 			catch (Exception ex)
 			{
 				AnsiConsole.WriteException(ex);
+				return 1;
 			}
 		}
 
@@ -156,12 +157,11 @@ namespace AndroidSdk.Tool
 				if (line.StartsWith("Picked up JAVA_TOOL_OPTIONS:"))
 					continue;
 
-				AnsiConsole.WriteLine(line);
+				Console.Error.WriteLine(line);
 			}
 
-			AnsiConsole.WriteLine();
-
-			AnsiConsole.WriteException(sdkEx);
+			Console.Error.WriteLine();
+			Console.Error.WriteLine(sdkEx.ToString());
 		}
 	}
 
