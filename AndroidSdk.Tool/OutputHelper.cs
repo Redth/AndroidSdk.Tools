@@ -21,11 +21,11 @@ namespace AndroidSdk.Tool
 			else
 			{
 				if (format == OutputFormat.Json)
-					AnsiConsole.WriteLine(JsonSerialize<IEnumerable<T>>(items));
+					Console.WriteLine(JsonSerialize<IEnumerable<T>>(items));
 				else if (format == OutputFormat.JsonPretty)
-					AnsiConsole.WriteLine(JsonSerialize<IEnumerable<T>>(items, indented: true));
+					Console.WriteLine(JsonSerialize<IEnumerable<T>>(items, indented: true));
 				else if (format == OutputFormat.Xml)
-					AnsiConsole.WriteLine(XmlSerialize<IEnumerable<T>>(items));
+					Console.WriteLine(XmlSerialize<IEnumerable<T>>(items));
 			}
 		}
 
@@ -38,11 +38,11 @@ namespace AndroidSdk.Tool
 			else
 			{
 				if (format == OutputFormat.Json)
-					AnsiConsole.WriteLine(JsonSerialize<T>(item));
+					Console.WriteLine(JsonSerialize<T>(item));
 				else if (format == OutputFormat.JsonPretty)
-					AnsiConsole.WriteLine(JsonSerialize<T>(item, indented: true));
+					Console.WriteLine(JsonSerialize<T>(item, indented: true));
 				else if (format == OutputFormat.Xml)
-					AnsiConsole.WriteLine(XmlSerialize<T>(item));
+					Console.WriteLine(XmlSerialize<T>(item));
 			}
 		}
 
