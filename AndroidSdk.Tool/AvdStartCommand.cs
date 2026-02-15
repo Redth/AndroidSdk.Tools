@@ -139,11 +139,6 @@ namespace AndroidSdk.Tool
 		[DefaultValue(false)]
 		public bool DisableAnimations { get; set; }
 
-		[Description("Wait for the launcher to be in focus after boot")]
-		[CommandOption("--wait-launcher")]
-		[DefaultValue(false)]
-		public bool WaitLauncher { get; set; }
-
 		[Description("Wait for guest CPU load average to drop below this threshold before proceeding")]
 		[CommandOption("--cpu-threshold")]
 		[DefaultValue(null)]
@@ -232,6 +227,24 @@ namespace AndroidSdk.Tool
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
 						ok = process.WaitForBootComplete(timeout);
+
+						if (ok && process?.Serial != null)
+						{
+							// Always wait for launcher after boot (like iOS waits for SpringBoard)
+							ctx.Status($"Waiting for launcher on {settings.Name}...");
+							var adb = new Adb(settings?.Home);
+							var launcherTimeout = TimeSpan.FromSeconds(60);
+							var sw = System.Diagnostics.Stopwatch.StartNew();
+							while (sw.Elapsed < launcherTimeout && !cancellationToken.IsCancellationRequested)
+							{
+								var output = adb.Shell("dumpsys window displays", process.Serial);
+								if (output.Any(l => l.Contains("mCurrentFocus") && (l.Contains("Launcher") || l.Contains("launcher"))))
+								{
+									break;
+								}
+								Thread.Sleep(2000);
+							}
+						}
 					}
 
 					if (ok && process?.Serial != null)
@@ -244,28 +257,6 @@ namespace AndroidSdk.Tool
 							adb.Shell("settings put global window_animation_scale 0", process.Serial);
 							adb.Shell("settings put global transition_animation_scale 0", process.Serial);
 							adb.Shell("settings put global animator_duration_scale 0", process.Serial);
-						}
-
-						if (settings.WaitLauncher)
-						{
-							ctx.Status($"Waiting for launcher on {settings.Name}...");
-							var launcherTimeout = TimeSpan.FromSeconds(60);
-							var sw = System.Diagnostics.Stopwatch.StartNew();
-							var launcherReady = false;
-							while (sw.Elapsed < launcherTimeout && !cancellationToken.IsCancellationRequested)
-							{
-								var output = adb.Shell("dumpsys window displays", process.Serial);
-								if (output.Any(l => l.Contains("mCurrentFocus") && (l.Contains("Launcher") || l.Contains("launcher"))))
-								{
-									launcherReady = true;
-									break;
-								}
-								Thread.Sleep(2000);
-							}
-							if (!launcherReady)
-							{
-								AnsiConsole.MarkupLine("[yellow]Warning: Launcher did not become ready within timeout[/]");
-							}
 						}
 
 						if (settings.CpuThreshold.HasValue)
