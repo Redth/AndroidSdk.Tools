@@ -12,19 +12,19 @@ permissions:
 jobs:
   test:
     name: Test
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'microsoft'
         java-version: '21'
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
     - name: Test
       run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=TestResults.trx"
     - name: Publish Test Results

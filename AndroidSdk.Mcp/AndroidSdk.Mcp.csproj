@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AndroidSdk.Mcp</RootNamespace>
+    <AssemblyName>AndroidSdk.Mcp</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>android-mcp</ToolCommandName>
+
+    <PackageId>AndroidSdk.Mcp.Server</PackageId>
+    <Title>Android SDK Tools - MCP Server</Title>
+    <Description>Model Context Protocol (MCP) server providing tools for Android SDK / Emulator management and development automation including Android SDK, emulators, AVD management, and more. Enables AI assistants to manage Android development environments.</Description>
+    <Authors>Jonathan Dick</Authors>
+    <PackageTags>mcp;model-context-protocol;android;emulator;avd;ai;assistant;claude</PackageTags>
+    <PackageProjectUrl>https://github.com/Redth/AndroidSdk.Tools</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Redth/AndroidSdk.Tools</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl> 
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="0.4.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
+  </ItemGroup>
+
+</Project>
