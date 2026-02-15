@@ -145,7 +145,7 @@ jobs:
       run: |
         dotnet $TOOL device launch --package com.companyname.TestApp
         echo "Waiting for app to run..."
-        sleep 5
+        sleep 30
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
 
