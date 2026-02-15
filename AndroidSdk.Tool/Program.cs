@@ -120,6 +120,10 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "avd", "start", "--name MyEmulator" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot", "--no-snapshot" });
+					sdkBranch.AddCommand<AvdLogcatCommand>("logcat")
+						.WithDescription("Dumps logcat from a running emulator or device")
+						.WithExample(new[] { "avd", "logcat" })
+						.WithExample(new[] { "avd", "logcat", "--output", "logcat.txt" });
 				});
 
 				config.AddBranch("apk", sdkBranch =>
