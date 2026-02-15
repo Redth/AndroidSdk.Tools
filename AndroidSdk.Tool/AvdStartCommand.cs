@@ -220,18 +220,21 @@ namespace AndroidSdk.Tool
 						process?.Shutdown();
 					});
 
-					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
+					var timeoutBudget = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
+					var waitStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
 					if (settings.WaitForBoot)
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
-						ok = process.WaitForBootComplete(timeout);
+						ok = process.WaitForBootComplete(timeoutBudget);
 
 						if (ok && process?.Serial != null)
 						{
 							// Always wait for launcher after boot (like iOS waits for SpringBoard)
 							ctx.Status($"Waiting for launcher on {settings.Name}...");
-							process.WaitForLauncher(TimeSpan.FromSeconds(60), cancellationToken);
+							process.WaitForLauncher(
+								GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(60)),
+								cancellationToken);
 						}
 					}
 
@@ -248,7 +251,7 @@ namespace AndroidSdk.Tool
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
 							var cpuSettled = process.WaitForCpuLoadBelow(
 								settings.CpuThreshold.Value,
-								timeout: TimeSpan.FromSeconds(120),
+								timeout: GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(120)),
 								settleDelay: TimeSpan.FromSeconds(10),
 								token: cancellationToken);
 							if (cpuSettled)
@@ -283,6 +286,15 @@ namespace AndroidSdk.Tool
 			}
 
 			return Task.FromResult(ok ? 0 : 1);
+		}
+
+		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed, TimeSpan fallback)
+		{
+			if (timeoutBudget == TimeSpan.Zero)
+				return fallback;
+
+			var remaining = timeoutBudget - elapsed;
+			return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
 		}
 	}
 }
