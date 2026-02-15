@@ -44,6 +44,7 @@ jobs:
       run: |
         dotnet build AndroidSdk.Tool/AndroidSdk.Tool.csproj -f net10.0
         echo "TOOL=$PWD/AndroidSdk.Tool/bin/Debug/net10.0/android.dll" >> "$GITHUB_ENV"
+        echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
 
     - name: Print SDK information
       run: dotnet $TOOL sdk info
