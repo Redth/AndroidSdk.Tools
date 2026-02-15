@@ -5,6 +5,10 @@ on:
   push:
     branches: [ main ]
 
+concurrency:
+  group: run-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES: stdout|stderr
 
