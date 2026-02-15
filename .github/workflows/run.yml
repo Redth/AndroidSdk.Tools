@@ -44,17 +44,17 @@ jobs:
       run: dotnet build AndroidSdk.Tool
 
     - name: Print SDK information
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk info
+      run: dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- sdk info
 
     - name: Install Packages
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-36" -p "${{ matrix.image }}"
+      run: dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-36" -p "${{ matrix.image }}"
 
     - name: Create and verify AVD
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
         echo "--- Verifying AVD was created ---"
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd list
-        AVDS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd list --format json)
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- avd list
+        AVDS=$(dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- avd list --format json)
         echo "AVDs JSON: $AVDS"
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
           echo "❌ AVD 'test' not found in avd list after create"
@@ -64,9 +64,9 @@ jobs:
 
     - name: Start and verify AVD
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
         echo "--- Verifying emulator is in device list ---"
-        DEVICES=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device list --format json)
+        DEVICES=$(dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device list --format json)
         echo "Devices JSON: $DEVICES"
         COUNT=$(echo "$DEVICES" | jq 'length')
         if [ "$COUNT" -lt 1 ]; then
@@ -93,9 +93,9 @@ jobs:
       run: |
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
         echo "Installing APK: $APK"
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package "$APK"
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device install --package "$APK"
         echo "--- Verifying app is installed via device packages ---"
-        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
+        PKGS=$(dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.testapp")' > /dev/null 2>&1; then
           echo "❌ com.companyname.testapp not found in device packages"
           echo "$PKGS" | jq '.[].packageName' | head -20
@@ -105,14 +105,14 @@ jobs:
 
     - name: Launch and verify test app
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
         echo "Waiting for app to run..."
         sleep 5
 
     - name: Capture and verify logcat
       timeout-minutes: 2
       run: |
-        timeout 30 dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt || true
+        timeout 30 dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt || true
         if [ ! -f logcat.txt ] || [ ! -s logcat.txt ]; then
           echo "❌ logcat.txt was not created or is empty"
           exit 1
@@ -129,9 +129,9 @@ jobs:
     - name: Uninstall and verify test app
       if: always()
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
         echo "--- Verifying app is uninstalled via device packages ---"
-        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json 2>/dev/null || echo "[]")
+        PKGS=$(dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device packages --format json 2>/dev/null || echo "[]")
         if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.testapp")' > /dev/null 2>&1; then
           echo "⚠️ com.companyname.testapp still found after uninstall"
         else
@@ -141,9 +141,9 @@ jobs:
     - name: Install and verify static test app
       if: runner.os == 'Linux'
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
         echo "--- Verifying static app is installed via device packages ---"
-        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
+        PKGS=$(dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
           echo "❌ com.companyname.mauiapp12345 not found in device packages"
           exit 1
@@ -153,9 +153,9 @@ jobs:
     - name: Uninstall and verify static test app
       if: runner.os == 'Linux'
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+        dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
         echo "--- Verifying static app is uninstalled via device packages ---"
-        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
+        PKGS=$(dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
         if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
           echo "❌ com.companyname.mauiapp12345 still found in device packages after uninstall"
           exit 1
@@ -164,7 +164,7 @@ jobs:
 
     - name: Delete AVD
       if: always()
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd delete -n test --force
+      run: dotnet run --no-launch-profile --framework net10.0 --project AndroidSdk.Tool -- avd delete -n test --force
 
     - name: Upload logcat
       if: always()
