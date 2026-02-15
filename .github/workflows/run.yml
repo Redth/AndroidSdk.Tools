@@ -16,10 +16,10 @@ jobs:
             gpu: swiftshader_indirect
             image: system-images;android-36;google_apis;x86_64
             abi: google_apis/x86_64
-          - os: macos-latest
-            gpu: guest
-            image: system-images;android-36;google_apis;arm64-v8a
-            abi: google_apis/arm64-v8a
+          - os: macos-15-intel
+            gpu: swiftshader_indirect
+            image: system-images;android-36;google_apis;x86_64
+            abi: google_apis/x86_64
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -104,8 +104,8 @@ jobs:
         dotnet $TOOL device install --package "$APK"
         echo "--- Verifying app is installed via device packages ---"
         PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null)
-        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.testapp")' > /dev/null 2>&1; then
-          echo "❌ com.companyname.testapp not found in device packages"
+        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.TestApp not found in device packages"
           echo "$PKGS" | jq '.[].packageName' | head -20
           exit 1
         fi
@@ -113,7 +113,7 @@ jobs:
 
     - name: Launch and verify test app
       run: |
-        dotnet $TOOL device launch --package com.companyname.testapp
+        dotnet $TOOL device launch --package com.companyname.TestApp
         echo "Waiting for app to run..."
         sleep 5
 
@@ -137,11 +137,11 @@ jobs:
     - name: Uninstall and verify test app
       if: always()
       run: |
-        dotnet $TOOL device uninstall --package com.companyname.testapp || true
+        dotnet $TOOL device uninstall --package com.companyname.TestApp || true
         echo "--- Verifying app is uninstalled via device packages ---"
         PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null || echo "[]")
-        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.testapp")' > /dev/null 2>&1; then
-          echo "⚠️ com.companyname.testapp still found after uninstall"
+        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
+          echo "⚠️ com.companyname.TestApp still found after uninstall"
         else
           echo "✅ App uninstalled and verified via CLI"
         fi
