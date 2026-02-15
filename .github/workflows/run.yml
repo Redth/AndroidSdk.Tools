@@ -22,24 +22,30 @@ jobs:
             abi: google_apis/x86_64
     runs-on: ${{ matrix.os }}
     steps:
+
     - name: Checkout
       uses: actions/checkout@v4
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
+
     - uses: actions/setup-java@v4
       with:
         distribution: 'microsoft'
         java-version: '21'
+
     - name: Install Android workload
       run: dotnet workload install android --source https://api.nuget.org/v3/index.json
+
     - name: Enable KVM
       if: runner.os == 'Linux'
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
+
     - name: Build the project
       run: |
         dotnet build AndroidSdk.Tool/AndroidSdk.Tool.csproj -f net10.0
@@ -64,7 +70,7 @@ jobs:
       run: |
         dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-do.log
 
     - name: Validate Create AVD
       run: |
@@ -77,18 +83,18 @@ jobs:
         echo "AVDs JSON: $AVDS"
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
           echo "❌ AVD 'test' not found in avd list after create"
-          cat artifacts/avd-create.log
+          cat artifacts/avd-create-do.log
           exit 1
         fi
         echo "✅ AVD 'test' created successfully"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
 
     - name: Do Start AVD
       run: |
         dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
 
     - name: Validate Start AVD
       run: |
@@ -99,13 +105,13 @@ jobs:
         if [ "$COUNT" -lt 1 ]; then
           echo "❌ No devices found via 'device list --format json' — emulator failed to start"
           echo "--- Process runner log ---"
-          cat artifacts/avd-start.log
+          cat artifacts/avd-start-do.log
           exit 1
         fi
         SERIAL=$(echo "$DEVICES" | jq -r '.[0].serial')
         echo "✅ Emulator is running (serial: $SERIAL, count: $COUNT)"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-validate.log
 
     - name: Do Create test app
       run: |
@@ -142,7 +148,7 @@ jobs:
         echo "Installing APK: $APK"
         dotnet $TOOL device install --package "$APK"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-do.log
 
     - name: Validate Install test app
       run: |
@@ -152,18 +158,18 @@ jobs:
           echo "❌ com.companyname.TestApp not found in device packages"
           echo "$PKGS" | jq '.[].packageName' | head -20
           echo "--- Process runner log ---"
-          cat artifacts/device-install.log
+          cat artifacts/device-install-do.log
           exit 1
         fi
         echo "✅ App installed and verified via CLI"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-validate.log
 
     - name: Do Launch test app
       run: |
         dotnet $TOOL device launch --package com.companyname.TestApp
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-do.log
 
     - name: Validate Launch test app
       timeout-minutes: 10
@@ -183,7 +189,7 @@ jobs:
         cp /tmp/logcat_poll.txt artifacts/logcat.txt
         if [ ! -s artifacts/logcat.txt ]; then
           echo "❌ logcat.txt was not created or is empty"
-          cat artifacts/device-launch.log
+          cat artifacts/device-launch-do.log
           exit 1
         fi
         
@@ -198,13 +204,13 @@ jobs:
         fi
         echo "✅ App launched and ran real code successfully"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-validate.log
 
     - name: Do Uninstall test app
       if: always()
       run: dotnet $TOOL device uninstall --package com.companyname.TestApp
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall-do.log
 
     - name: Validate Uninstall test app
       if: always()
@@ -217,13 +223,13 @@ jobs:
           echo "✅ App uninstalled and verified via CLI"
         fi
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall-validate.log
 
     - name: Do Install static test app
       if: runner.os == 'Linux'
       run: dotnet $TOOL device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install-do.log
 
     - name: Validate Install static test app
       if: runner.os == 'Linux'
@@ -232,18 +238,18 @@ jobs:
         PKGS=$(dotnet $TOOL device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
           echo "❌ com.companyname.mauiapp12345 not found in device packages"
-          cat artifacts/static-install.log
+          cat artifacts/static-install-do.log
           exit 1
         fi
         echo "✅ Static test app installed and verified via CLI"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install-validate.log
 
     - name: Do Uninstall static test app
       if: runner.os == 'Linux'
       run: dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-uninstall.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-uninstall-do.log
 
     - name: Validate Uninstall static test app
       if: runner.os == 'Linux'
@@ -256,7 +262,7 @@ jobs:
         fi
         echo "✅ Static test app uninstalled and verified via CLI"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-uninstall.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-uninstall-validate.log
 
     - name: Delete AVD
       if: always()
