@@ -387,6 +387,17 @@ namespace AndroidSdk
 				return booted;
 			}
 
+			public void DisableAnimations()
+			{
+				if (string.IsNullOrWhiteSpace(Serial))
+					return;
+
+				var adb = new Adb(androidSdkHome);
+				adb.Shell("settings put global window_animation_scale 0", Serial);
+				adb.Shell("settings put global transition_animation_scale 0", Serial);
+				adb.Shell("settings put global animator_duration_scale 0", Serial);
+			}
+
 		}
 	}
 }

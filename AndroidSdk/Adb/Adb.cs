@@ -501,14 +501,6 @@ namespace AndroidSdk
 				&& l.IndexOf("mCurrentFocus", StringComparison.OrdinalIgnoreCase) >= 0
 				&& l.IndexOf("launcher", StringComparison.OrdinalIgnoreCase) >= 0) == true;
 
-		internal void SetAnimationScales(double value, string adbSerial = null)
-		{
-			var val = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-			Shell("settings put global window_animation_scale " + val, adbSerial);
-			Shell("settings put global transition_animation_scale " + val, adbSerial);
-			Shell("settings put global animator_duration_scale " + val, adbSerial);
-		}
-
 		internal bool TryGetLoadAverage(string adbSerial, out double load)
 		{
 			load = 0;

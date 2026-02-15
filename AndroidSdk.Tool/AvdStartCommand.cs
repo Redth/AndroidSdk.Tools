@@ -234,7 +234,7 @@ namespace AndroidSdk.Tool
 						if (settings.DisableAnimations)
 						{
 							ctx.Status($"Disabling animations on {settings.Name}...");
-							new Adb(settings?.Home).SetAnimationScales(0, process.Serial);
+							process.DisableAnimations();
 						}
 
 						if (settings.CpuThreshold.HasValue)
