@@ -148,8 +148,13 @@ jobs:
         echo "Waiting for app log marker..."
         
         # Poll logcat until E2E marker appears or timeout
+        # Note: adb logcat -d may return non-zero on API 36, so capture to file first
         for i in $(seq 1 30); do
-          adb logcat -d 2>/dev/null | grep -q "E2E_APP_STARTED_SUCCESSFULLY" && break
+          adb logcat -d > /tmp/logcat_poll.txt 2>/dev/null || true
+          if grep -q "E2E_APP_STARTED_SUCCESSFULLY" /tmp/logcat_poll.txt 2>/dev/null; then
+            echo "  ✅ Marker found on attempt $i"
+            break
+          fi
           echo "  Attempt $i/30 - marker not yet in logcat, waiting 5s..."
           sleep 5
         done
