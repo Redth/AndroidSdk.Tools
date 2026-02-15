@@ -15,6 +15,9 @@ namespace AndroidSdk.Tool
 			if (str.Equals("json", StringComparison.OrdinalIgnoreCase))
 				return OutputFormat.Json;
 
+			if (str.Equals("jsonpretty", StringComparison.OrdinalIgnoreCase))
+				return OutputFormat.JsonPretty;
+
 			if (str.Equals("xml", StringComparison.OrdinalIgnoreCase))
 				return OutputFormat.Xml;
 
