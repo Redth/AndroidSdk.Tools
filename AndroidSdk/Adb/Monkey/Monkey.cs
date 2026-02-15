@@ -40,7 +40,7 @@ namespace AndroidSdk
 
 		readonly AdbRunner runner;
 
-		public bool LaunchPackage(string packageName)
+		public bool TryLaunchDefaultLauncherActivity(string packageName)
 		{
 			var builder = new ProcessArgumentBuilder();
 
@@ -59,7 +59,7 @@ namespace AndroidSdk
 				&& l.IndexOf("Events injected", StringComparison.OrdinalIgnoreCase) >= 0) == true;
 		}
 
-		public IEnumerable<string> LaunchApp(string packageName)
+		public IEnumerable<string> LaunchDefaultLauncherActivityVerbose(string packageName)
 		{
 			var builder = new ProcessArgumentBuilder();
 
