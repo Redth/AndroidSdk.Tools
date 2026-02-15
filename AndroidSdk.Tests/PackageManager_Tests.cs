@@ -6,21 +6,19 @@ namespace AndroidSdk.Tests;
 
 public class PackageManager_Tests
 {
-	[Fact]
-	public void ParsePackageListOutputHandlesBase64LikePathsWithEquals()
+	[Theory]
+	[InlineData("package:/data/app/~~wMmr-oLQ7RWpEYgnSyrqBQ==/com.companyname.TestApp-u2_pATr4m8RzW-4W-rLafw==/base.apk=com.companyname.TestApp installer=com.android.shell", "com.android.shell", "u2_pATr4m8RzW-4W-rLafw==")]
+	[InlineData("package:/data/app/com.companyname.TestApp-plain/base.apk=com.companyname.TestApp installer=com.android.vending", "com.android.vending", "com.companyname.TestApp-plain")]
+	public void ParsePackageListOutputHandlesInstallPathsWithAndWithoutEquals(string line, string installer, string pathFragment)
 	{
-		var lines = new[]
-		{
-			"package:/data/app/~~wMmr-oLQ7RWpEYgnSyrqBQ==/com.companyname.TestApp-u2_pATr4m8RzW-4W-rLafw==/base.apk=com.companyname.TestApp installer=com.android.shell"
-		};
+		var lines = new[] { line };
 
 		var packages = PackageManager.ParsePackageListOutput(lines);
 
 		var package = Assert.Single(packages);
 		Assert.Equal("com.companyname.TestApp", package.PackageName);
-		Assert.Equal("com.android.shell", package.Installer);
-		Assert.Contains("~~wMmr-oLQ7RWpEYgnSyrqBQ==", package.InstallPath.FullName);
-		Assert.Contains("u2_pATr4m8RzW-4W-rLafw==", package.InstallPath.FullName);
+		Assert.Equal(installer, package.Installer);
+		Assert.Contains(pathFragment, package.InstallPath.FullName);
 	}
 
 	[Fact]
