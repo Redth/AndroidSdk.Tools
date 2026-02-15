@@ -521,8 +521,7 @@ namespace AndroidSdk
 		}
 
 		internal bool LaunchPackage(string packageName, string adbSerial = null)
-			=> Shell($"monkey -p {packageName} -c android.intent.category.LAUNCHER 1", adbSerial)?.Any(l => !string.IsNullOrEmpty(l)
-				&& l.IndexOf("Events injected", StringComparison.OrdinalIgnoreCase) >= 0) == true;
+			=> new Monkey(AndroidSdkHome, adbSerial).LaunchPackage(packageName);
 
 
 		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)
@@ -663,7 +662,7 @@ namespace AndroidSdk
 		{
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
-			return Shell($"monkey -p {packageName} -v 1", adbSerial);
+			return new Monkey(AndroidSdkHome, adbSerial).LaunchApp(packageName);
 		}
 	}
 }
