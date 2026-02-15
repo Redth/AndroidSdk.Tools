@@ -44,7 +44,9 @@ jobs:
       run: |
         dotnet build AndroidSdk.Tool/AndroidSdk.Tool.csproj -f net10.0
         echo "TOOL=$PWD/AndroidSdk.Tool/bin/Debug/net10.0/android.dll" >> "$GITHUB_ENV"
+        mkdir -p "$HOME/.android/avd"
         echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
+        echo "ANDROID_EMULATOR_HOME=$HOME/.android" >> "$GITHUB_ENV"
 
     - name: Print SDK information
       run: dotnet $TOOL sdk info
@@ -56,6 +58,9 @@ jobs:
       run: |
         dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
         echo "--- Verifying AVD was created ---"
+        echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
+        ls -la "$ANDROID_AVD_HOME" || echo "AVD HOME dir not found"
+        ls -la "$HOME/.config/.android/avd/" 2>/dev/null || echo "XDG path not found"
         dotnet $TOOL avd list
         AVDS=$(dotnet $TOOL avd list --format json 2>/dev/null)
         echo "AVDs JSON: $AVDS"
