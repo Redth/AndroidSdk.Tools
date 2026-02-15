@@ -44,7 +44,7 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 		}
 		else
 		{
-			var output = adb.LaunchPackage(settings.Package, device.Serial);
+			var output = adb.LaunchApp(settings.Package, device.Serial);
 			if (output?.Any(l => !string.IsNullOrEmpty(l)
 				&& l.IndexOf("Events injected", System.StringComparison.OrdinalIgnoreCase) >= 0) == true)
 			{

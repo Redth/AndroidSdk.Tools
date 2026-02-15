@@ -520,10 +520,6 @@ namespace AndroidSdk
 			return double.TryParse(first, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out load);
 		}
 
-		internal IEnumerable<string> LaunchPackage(string packageName, string adbSerial = null)
-			=> new Monkey(AndroidSdkHome, adbSerial).LaunchDefaultLauncherActivity(packageName);
-
-
 		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)
 		{
 			//adb shell screencap / sdcard / screen.png
@@ -662,7 +658,7 @@ namespace AndroidSdk
 		{
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
-			return new Monkey(AndroidSdkHome, adbSerial).LaunchDefaultLauncherActivityVerbose(packageName);
+			return Shell($"monkey -p {packageName} -v 1", adbSerial);
 		}
 	}
 }
