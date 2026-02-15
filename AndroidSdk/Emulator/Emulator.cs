@@ -367,6 +367,23 @@ namespace AndroidSdk
 					}
 				}
 
+				if (booted && !string.IsNullOrWhiteSpace(Serial))
+				{
+					// Always wait for launcher after boot (like iOS waits for SpringBoard)
+					var launcherWaitTimeout = TimeSpan.FromSeconds(60);
+					var launcherWait = System.Diagnostics.Stopwatch.StartNew();
+					while (launcherWait.Elapsed < launcherWaitTimeout && !token.IsCancellationRequested)
+					{
+						if (process.HasExited)
+							break;
+
+						if (adb.IsLauncherInFocus(Serial))
+							break;
+
+						Thread.Sleep(2000);
+					}
+				}
+
 				return booted;
 			}
 

@@ -227,25 +227,6 @@ namespace AndroidSdk.Tool
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
 						ok = process.WaitForBootComplete(timeoutBudget);
-
-						if (ok && process?.Serial != null)
-						{
-							// Always wait for launcher after boot (like iOS waits for SpringBoard)
-							ctx.Status($"Waiting for launcher on {settings.Name}...");
-							var launcherWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(60));
-							var adb = new Adb(settings?.Home);
-							var sw = System.Diagnostics.Stopwatch.StartNew();
-							while (sw.Elapsed < launcherWaitTimeout && !cancellationToken.IsCancellationRequested)
-							{
-								if (process.HasExited)
-									break;
-
-								if (adb.IsLauncherInFocus(process.Serial))
-									break;
-
-								Thread.Sleep(2000);
-							}
-						}
 					}
 
 					if (ok && process?.Serial != null)
