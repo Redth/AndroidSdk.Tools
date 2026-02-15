@@ -133,7 +133,7 @@ namespace AndroidSdk.Tool
 		[DefaultValue(null)]
 		public bool? GrpcUseJwt { get; set; }
 
-		[Description("Disable all window, transition, and animator animation scales on the emulator")]
+		[Description("Disable all window, transition, and animator animation scales on the emulator (persists for this AVD until changed)")]
 		[CommandOption("--disable-animations")]
 		[DefaultValue(false)]
 		public bool DisableAnimations { get; set; }
