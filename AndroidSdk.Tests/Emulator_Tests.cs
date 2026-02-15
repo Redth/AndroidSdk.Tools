@@ -7,60 +7,9 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.OneTimeSetup>, IDisposable
+public class Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
+	: EmulatorTestsBase(outputHelper, fixture)
 {
-	static readonly string TestEmulatorName = "TestEmu" + Guid.NewGuid().ToString("N").Substring(0, 6);
-	static readonly string TestAvdPackageId =
-		RuntimeInformation.ProcessArchitecture == Architecture.Arm64
-			? "system-images;android-31;google_apis;arm64-v8a"
-			: "system-images;android-31;google_apis;x86_64";
-
-	// Make sure the emulator is installed, but only do this once for all
-	// the tests in this class to make things a fair bit faster.
-	public class OneTimeSetup : IDisposable
-	{
-		readonly AndroidSdkManager sdk;
-
-		public OneTimeSetup(AndroidSdkManagerFixture fixture)
-		{
-			sdk = fixture.Sdk;
-
-			// Install
-			var ok = sdk.SdkManager.Install(TestAvdPackageId);
-			Assert.True(ok);
-
-			// Assert that it installed
-			var list = sdk.SdkManager.List();
-			Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
-		}
-
-		public void Dispose()
-		{
-			// Uninstall
-			var ok = sdk.SdkManager.Uninstall(TestAvdPackageId);
-			Assert.True(ok);
-
-			// Assert that it uninstalled
-			var list = sdk.SdkManager.List();
-			Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
-		}
-	}
-
-	public Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-		: base(outputHelper, fixture)
-	{
-		// Create the emulator instance
-		Sdk.AvdManager.Create(TestEmulatorName, TestAvdPackageId, "pixel", force: true);
-	}
-
-	public override void Dispose()
-	{
-		// Delete the emulator
-		Sdk.AvdManager.Delete(TestEmulatorName);
-
-		base.Dispose();
-	}
-
 	[Fact]
 	public void ListAvdsOnlyContainsCreatedAvd()
 	{
@@ -79,15 +28,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 	[Fact]
 	public void CreateAndStartAndStopEmulator()
 	{
-		// Start the emulator
-		var options = new Emulator.EmulatorStartOptions
-		{
-			NoWindow = true,
-			Gpu = "swiftshader_indirect",
-			NoSnapshot = true,
-			NoAudio = true,
-			NoBootAnim = true,
-		};
+		var options = CreateHeadlessOptions();
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
 		// Write output so far
@@ -118,19 +59,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 	[Fact]
 	public void CreateAndStartAndStopHeadlessEmulatorWithOptions()
 	{
-		// Start the emulator
-		var options = new Emulator.EmulatorStartOptions
-		{
-			Port = 5554,
-			NoWindow = true,
-			Gpu = "swiftshader_indirect",
-			NoSnapshot = true,
-			NoAudio = true,
-			NoBootAnim = true,
-			MemoryMegabytes = 2048,
-			PartitionSizeMegabytes = 4096,
-		};
-
+		var options = CreateHeadlessOptions(port: 5554, memoryMegabytes: 2048, partitionSizeMegabytes: 4096);
 		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
 		// Write output so far
@@ -156,52 +85,5 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		// Shutdown the emulator
 		var shutdown = emulatorInstance.Shutdown();
 		Assert.True(shutdown);
-	}
-
-	[Fact]
-	public void StartInstallVerifyAndUninstallStaticApp()
-	{
-		var options = new Emulator.EmulatorStartOptions
-		{
-			Port = 5554,
-			NoWindow = true,
-			Gpu = "swiftshader_indirect",
-			NoSnapshot = true,
-			NoAudio = true,
-			NoBootAnim = true,
-		};
-
-		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
-		var packageName = "com.companyname.mauiapp12345";
-		var apkPath = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
-		Assert.True(File.Exists(apkPath), $"APK not found at {apkPath}");
-
-		try
-		{
-			var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
-			Assert.True(booted);
-			Assert.NotEmpty(emulatorInstance.Serial);
-
-			var devices = Sdk.Adb.GetDevices();
-			Assert.Contains(devices, d => d.Serial == emulatorInstance.Serial);
-
-			Sdk.Adb.Install(new FileInfo(apkPath), emulatorInstance.Serial);
-
-			var pm = new PackageManager(AndroidSdkHome, emulatorInstance.Serial);
-			var packagesAfterInstall = pm.ListPackages();
-			Assert.Contains(packagesAfterInstall, p => p.PackageName == packageName);
-
-			Sdk.Adb.Uninstall(packageName, adbSerial: emulatorInstance.Serial);
-			var packagesAfterUninstall = pm.ListPackages();
-			Assert.DoesNotContain(packagesAfterUninstall, p => p.PackageName == packageName);
-		}
-		finally
-		{
-			try { Sdk.Adb.Uninstall(packageName, adbSerial: emulatorInstance.Serial); }
-			catch { }
-
-			var shutdown = emulatorInstance.Shutdown();
-			Assert.True(shutdown);
-		}
 	}
 }
