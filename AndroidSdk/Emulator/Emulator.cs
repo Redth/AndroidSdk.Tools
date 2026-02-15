@@ -388,15 +388,6 @@ namespace AndroidSdk
 				return false;
 			}
 
-			public void DisableAnimations()
-			{
-				if (string.IsNullOrWhiteSpace(Serial))
-					return;
-
-				var adb = new Adb(androidSdkHome);
-				adb.SetAnimationScales(0, Serial);
-			}
-
 			public bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
 			{
 				if (string.IsNullOrWhiteSpace(Serial))
