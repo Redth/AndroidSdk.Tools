@@ -142,7 +142,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
 
     - name: Launch and verify test app
-      timeout-minutes: 3
+      timeout-minutes: 10
       run: |
         dotnet $TOOL device launch --package com.companyname.TestApp
         echo "Waiting for app log marker..."

@@ -52,7 +52,7 @@ namespace AndroidSdk.Tool
 						Directory.CreateDirectory(dir);
 
 					File.WriteAllLines(settings.OutputPath, lines);
-					AnsiConsole.MarkupLine($"[green]Logcat written to {settings.OutputPath} ({lines.Count} lines)[/]");
+					Console.Error.WriteLine($"Logcat written to {settings.OutputPath} ({lines.Count} lines)");
 				}
 				else
 				{
@@ -67,7 +67,7 @@ namespace AndroidSdk.Tool
 			}
 			catch (Exception ex)
 			{
-				AnsiConsole.WriteException(ex);
+				Console.Error.WriteLine($"Error: {ex.Message}");
 				return 1;
 			}
 			return 0;
