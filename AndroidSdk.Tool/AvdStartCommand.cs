@@ -134,6 +134,21 @@ namespace AndroidSdk.Tool
 		[DefaultValue(null)]
 		public bool? GrpcUseJwt { get; set; }
 
+		[Description("Disable all window, transition, and animator animation scales on the emulator")]
+		[CommandOption("--disable-animations")]
+		[DefaultValue(false)]
+		public bool DisableAnimations { get; set; }
+
+		[Description("Wait for the launcher to be in focus after boot")]
+		[CommandOption("--wait-launcher")]
+		[DefaultValue(false)]
+		public bool WaitLauncher { get; set; }
+
+		[Description("Wait for guest CPU load average to drop below this threshold before proceeding")]
+		[CommandOption("--cpu-threshold")]
+		[DefaultValue(null)]
+		public double? CpuThreshold { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -217,6 +232,75 @@ namespace AndroidSdk.Tool
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
 						ok = process.WaitForBootComplete(timeout);
+					}
+
+					if (ok && process?.Serial != null)
+					{
+						var adb = new Adb(settings?.Home);
+
+						if (settings.DisableAnimations)
+						{
+							ctx.Status($"Disabling animations on {settings.Name}...");
+							adb.Shell("settings put global window_animation_scale 0", process.Serial);
+							adb.Shell("settings put global transition_animation_scale 0", process.Serial);
+							adb.Shell("settings put global animator_duration_scale 0", process.Serial);
+						}
+
+						if (settings.WaitLauncher)
+						{
+							ctx.Status($"Waiting for launcher on {settings.Name}...");
+							var launcherTimeout = TimeSpan.FromSeconds(60);
+							var sw = System.Diagnostics.Stopwatch.StartNew();
+							var launcherReady = false;
+							while (sw.Elapsed < launcherTimeout && !cancellationToken.IsCancellationRequested)
+							{
+								var output = adb.Shell("dumpsys window displays", process.Serial);
+								if (output.Any(l => l.Contains("mCurrentFocus") && (l.Contains("Launcher") || l.Contains("launcher"))))
+								{
+									launcherReady = true;
+									break;
+								}
+								Thread.Sleep(2000);
+							}
+							if (!launcherReady)
+							{
+								AnsiConsole.MarkupLine("[yellow]Warning: Launcher did not become ready within timeout[/]");
+							}
+						}
+
+						if (settings.CpuThreshold.HasValue)
+						{
+							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
+							var cpuTimeout = TimeSpan.FromSeconds(120);
+							var sw = System.Diagnostics.Stopwatch.StartNew();
+							var cpuSettled = false;
+							while (sw.Elapsed < cpuTimeout && !cancellationToken.IsCancellationRequested)
+							{
+								var output = adb.Shell("cat /proc/loadavg", process.Serial);
+								if (output.Count > 0)
+								{
+									var parts = output[0].Split(' ');
+									if (parts.Length > 0 && double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var load))
+									{
+										if (load < settings.CpuThreshold.Value)
+										{
+											cpuSettled = true;
+											break;
+										}
+									}
+								}
+								Thread.Sleep(5000);
+							}
+							if (cpuSettled)
+							{
+								ctx.Status($"CPU settled, waiting 10s for system to stabilize...");
+								Thread.Sleep(10000);
+							}
+							else
+							{
+								AnsiConsole.MarkupLine("[yellow]Warning: CPU load did not settle within timeout[/]");
+							}
+						}
 					}
 
 					if (settings.WaitForExit)
