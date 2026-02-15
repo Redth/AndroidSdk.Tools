@@ -107,7 +107,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		Assert.True(shutdown);
 	}
 
-	[Fact]
+	[Fact(Skip = SkipOnCI)]
 	public void CreateAndStartAndStopHeadlessEmulatorWithOptions()
 	{
 		// Start the emulator

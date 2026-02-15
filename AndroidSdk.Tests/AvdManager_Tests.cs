@@ -101,8 +101,12 @@ public class AvdManager_Tests : AvdManagerTestsBase, IClassFixture<AvdManager_Te
 	{
 		const string TestAvdName = "CreateAndDeleteEmulatorWithAbi";
 
+		var abi = RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+			? "google_apis/arm64-v8a"
+			: "google_apis/x86_64";
+
 		// Create the emulator
-		var options = new AvdManager.AvdCreateOptions { Device = "pixel", Force = true, Abi = "google_apis/x86_64" };
+		var options = new AvdManager.AvdCreateOptions { Device = "pixel", Force = true, Abi = abi };
 		Sdk.AvdManager.Create(TestAvdName, TestAvdPackageId, options);
 
 		// Assert that it exists
