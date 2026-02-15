@@ -493,15 +493,15 @@ namespace AndroidSdk
 			return r.StandardOutput;
 		}
 
-		public bool IsLauncherInFocus(string adbSerial = null)
-			=> ContainsLauncherInFocus(Shell("dumpsys window displays", adbSerial));
+		internal bool IsLauncherInFocus(string adbSerial = null)
+			=> IsLauncherInFocus(Shell("dumpsys window displays", adbSerial));
 
-		internal static bool ContainsLauncherInFocus(IEnumerable<string> shellOutput)
+		internal static bool IsLauncherInFocus(IEnumerable<string> shellOutput)
 			=> shellOutput?.Any(l => !string.IsNullOrEmpty(l)
 				&& l.IndexOf("mCurrentFocus", StringComparison.OrdinalIgnoreCase) >= 0
 				&& l.IndexOf("launcher", StringComparison.OrdinalIgnoreCase) >= 0) == true;
 
-		public void SetAnimationScales(double value, string adbSerial = null)
+		internal void SetAnimationScales(double value, string adbSerial = null)
 		{
 			var val = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 			Shell("settings put global window_animation_scale " + val, adbSerial);
@@ -509,7 +509,7 @@ namespace AndroidSdk
 			Shell("settings put global animator_duration_scale " + val, adbSerial);
 		}
 
-		public bool TryGetLoadAverage(string adbSerial, out double load)
+		internal bool TryGetLoadAverage(string adbSerial, out double load)
 		{
 			load = 0;
 			var output = Shell("cat /proc/loadavg", adbSerial);

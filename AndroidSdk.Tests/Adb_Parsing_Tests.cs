@@ -6,25 +6,25 @@ namespace AndroidSdk.Tests;
 public class Adb_Parsing_Tests
 {
 	[Fact]
-	public void ContainsLauncherInFocusReturnsTrueForLauncherFocusLine()
+	public void IsLauncherInFocusReturnsTrueForLauncherFocusLine()
 	{
 		var lines = new[]
 		{
 			"Window #3 mCurrentFocus=Window{12345 u0 com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher}"
 		};
 
-		Assert.True(Adb.ContainsLauncherInFocus(lines));
+		Assert.True(Adb.IsLauncherInFocus(lines));
 	}
 
 	[Fact]
-	public void ContainsLauncherInFocusReturnsFalseWhenNoLauncherFocus()
+	public void IsLauncherInFocusReturnsFalseWhenNoLauncherFocus()
 	{
 		var lines = new[]
 		{
 			"Window #3 mCurrentFocus=Window{12345 u0 com.companyname.testapp/com.companyname.testapp.MainActivity}"
 		};
 
-		Assert.False(Adb.ContainsLauncherInFocus(lines));
+		Assert.False(Adb.IsLauncherInFocus(lines));
 	}
 
 	[Fact]
