@@ -32,7 +32,7 @@ namespace AndroidSdk.Tool
 
 				var options = new Adb.AdbLogcatOptions();
 
-				var lines = adb.Logcat(options, adbSerial: settings.Serial, allowNonZeroExitWithStdOut: true);
+				var lines = adb.Logcat(options, adbSerial: settings.Serial);
 
 				if (!string.IsNullOrEmpty(settings.OutputPath))
 				{

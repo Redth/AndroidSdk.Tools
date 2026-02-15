@@ -333,7 +333,7 @@ namespace AndroidSdk
 		}
 
 
-		public List<string> Logcat(AdbLogcatOptions options = null, string filter = null, string adbSerial = null, bool allowNonZeroExitWithStdOut = false)
+		public List<string> Logcat(AdbLogcatOptions options = null, string filter = null, string adbSerial = null)
 		{
 			// logcat[option][filter - specs]
 			if (options == null)
@@ -395,15 +395,9 @@ namespace AndroidSdk
 
 			}
 
-			try
-			{
-				var r = runner.RunAdb(AndroidSdkHome, builder);
-				return r.StandardOutput;
-			}
-			catch (SdkToolFailedExitException sdkEx) when (allowNonZeroExitWithStdOut && sdkEx.StdOut?.Length > 0)
-			{
-				return new List<string>(sdkEx.StdOut);
-			}
+			var r = runner.RunAdb(AndroidSdkHome, builder);
+
+			return r.StandardOutput;
 		}
 
 		public string Version()
