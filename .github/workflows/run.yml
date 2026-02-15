@@ -60,9 +60,14 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-install.log
 
-    - name: Create and verify AVD
+    - name: Do Create AVD
       run: |
         dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create.log
+
+    - name: Validate Create AVD
+      run: |
         echo "--- Verifying AVD was created ---"
         echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
         ls -la "$ANDROID_AVD_HOME" || echo "AVD HOME dir not found"
@@ -79,9 +84,14 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create.log
 
-    - name: Start and verify AVD
+    - name: Do Start AVD
       run: |
         dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start.log
+
+    - name: Validate Start AVD
+      run: |
         echo "--- Verifying emulator is in device list ---"
         DEVICES=$(dotnet $TOOL device list --format json)
         echo "Devices JSON: $DEVICES"
@@ -97,7 +107,7 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start.log
 
-    - name: Create test app
+    - name: Do Create test app
       run: |
         dotnet new android -n TestApp --output TestApp
         # Insert Log.Info call after SetContentView - use python for cross-platform compatibility
@@ -112,10 +122,13 @@ jobs:
         with open('TestApp/MainActivity.cs', 'w') as f:
             f.write(content)
         "
-        echo "--- Verify Log.Info was inserted ---"
-        grep -n "E2E_APP_STARTED" TestApp/MainActivity.cs || { echo "❌ Code insertion failed"; cat TestApp/MainActivity.cs; exit 1; }
         dotnet build TestApp/TestApp.csproj -f net10.0-android -c Release
         dotnet publish TestApp/TestApp.csproj -f net10.0-android -c Release
+
+    - name: Validate Create test app
+      run: |
+        echo "--- Verify Log.Info was inserted ---"
+        grep -n "E2E_APP_STARTED" TestApp/MainActivity.cs || { echo "❌ Code insertion failed"; cat TestApp/MainActivity.cs; exit 1; }
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
         if [ -z "$APK" ]; then
           echo "❌ Could not find published APK"
@@ -123,11 +136,16 @@ jobs:
         fi
         echo "✅ APK built: $APK"
 
-    - name: Install and verify test app
+    - name: Do Install test app
       run: |
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
         echo "Installing APK: $APK"
         dotnet $TOOL device install --package "$APK"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
+
+    - name: Validate Install test app
+      run: |
         echo "--- Verifying app is installed via device packages ---"
         PKGS=$(dotnet $TOOL device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
@@ -141,14 +159,16 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
 
-    - name: Launch and verify test app
-      timeout-minutes: 10
+    - name: Do Launch test app
       run: |
         dotnet $TOOL device launch --package com.companyname.TestApp
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
+
+    - name: Validate Launch test app
+      timeout-minutes: 10
+      run: |
         echo "Waiting for app log marker..."
-        
-        # Poll logcat until E2E marker appears or timeout
-        # Use CLI tool to capture logcat each attempt
         for i in $(seq 1 30); do
           dotnet $TOOL avd logcat --output /tmp/logcat_poll.txt
           if grep -q "E2E_APP_STARTED_SUCCESSFULLY" /tmp/logcat_poll.txt; then
@@ -180,10 +200,15 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
 
-    - name: Uninstall and verify test app
+    - name: Do Uninstall test app
+      if: always()
+      run: dotnet $TOOL device uninstall --package com.companyname.TestApp
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall.log
+
+    - name: Validate Uninstall test app
       if: always()
       run: |
-        dotnet $TOOL device uninstall --package com.companyname.TestApp
         echo "--- Verifying app is uninstalled via device packages ---"
         PKGS=$(dotnet $TOOL device packages --format json)
         if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
@@ -194,10 +219,15 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall.log
 
-    - name: Install and verify static test app
+    - name: Do Install static test app
+      if: runner.os == 'Linux'
+      run: dotnet $TOOL device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install.log
+
+    - name: Validate Install static test app
       if: runner.os == 'Linux'
       run: |
-        dotnet $TOOL device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
         echo "--- Verifying static app is installed via device packages ---"
         PKGS=$(dotnet $TOOL device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
@@ -209,10 +239,15 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install.log
 
-    - name: Uninstall and verify static test app
+    - name: Do Uninstall static test app
+      if: runner.os == 'Linux'
+      run: dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-uninstall.log
+
+    - name: Validate Uninstall static test app
       if: runner.os == 'Linux'
       run: |
-        dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
         echo "--- Verifying static app is uninstalled via device packages ---"
         PKGS=$(dotnet $TOOL device packages --format json)
         if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
