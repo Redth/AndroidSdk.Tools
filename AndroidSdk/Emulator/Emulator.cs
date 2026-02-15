@@ -370,27 +370,6 @@ namespace AndroidSdk
 				return booted;
 			}
 
-			public bool WaitForLauncher(TimeSpan timeout, CancellationToken token)
-			{
-				if (string.IsNullOrWhiteSpace(Serial))
-					return false;
-
-				var adb = new Adb(androidSdkHome);
-				var sw = System.Diagnostics.Stopwatch.StartNew();
-				while (sw.Elapsed < timeout && !token.IsCancellationRequested)
-				{
-					if (process.HasExited)
-						return false;
-
-					if (adb.IsLauncherInFocus(Serial))
-						return true;
-
-					Thread.Sleep(2000);
-				}
-
-				return false;
-			}
-
 		}
 	}
 }
