@@ -100,7 +100,20 @@ jobs:
     - name: Create test app
       run: |
         dotnet new android -n TestApp --output TestApp
-        sed -i.bak 's/SetContentView(.*);/SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info("TestApp", "E2E_APP_STARTED_SUCCESSFULLY");/' TestApp/MainActivity.cs
+        # Insert Log.Info call after SetContentView - use python for cross-platform compatibility
+        python3 -c "
+        import re
+        with open('TestApp/MainActivity.cs', 'r') as f:
+            content = f.read()
+        content = content.replace(
+            'SetContentView(Resource.Layout.activity_main);',
+            'SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info(\"TestApp\", \"E2E_APP_STARTED_SUCCESSFULLY\");'
+        )
+        with open('TestApp/MainActivity.cs', 'w') as f:
+            f.write(content)
+        "
+        echo "--- Verify Log.Info was inserted ---"
+        grep -n "E2E_APP_STARTED" TestApp/MainActivity.cs || { echo "❌ Code insertion failed"; cat TestApp/MainActivity.cs; exit 1; }
         dotnet build TestApp/TestApp.csproj -f net10.0-android -c Release
         dotnet publish TestApp/TestApp.csproj -f net10.0-android -c Release
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
