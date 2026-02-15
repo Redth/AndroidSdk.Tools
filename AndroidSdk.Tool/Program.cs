@@ -96,6 +96,10 @@ namespace AndroidSdk.Tool
 						.WithDescription("Uninstalls a package")
 						.WithExample(new[] { "device", "uninstall", "--package com.example.App" })
 						.WithExample(new[] { "device", "uninstall", "--package com.example.App --keep-data" });
+					sdkBranch.AddCommand<DeviceLaunchCommand>("launch")
+						.WithDescription("Launches an app on a device")
+						.WithExample(new[] { "device", "launch", "--package com.example.App" })
+						.WithExample(new[] { "device", "launch", "--package com.example.App --activity .MainActivity" });
 				});
 
 				config.AddBranch("avd", sdkBranch =>
