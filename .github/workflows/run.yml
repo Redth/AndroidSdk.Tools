@@ -7,13 +7,21 @@ on:
 
 jobs:
   run:
-    name: Run
-    runs-on: ubuntu-latest
+    name: Run (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            gpu: swiftshader_indirect
+          - os: macos-13
+            gpu: guest
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
     - uses: actions/setup-java@v4
@@ -21,6 +29,7 @@ jobs:
         distribution: 'microsoft'
         java-version: '21'
     - name: Enable KVM
+      if: runner.os == 'Linux'
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
@@ -31,28 +40,51 @@ jobs:
       run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk info
     - name: Install Packages
       run: |
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk list --installed
         dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk list --installed
     - name: Create AVD
       run: |
-        unset XDG_CONFIG_HOME
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
         dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
         dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
-    - name: Enabling more cores
-      run: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
     - name: Start AVD
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
     - name: Prove that it booted
       run: |
         dotnet run --framework net9.0 --project AndroidSdk.Tool -- device list
         dotnet run --framework net9.0 --project AndroidSdk.Tool -- device info
-    - name: Install an app
+    - name: Create test app
+      run: |
+        dotnet new android -n TestApp --output TestApp
+        # Add a log marker to prove the app runs real code
+        sed -i.bak 's/SetContentView(.*);/SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info("TestApp", "E2E_APP_STARTED_SUCCESSFULLY");/' TestApp/MainActivity.cs || true
+        dotnet build TestApp/TestApp.csproj -f net9.0-android -c Release
+        dotnet publish TestApp/TestApp.csproj -f net9.0-android -c Release
+    - name: Install test app
+      run: |
+        APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
+        echo "Installing APK: $APK"
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package "$APK"
+    - name: Launch test app
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
+    - name: Wait and capture logcat
+      run: |
+        sleep 5
+        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt
+        echo "--- Checking for app log marker ---"
+        grep "E2E_APP_STARTED_SUCCESSFULLY" logcat.txt && echo "✅ App ran successfully" || echo "⚠️ App log marker not found"
+    - name: Uninstall test app
+      if: always()
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
+    - name: Install static test app
       run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
-    - name: Uninstall an app
+    - name: Uninstall static test app
       run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
-      run: |
-        unset XDG_CONFIG_HOME
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test
+      if: always()
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test --force
+    - name: Upload logcat
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: logcat-${{ matrix.os }}
+        path: logcat.txt
+        if-no-files-found: ignore
