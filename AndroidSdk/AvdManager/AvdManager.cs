@@ -348,6 +348,14 @@ namespace AndroidSdk
 			// Set the classpath to all the .jar files we found in the lib folder
 			proc.StartInfo.Environment["CLASSPATH"] = classPath;
 
+			// Ensure ANDROID_AVD_HOME is set to prevent XDG_CONFIG_HOME from
+			// causing avdmanager to write AVDs to an unexpected location
+			if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ANDROID_AVD_HOME")))
+			{
+				var defaultAvdHome = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android", "avd");
+				proc.StartInfo.Environment["ANDROID_AVD_HOME"] = defaultAvdHome;
+			}
+
 			// Java.exe
 			proc.StartInfo.FileName = java.FullName;
 
