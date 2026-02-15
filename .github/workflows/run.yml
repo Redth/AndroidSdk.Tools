@@ -66,13 +66,13 @@ jobs:
         echo "--- Verifying AVD was created ---"
         echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
         ls -la "$ANDROID_AVD_HOME" || echo "AVD HOME dir not found"
-        ls -la "$HOME/.config/.android/avd/" 2>/dev/null || echo "XDG path not found"
+        ls -la "$HOME/.config/.android/avd/" || echo "XDG path not found"
         dotnet $TOOL avd list
-        AVDS=$(dotnet $TOOL avd list --format json 2>/dev/null)
+        AVDS=$(dotnet $TOOL avd list --format json)
         echo "AVDs JSON: $AVDS"
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
           echo "❌ AVD 'test' not found in avd list after create"
-          cat artifacts/avd-create.log 2>/dev/null || true
+          cat artifacts/avd-create.log
           exit 1
         fi
         echo "✅ AVD 'test' created successfully"
@@ -83,13 +83,13 @@ jobs:
       run: |
         dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
         echo "--- Verifying emulator is in device list ---"
-        DEVICES=$(dotnet $TOOL device list --format json 2>/dev/null)
+        DEVICES=$(dotnet $TOOL device list --format json)
         echo "Devices JSON: $DEVICES"
         COUNT=$(echo "$DEVICES" | jq 'length')
         if [ "$COUNT" -lt 1 ]; then
           echo "❌ No devices found via 'device list --format json' — emulator failed to start"
           echo "--- Process runner log ---"
-          cat artifacts/avd-start.log 2>/dev/null || true
+          cat artifacts/avd-start.log
           exit 1
         fi
         SERIAL=$(echo "$DEVICES" | jq -r '.[0].serial')
@@ -129,12 +129,12 @@ jobs:
         echo "Installing APK: $APK"
         dotnet $TOOL device install --package "$APK"
         echo "--- Verifying app is installed via device packages ---"
-        PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null)
+        PKGS=$(dotnet $TOOL device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
           echo "❌ com.companyname.TestApp not found in device packages"
           echo "$PKGS" | jq '.[].packageName' | head -20
           echo "--- Process runner log ---"
-          cat artifacts/device-install.log 2>/dev/null || true
+          cat artifacts/device-install.log
           exit 1
         fi
         echo "✅ App installed and verified via CLI"
@@ -150,8 +150,8 @@ jobs:
         # Poll logcat until E2E marker appears or timeout
         # Use CLI tool to capture logcat each attempt
         for i in $(seq 1 30); do
-          dotnet $TOOL avd logcat --output /tmp/logcat_poll.txt 2>/dev/null || true
-          if grep -q "E2E_APP_STARTED_SUCCESSFULLY" /tmp/logcat_poll.txt 2>/dev/null; then
+          dotnet $TOOL avd logcat --output /tmp/logcat_poll.txt
+          if grep -q "E2E_APP_STARTED_SUCCESSFULLY" /tmp/logcat_poll.txt; then
             echo "  ✅ Marker found on attempt $i"
             break
           fi
@@ -160,10 +160,10 @@ jobs:
         done
         
         # Copy the last poll as the final logcat artifact
-        cp /tmp/logcat_poll.txt artifacts/logcat.txt 2>/dev/null || true
+        cp /tmp/logcat_poll.txt artifacts/logcat.txt
         if [ ! -s artifacts/logcat.txt ]; then
           echo "❌ logcat.txt was not created or is empty"
-          cat artifacts/device-launch.log 2>/dev/null || true
+          cat artifacts/device-launch.log
           exit 1
         fi
         
@@ -173,7 +173,7 @@ jobs:
         if ! grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/logcat.txt; then
           echo "❌ App log marker 'E2E_APP_STARTED_SUCCESSFULLY' not found in logcat"
           echo "--- Full logcat grep for TestApp ---"
-          grep -i "testapp\|companyname" artifacts/logcat.txt | tail -20 || true
+          grep -i "testapp\|companyname" artifacts/logcat.txt | tail -20
           exit 1
         fi
         echo "✅ App launched and ran real code successfully"
@@ -183,9 +183,9 @@ jobs:
     - name: Uninstall and verify test app
       if: always()
       run: |
-        dotnet $TOOL device uninstall --package com.companyname.TestApp || true
+        dotnet $TOOL device uninstall --package com.companyname.TestApp
         echo "--- Verifying app is uninstalled via device packages ---"
-        PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null || echo "[]")
+        PKGS=$(dotnet $TOOL device packages --format json)
         if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
           echo "⚠️ com.companyname.TestApp still found after uninstall"
         else
@@ -199,10 +199,10 @@ jobs:
       run: |
         dotnet $TOOL device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
         echo "--- Verifying static app is installed via device packages ---"
-        PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null)
+        PKGS=$(dotnet $TOOL device packages --format json)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
           echo "❌ com.companyname.mauiapp12345 not found in device packages"
-          cat artifacts/static-install.log 2>/dev/null || true
+          cat artifacts/static-install.log
           exit 1
         fi
         echo "✅ Static test app installed and verified via CLI"
@@ -214,7 +214,7 @@ jobs:
       run: |
         dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
         echo "--- Verifying static app is uninstalled via device packages ---"
-        PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null)
+        PKGS=$(dotnet $TOOL device packages --format json)
         if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
           echo "❌ com.companyname.mauiapp12345 still found in device packages after uninstall"
           exit 1
