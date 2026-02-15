@@ -260,6 +260,9 @@ namespace AndroidSdk
 
 			public string AvdName { get; private set; }
 
+			public bool HasExited
+				=> process?.HasExited ?? true;
+
 			public int WaitForExit()
 			{
 				result = process.WaitForExit();
@@ -388,31 +391,6 @@ namespace AndroidSdk
 				return false;
 			}
 
-			public bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
-			{
-				if (string.IsNullOrWhiteSpace(Serial))
-					return false;
-
-				var adb = new Adb(androidSdkHome);
-				var sw = System.Diagnostics.Stopwatch.StartNew();
-				while (sw.Elapsed < timeout && !token.IsCancellationRequested)
-				{
-					if (process.HasExited)
-						return false;
-
-					if (adb.TryGetLoadAverage(Serial, out var load) && load < threshold)
-					{
-						if (settleDelay > TimeSpan.Zero && token.WaitHandle.WaitOne(settleDelay))
-							return false;
-
-						return true;
-					}
-
-					Thread.Sleep(5000);
-				}
-
-				return false;
-			}
 		}
 	}
 }
