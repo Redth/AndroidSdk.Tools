@@ -520,8 +520,8 @@ namespace AndroidSdk
 			return double.TryParse(first, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out load);
 		}
 
-		internal bool LaunchPackage(string packageName, string adbSerial = null)
-			=> new Monkey(AndroidSdkHome, adbSerial).TryLaunchDefaultLauncherActivity(packageName);
+		internal IEnumerable<string> LaunchPackage(string packageName, string adbSerial = null)
+			=> new Monkey(AndroidSdkHome, adbSerial).LaunchDefaultLauncherActivity(packageName);
 
 
 		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)

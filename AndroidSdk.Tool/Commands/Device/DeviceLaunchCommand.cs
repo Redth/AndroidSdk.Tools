@@ -1,8 +1,10 @@
 #nullable enable
 using Spectre.Console;
 using Spectre.Console.Cli;
+using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace AndroidSdk.Tool;
 
@@ -42,7 +44,9 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 		}
 		else
 		{
-			if (adb.LaunchPackage(settings.Package, device.Serial))
+			var output = adb.LaunchPackage(settings.Package, device.Serial);
+			if (output?.Any(l => !string.IsNullOrEmpty(l)
+				&& l.IndexOf("Events injected", System.StringComparison.OrdinalIgnoreCase) >= 0) == true)
 			{
 				AnsiConsole.MarkupLine($"[green]Launched {settings.Package}[/]");
 				return 0;

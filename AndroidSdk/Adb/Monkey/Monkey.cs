@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace AndroidSdk
 {
@@ -40,7 +39,7 @@ namespace AndroidSdk
 
 		readonly AdbRunner runner;
 
-		public bool TryLaunchDefaultLauncherActivity(string packageName)
+		public IEnumerable<string> LaunchDefaultLauncherActivity(string packageName)
 		{
 			var builder = new ProcessArgumentBuilder();
 
@@ -55,8 +54,7 @@ namespace AndroidSdk
 			builder.Append("1");
 
 			var r = runner.RunAdb(AndroidSdkHome, builder);
-			return r.StandardOutput?.Any(l => !string.IsNullOrEmpty(l)
-				&& l.IndexOf("Events injected", StringComparison.OrdinalIgnoreCase) >= 0) == true;
+			return r.StandardOutput;
 		}
 
 		public IEnumerable<string> LaunchDefaultLauncherActivityVerbose(string packageName)
