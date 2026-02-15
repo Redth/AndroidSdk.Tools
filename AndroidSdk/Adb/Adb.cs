@@ -333,7 +333,7 @@ namespace AndroidSdk
 		}
 
 
-		public List<string> Logcat(AdbLogcatOptions options = null, string filter = null, string adbSerial = null)
+		public List<string> Logcat(AdbLogcatOptions options = null, string filter = null, string adbSerial = null, bool allowNonZeroExitWithStdOut = false)
 		{
 			// logcat[option][filter - specs]
 			if (options == null)
@@ -395,9 +395,15 @@ namespace AndroidSdk
 
 			}
 
-			var r = runner.RunAdb(AndroidSdkHome, builder);
-
-			return r.StandardOutput;
+			try
+			{
+				var r = runner.RunAdb(AndroidSdkHome, builder);
+				return r.StandardOutput;
+			}
+			catch (SdkToolFailedExitException sdkEx) when (allowNonZeroExitWithStdOut && sdkEx.StdOut?.Length > 0)
+			{
+				return new List<string>(sdkEx.StdOut);
+			}
 		}
 
 		public string Version()
@@ -492,6 +498,47 @@ namespace AndroidSdk
 
 			return r.StandardOutput;
 		}
+
+		public bool IsLauncherInFocus(string adbSerial = null)
+			=> ContainsLauncherInFocus(Shell("dumpsys window displays", adbSerial));
+
+		internal static bool ContainsLauncherInFocus(IEnumerable<string> shellOutput)
+			=> shellOutput?.Any(l => !string.IsNullOrEmpty(l)
+				&& l.IndexOf("mCurrentFocus", StringComparison.OrdinalIgnoreCase) >= 0
+				&& l.IndexOf("launcher", StringComparison.OrdinalIgnoreCase) >= 0) == true;
+
+		public void SetAnimationScales(double value, string adbSerial = null)
+		{
+			var val = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+			Shell("settings put global window_animation_scale " + val, adbSerial);
+			Shell("settings put global transition_animation_scale " + val, adbSerial);
+			Shell("settings put global animator_duration_scale " + val, adbSerial);
+		}
+
+		public bool TryGetLoadAverage(string adbSerial, out double load)
+		{
+			load = 0;
+			var output = Shell("cat /proc/loadavg", adbSerial);
+			var line = output?.FirstOrDefault();
+			return TryParseLoadAverage(line, out load);
+		}
+
+		internal static bool TryParseLoadAverage(string loadAvgLine, out double load)
+		{
+			load = 0;
+			if (string.IsNullOrWhiteSpace(loadAvgLine))
+				return false;
+
+			var first = loadAvgLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+			return double.TryParse(first, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out load);
+		}
+
+		public bool LaunchPackage(string packageName, string adbSerial = null)
+			=> IsMonkeyLaunchSuccessful(Shell($"monkey -p {packageName} -c android.intent.category.LAUNCHER 1", adbSerial));
+
+		internal static bool IsMonkeyLaunchSuccessful(IEnumerable<string> output)
+			=> output?.Any(l => !string.IsNullOrEmpty(l)
+				&& l.IndexOf("Events injected", StringComparison.OrdinalIgnoreCase) >= 0) == true;
 
 
 		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)
@@ -632,7 +679,7 @@ namespace AndroidSdk
 		{
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
-			return Shell("monkey -p {packageName} -v 1", adbSerial);
+			return Shell($"monkey -p {packageName} -v 1", adbSerial);
 		}
 	}
 }

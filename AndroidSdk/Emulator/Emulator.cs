@@ -318,6 +318,62 @@ namespace AndroidSdk
 
 				return booted;
 			}
+
+			public bool WaitForLauncher(TimeSpan timeout, CancellationToken token)
+			{
+				if (string.IsNullOrWhiteSpace(Serial))
+					return false;
+
+				var adb = new Adb(androidSdkHome);
+				var sw = System.Diagnostics.Stopwatch.StartNew();
+				while (sw.Elapsed < timeout && !token.IsCancellationRequested)
+				{
+					if (process.HasExited)
+						return false;
+
+					if (adb.IsLauncherInFocus(Serial))
+						return true;
+
+					Thread.Sleep(2000);
+				}
+
+				return false;
+			}
+
+			public void DisableAnimations()
+			{
+				if (string.IsNullOrWhiteSpace(Serial))
+					return;
+
+				var adb = new Adb(androidSdkHome);
+				adb.SetAnimationScales(0, Serial);
+			}
+
+			public bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
+			{
+				if (string.IsNullOrWhiteSpace(Serial))
+					return false;
+
+				var adb = new Adb(androidSdkHome);
+				var sw = System.Diagnostics.Stopwatch.StartNew();
+				while (sw.Elapsed < timeout && !token.IsCancellationRequested)
+				{
+					if (process.HasExited)
+						return false;
+
+					if (adb.TryGetLoadAverage(Serial, out var load) && load < threshold)
+					{
+						if (settleDelay > TimeSpan.Zero && token.WaitHandle.WaitOne(settleDelay))
+							return false;
+
+						return true;
+					}
+
+					Thread.Sleep(5000);
+				}
+
+				return false;
+			}
 		}
 	}
 }

@@ -1,7 +1,6 @@
-﻿using Spectre.Console;
+using Spectre.Console;
 using Spectre.Console.Cli;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -33,17 +32,7 @@ namespace AndroidSdk.Tool
 
 				var options = new Adb.AdbLogcatOptions();
 
-				List<string> lines;
-				try
-				{
-					lines = adb.Logcat(options, adbSerial: settings.Serial);
-				}
-				catch (SdkToolFailedExitException sdkEx) when (sdkEx.StdOut?.Length > 0)
-				{
-					// adb logcat -d may return non-zero on some API levels (e.g. 36)
-					// but still produce valid output - use it
-					lines = new List<string>(sdkEx.StdOut);
-				}
+				var lines = adb.Logcat(options, adbSerial: settings.Serial, allowNonZeroExitWithStdOut: true);
 
 				if (!string.IsNullOrEmpty(settings.OutputPath))
 				{

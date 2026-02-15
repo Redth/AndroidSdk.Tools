@@ -3,7 +3,6 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace AndroidSdk.Tool;
 
@@ -43,12 +42,7 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 		}
 		else
 		{
-			// Use monkey to launch the default activity
-			var result = adb.Shell(
-				$"monkey -p {settings.Package} -c android.intent.category.LAUNCHER 1",
-				device.Serial);
-
-			if (result.Any(l => l.Contains("Events injected")))
+			if (adb.LaunchPackage(settings.Package, device.Serial))
 			{
 				AnsiConsole.MarkupLine($"[green]Launched {settings.Package}[/]");
 				return 0;

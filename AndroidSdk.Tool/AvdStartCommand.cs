@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -232,62 +231,31 @@ namespace AndroidSdk.Tool
 						{
 							// Always wait for launcher after boot (like iOS waits for SpringBoard)
 							ctx.Status($"Waiting for launcher on {settings.Name}...");
-							var adb = new Adb(settings?.Home);
-							var launcherTimeout = TimeSpan.FromSeconds(60);
-							var sw = System.Diagnostics.Stopwatch.StartNew();
-							while (sw.Elapsed < launcherTimeout && !cancellationToken.IsCancellationRequested)
-							{
-								var output = adb.Shell("dumpsys window displays", process.Serial);
-								if (output.Any(l => l.Contains("mCurrentFocus") && (l.Contains("Launcher") || l.Contains("launcher"))))
-								{
-									break;
-								}
-								Thread.Sleep(2000);
-							}
+							process.WaitForLauncher(TimeSpan.FromSeconds(60), cancellationToken);
 						}
 					}
 
 					if (ok && process?.Serial != null)
 					{
-						var adb = new Adb(settings?.Home);
-
 						if (settings.DisableAnimations)
 						{
 							ctx.Status($"Disabling animations on {settings.Name}...");
-							adb.Shell("settings put global window_animation_scale 0", process.Serial);
-							adb.Shell("settings put global transition_animation_scale 0", process.Serial);
-							adb.Shell("settings put global animator_duration_scale 0", process.Serial);
+							process.DisableAnimations();
 						}
 
 						if (settings.CpuThreshold.HasValue)
 						{
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
-							var cpuTimeout = TimeSpan.FromSeconds(120);
-							var sw = System.Diagnostics.Stopwatch.StartNew();
-							var cpuSettled = false;
-							while (sw.Elapsed < cpuTimeout && !cancellationToken.IsCancellationRequested)
-							{
-								var output = adb.Shell("cat /proc/loadavg", process.Serial);
-								if (output.Count > 0)
-								{
-									var parts = output[0].Split(' ');
-									if (parts.Length > 0 && double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var load))
-									{
-										if (load < settings.CpuThreshold.Value)
-										{
-											cpuSettled = true;
-											break;
-										}
-									}
-								}
-								Thread.Sleep(5000);
-							}
+							var cpuSettled = process.WaitForCpuLoadBelow(
+								settings.CpuThreshold.Value,
+								timeout: TimeSpan.FromSeconds(120),
+								settleDelay: TimeSpan.FromSeconds(10),
+								token: cancellationToken);
 							if (cpuSettled)
 							{
-								ctx.Status($"CPU settled, waiting 10s for system to stabilize...");
-								Thread.Sleep(10000);
+								ctx.Status("CPU settled and system stabilized");
 							}
-							else
+							else if (!cancellationToken.IsCancellationRequested)
 							{
 								AnsiConsole.MarkupLine("[yellow]Warning: CPU load did not settle within timeout[/]");
 							}
