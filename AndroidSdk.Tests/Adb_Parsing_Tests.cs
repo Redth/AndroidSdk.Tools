@@ -27,14 +27,4 @@ public class Adb_Parsing_Tests
 		Assert.False(Adb.IsLauncherInFocus(lines));
 	}
 
-	[Fact]
-	public void IsMonkeyLaunchSuccessfulDetectsInjectedEvents()
-	{
-		var lines = new[]
-		{
-			"Events injected: 1"
-		};
-
-		Assert.True(Adb.IsMonkeyLaunchSuccessful(lines));
-	}
 }

@@ -520,11 +520,8 @@ namespace AndroidSdk
 			return double.TryParse(first, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out load);
 		}
 
-		public bool LaunchPackage(string packageName, string adbSerial = null)
-			=> IsMonkeyLaunchSuccessful(Shell($"monkey -p {packageName} -c android.intent.category.LAUNCHER 1", adbSerial));
-
-		internal static bool IsMonkeyLaunchSuccessful(IEnumerable<string> output)
-			=> output?.Any(l => !string.IsNullOrEmpty(l)
+		internal bool LaunchPackage(string packageName, string adbSerial = null)
+			=> Shell($"monkey -p {packageName} -c android.intent.category.LAUNCHER 1", adbSerial)?.Any(l => !string.IsNullOrEmpty(l)
 				&& l.IndexOf("Events injected", StringComparison.OrdinalIgnoreCase) >= 0) == true;
 
 
