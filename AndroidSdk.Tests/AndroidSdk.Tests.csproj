@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AndroidRepository\AndroidRepository.csproj" />
     <ProjectReference Include="..\AndroidSdk\AndroidSdk.csproj" />
+    <ProjectReference Include="..\AndroidSdk.Tool\AndroidSdk.Tool.csproj" />
   </ItemGroup>
 
   <ItemGroup>
