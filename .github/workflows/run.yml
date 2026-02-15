@@ -89,17 +89,24 @@ jobs:
         fi
         echo "✅ APK built: $APK"
 
-    - name: Install test app
+    - name: Install and verify test app
       run: |
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
         echo "Installing APK: $APK"
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package "$APK"
-        echo "✅ Install command completed"
+        echo "--- Verifying app is installed via device packages ---"
+        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
+        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.testapp")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.testapp not found in device packages"
+          echo "$PKGS" | jq '.[].packageName' | head -20
+          exit 1
+        fi
+        echo "✅ App installed and verified via CLI"
 
-    - name: Launch test app
+    - name: Launch and verify test app
       run: |
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
-        echo "✅ Launch command completed, waiting for app to run..."
+        echo "Waiting for app to run..."
         sleep 5
 
     - name: Capture and verify logcat
@@ -119,21 +126,41 @@ jobs:
         fi
         echo "✅ App ran real code successfully"
 
-    - name: Uninstall test app
+    - name: Uninstall and verify test app
       if: always()
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
+      run: |
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
+        echo "--- Verifying app is uninstalled via device packages ---"
+        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json 2>/dev/null || echo "[]")
+        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.testapp")' > /dev/null 2>&1; then
+          echo "⚠️ com.companyname.testapp still found after uninstall"
+        else
+          echo "✅ App uninstalled and verified via CLI"
+        fi
 
-    - name: Install static test app
+    - name: Install and verify static test app
       if: runner.os == 'Linux'
       run: |
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
-        echo "✅ Static test app install command completed"
+        echo "--- Verifying static app is installed via device packages ---"
+        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
+        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.mauiapp12345 not found in device packages"
+          exit 1
+        fi
+        echo "✅ Static test app installed and verified via CLI"
 
-    - name: Uninstall static test app
+    - name: Uninstall and verify static test app
       if: runner.os == 'Linux'
       run: |
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
-        echo "✅ Static test app uninstall command completed"
+        echo "--- Verifying static app is uninstalled via device packages ---"
+        PKGS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- device packages --format json)
+        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.mauiapp12345 still found in device packages after uninstall"
+          exit 1
+        fi
+        echo "✅ Static test app uninstalled and verified via CLI"
 
     - name: Delete AVD
       if: always()

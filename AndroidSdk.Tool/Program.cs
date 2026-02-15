@@ -86,6 +86,10 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "device", "info", "--device 172.22.100.90" })
 						.WithExample(new[] { "device", "info", "--device emulator.*" })
 						.WithExample(new[] { "device", "info", "--device emulator.* --property ro.product.cpu.abi" });
+					sdkBranch.AddCommand<DevicePackagesCommand>("packages")
+						.WithDescription("Lists installed packages on a device")
+						.WithExample(new[] { "device", "packages" })
+						.WithExample(new[] { "device", "packages", "--format json" });
 					sdkBranch.AddCommand<DeviceInstallCommand>("install")
 						.WithDescription("Installs a package")
 						.WithExample(new[] { "device", "install", "--package com.example.App.apk" })
