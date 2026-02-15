@@ -115,7 +115,7 @@ public class AvdManager_Tests : AvdManagerTestsBase, IClassFixture<AvdManager_Te
 		Assert.Equal(TestAvdName, avd.Name, ignoreCase: true);
 	}
 	
-	[Fact(Skip = SkipOnCI)]
+	[Fact]
 	public void LocatedPath()
 	{
 		var l = new AvdLocator();

@@ -75,12 +75,19 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		Assert.Single(avds, TestEmulatorName);
 	}
 
-	// CI can't really launch as normal with nested virtualization
-	[Fact(Skip = SkipOnCI)]
+	[Fact]
 	public void CreateAndStartAndStopEmulator()
 	{
 		// Start the emulator
-		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName);
+		var options = new Emulator.EmulatorStartOptions
+		{
+			NoWindow = true,
+			Gpu = "swiftshader_indirect",
+			NoSnapshot = true,
+			NoAudio = true,
+			NoBootAnim = true,
+		};
+		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
 
 		// Write output so far
 		var output = emulatorInstance.GetOutput().ToList();
@@ -88,7 +95,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 			OutputHelper.WriteLine(line);
 
 		// Wait for the boot
-		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(10));
+		var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
 
 		// Write the rest
 		var output2 = emulatorInstance.GetOutput().Skip(output.Count).ToList();
@@ -107,7 +114,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		Assert.True(shutdown);
 	}
 
-	[Fact(Skip = SkipOnCI)]
+	[Fact]
 	public void CreateAndStartAndStopHeadlessEmulatorWithOptions()
 	{
 		// Start the emulator
@@ -115,7 +122,7 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		{
 			Port = 5554,
 			NoWindow = true,
-			Gpu = "guest",
+			Gpu = "swiftshader_indirect",
 			NoSnapshot = true,
 			NoAudio = true,
 			NoBootAnim = true,
