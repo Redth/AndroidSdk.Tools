@@ -493,25 +493,6 @@ namespace AndroidSdk
 			return r.StandardOutput;
 		}
 
-		internal bool IsLauncherInFocus(string adbSerial = null)
-			=> IsLauncherInFocus(Shell("dumpsys window displays", adbSerial));
-
-		internal static bool IsLauncherInFocus(IEnumerable<string> shellOutput)
-			=> shellOutput?.Any(l => !string.IsNullOrEmpty(l)
-				&& l.IndexOf("mCurrentFocus", StringComparison.OrdinalIgnoreCase) >= 0
-				&& l.IndexOf("launcher", StringComparison.OrdinalIgnoreCase) >= 0) == true;
-
-		internal bool TryGetLoadAverage(string adbSerial, out double load)
-		{
-			load = 0;
-			var line = Shell("cat /proc/loadavg", adbSerial)?.FirstOrDefault();
-			if (string.IsNullOrWhiteSpace(line))
-				return false;
-
-			var first = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-			return double.TryParse(first, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out load);
-		}
-
 		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)
 		{
 			//adb shell screencap / sdcard / screen.png

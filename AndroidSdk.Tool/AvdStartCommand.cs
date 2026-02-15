@@ -240,26 +240,8 @@ namespace AndroidSdk.Tool
 						if (settings.CpuThreshold.HasValue)
 						{
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
-							var cpuSettled = false;
 							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(120));
-							var adb = new Adb(settings?.Home);
-							var sw = System.Diagnostics.Stopwatch.StartNew();
-							while (sw.Elapsed < cpuWaitTimeout && !cancellationToken.IsCancellationRequested)
-							{
-								if (process.HasExited)
-									break;
-
-								if (adb.TryGetLoadAverage(process.Serial, out var load) && load < settings.CpuThreshold.Value)
-								{
-									if (cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(10)))
-										break;
-
-									cpuSettled = true;
-									break;
-								}
-
-								Thread.Sleep(5000);
-							}
+							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken);
 							if (cpuSettled)
 							{
 								ctx.Status("CPU settled and system stabilized");

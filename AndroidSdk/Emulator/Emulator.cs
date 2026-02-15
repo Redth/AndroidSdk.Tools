@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.IO;
-using System.Threading;
 using System.Data;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -175,7 +176,7 @@ namespace AndroidSdk
 
 			if (options.Engine.HasValue)
 				builder.Append($"-engine {options.Engine.Value.ToString().ToLowerInvariant()}");
-			
+
 			if (!string.IsNullOrEmpty(options.Gpu))
 				builder.Append($"-gpu {options.Gpu.ToLowerInvariant()}");
 
@@ -296,7 +297,7 @@ namespace AndroidSdk
 
 			public IEnumerable<string> GetStandardOutput()
 				=> process.StandardOutput ?? new List<string>();
-			
+
 			public IEnumerable<string> GetStandardError()
 				=> process.StandardError ?? new List<string>();
 
@@ -309,7 +310,7 @@ namespace AndroidSdk
 			public bool WaitForBootComplete(TimeSpan timeout)
 			{
 				var cts = new CancellationTokenSource();
-				
+
 				if (timeout != TimeSpan.Zero)
 					cts.CancelAfter(timeout);
 
@@ -320,54 +321,91 @@ namespace AndroidSdk
 			{
 				var adb = new Adb(androidSdkHome);
 
-				var booted = false;
 				Serial = null;
 
-				// Keep trying to see if the boot complete prop is set
 				while (string.IsNullOrEmpty(Serial) && !token.IsCancellationRequested)
 				{
 					if (process.HasExited)
 						return false;
 
-					Thread.Sleep(1000);
 					Serial = FindRunningEmulatorSerialByAvdName(adb, AvdName);
+
+					if (token.WaitHandle.WaitOne(1000))
+						return false;
 				}
 
+				// Keep trying to see if the boot complete prop is set
+				var booted = false;
 				while (!token.IsCancellationRequested)
 				{
 					if (process.HasExited)
 						return false;
 
 					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")) ||
-					    adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
+						adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
 					{
 						booted = true;
 						break;
 					}
-					else
-					{
-						Thread.Sleep(1000);
-					}
+
+					if (token.WaitHandle.WaitOne(1000))
+						return false;
 				}
 
-				if (booted && !string.IsNullOrWhiteSpace(Serial))
+				// Always wait for launcher after boot (like iOS waits for SpringBoard)
+				while (booted && !token.IsCancellationRequested)
 				{
-					// Always wait for launcher after boot (like iOS waits for SpringBoard)
-					var launcherWaitTimeout = TimeSpan.FromSeconds(60);
-					var launcherWait = System.Diagnostics.Stopwatch.StartNew();
-					while (launcherWait.Elapsed < launcherWaitTimeout && !token.IsCancellationRequested)
+					if (process.HasExited)
+						break;
+
+					var output = adb.Shell("dumpsys window displays", Serial);
+					if (output.Any(l =>
+						l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+						l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
 					{
-						if (process.HasExited)
-							break;
-
-						if (adb.IsLauncherInFocus(Serial))
-							break;
-
-						Thread.Sleep(2000);
+						break;
 					}
+
+					if (token.WaitHandle.WaitOne(1000))
+						break;
 				}
 
 				return booted;
+			}
+
+			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
+			{
+				if (string.IsNullOrWhiteSpace(Serial))
+					return false;
+
+				var adb = new Adb(androidSdkHome);
+
+				using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+				cts.CancelAfter(timeout);
+
+				while (!cts.IsCancellationRequested)
+				{
+					if (process.HasExited)
+						return false;
+
+					var line = adb.Shell("cat /proc/loadavg", Serial)?.FirstOrDefault();
+					if (!string.IsNullOrWhiteSpace(line))
+					{
+						var first = line.Split([' '], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+						if (double.TryParse(first, NumberStyles.Float, CultureInfo.InvariantCulture, out var load) && load < threshold)
+						{
+							if (settleDelay > TimeSpan.Zero && cts.Token.WaitHandle.WaitOne(settleDelay))
+								return false;
+
+							return true;
+						}
+					}
+
+					if (cts.Token.WaitHandle.WaitOne(5000))
+						return false;
+				}
+
+				return false;
 			}
 
 			public void DisableAnimations()
