@@ -42,7 +42,7 @@ namespace AndroidSdk
 			}
 		}
 
-		public bool StopByAvdName(string avdName, TimeSpan timeout)
+		public bool StopAvd(string avdName, TimeSpan timeout)
 		{
 			if (string.IsNullOrWhiteSpace(avdName))
 				throw new ArgumentException("AVD name must be provided", nameof(avdName));
@@ -330,24 +330,7 @@ namespace AndroidSdk
 						return false;
 
 					Thread.Sleep(1000);
-
-					// Get a list of devices, we need to find the device we started
-					var devices = adb.GetDevices();
-
-					// Find the device we just started and get it's adb serial
-					foreach (var d in devices)
-					{
-						try
-						{
-							var name = adb.GetEmulatorName(d.Serial);
-							if (name.Equals(AvdName, StringComparison.OrdinalIgnoreCase))
-							{
-								Serial = d.Serial;
-								break;
-							}
-						}
-						catch { }
-					}
+					Serial = FindRunningEmulatorSerialByAvdName(adb, AvdName);
 				}
 
 				while (!token.IsCancellationRequested)
@@ -397,7 +380,6 @@ namespace AndroidSdk
 				adb.Shell("settings put global transition_animation_scale 0", Serial);
 				adb.Shell("settings put global animator_duration_scale 0", Serial);
 			}
-
 		}
 	}
 }

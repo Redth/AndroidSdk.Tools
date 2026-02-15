@@ -43,7 +43,7 @@ namespace AndroidSdk.Tool
 				if (settings.Force)
 				{
 					var emu = new Emulator(settings?.Home);
-					var stopped = emu.StopByAvdName(settings.Name, TimeSpan.FromSeconds(10));
+					var stopped = emu.StopAvd(settings.Name, TimeSpan.FromSeconds(10));
 					if (stopped)
 					{
 						AnsiConsole.MarkupLine($"[yellow]Stopped running emulator for AVD '{settings.Name}'.[/]");
