@@ -74,7 +74,7 @@ namespace AndroidSdk
 
 			var results = new List<PackageListInfo>();
 
-			const string rxPackageListInfo = "^package:(?<path>.*?)=(?<package>.*?)\\s+installer=(?<installer>.*?)$";
+			const string rxPackageListInfo = "^package:(?<path>.+)=(?<package>[^\\s=]+)\\s+installer=(?<installer>.*)$";
 			foreach (var line in r.StandardOutput)
 			{
 				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
