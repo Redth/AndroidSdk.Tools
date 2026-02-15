@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Xunit;
@@ -155,5 +156,52 @@ public class Emulator_Tests : AvdManagerTestsBase, IClassFixture<Emulator_Tests.
 		// Shutdown the emulator
 		var shutdown = emulatorInstance.Shutdown();
 		Assert.True(shutdown);
+	}
+
+	[Fact]
+	public void StartInstallVerifyAndUninstallStaticApp()
+	{
+		var options = new Emulator.EmulatorStartOptions
+		{
+			Port = 5554,
+			NoWindow = true,
+			Gpu = "swiftshader_indirect",
+			NoSnapshot = true,
+			NoAudio = true,
+			NoBootAnim = true,
+		};
+
+		var emulatorInstance = Sdk.Emulator.Start(TestEmulatorName, options);
+		var packageName = "com.companyname.mauiapp12345";
+		var apkPath = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
+		Assert.True(File.Exists(apkPath), $"APK not found at {apkPath}");
+
+		try
+		{
+			var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
+			Assert.True(booted);
+			Assert.NotEmpty(emulatorInstance.Serial);
+
+			var devices = Sdk.Adb.GetDevices();
+			Assert.Contains(devices, d => d.Serial == emulatorInstance.Serial);
+
+			Sdk.Adb.Install(new FileInfo(apkPath), emulatorInstance.Serial);
+
+			var pm = new PackageManager(AndroidSdkHome, emulatorInstance.Serial);
+			var packagesAfterInstall = pm.ListPackages();
+			Assert.Contains(packagesAfterInstall, p => p.PackageName == packageName);
+
+			Sdk.Adb.Uninstall(packageName, adbSerial: emulatorInstance.Serial);
+			var packagesAfterUninstall = pm.ListPackages();
+			Assert.DoesNotContain(packagesAfterUninstall, p => p.PackageName == packageName);
+		}
+		finally
+		{
+			try { Sdk.Adb.Uninstall(packageName, adbSerial: emulatorInstance.Serial); }
+			catch { }
+
+			var shutdown = emulatorInstance.Shutdown();
+			Assert.True(shutdown);
+		}
 	}
 }

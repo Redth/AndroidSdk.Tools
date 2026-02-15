@@ -5,6 +5,9 @@ on:
   push:
     branches: [ main ]
 
+env:
+  ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES: stdout|stderr
+
 jobs:
   run:
     name: Run (${{ matrix.os }})
@@ -50,11 +53,11 @@ jobs:
       run: |
         dotnet build AndroidSdk.Tool/AndroidSdk.Tool.csproj -f net10.0
         echo "TOOL=$PWD/AndroidSdk.Tool/bin/Debug/net10.0/android.dll" >> "$GITHUB_ENV"
+        mkdir -p artifacts
+
         mkdir -p "$HOME/.android/avd"
         echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
         echo "ANDROID_EMULATOR_HOME=$HOME/.android" >> "$GITHUB_ENV"
-        mkdir -p artifacts
-        echo "ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES=stdout|stderr" >> "$GITHUB_ENV"
 
     - name: Print SDK information
       run: dotnet $TOOL sdk info
@@ -67,18 +70,15 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-install.log
 
     - name: Do Create AVD
-      run: |
-        dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
+      run: dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-do.log
 
     - name: Validate Create AVD
       run: |
-        echo "--- Verifying AVD was created ---"
-        echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
         ls -la "$ANDROID_AVD_HOME" || echo "AVD HOME dir not found"
         ls -la "$HOME/.config/.android/avd/" || echo "XDG path not found"
-        dotnet $TOOL avd list
+
         AVDS=$(dotnet $TOOL avd list --format json)
         echo "AVDs JSON: $AVDS"
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
