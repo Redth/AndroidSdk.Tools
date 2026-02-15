@@ -42,29 +42,12 @@ namespace AndroidSdk.Tool
 			{
 				if (settings.Force)
 				{
-					// Find and stop the running emulator by AVD name
-					try
+					var emu = new Emulator(settings?.Home);
+					var stopped = emu.StopByAvdName(settings.Name, TimeSpan.FromSeconds(10));
+					if (stopped)
 					{
-						var adb = new Adb(settings?.Home);
-						var devices = adb.GetDevices();
-						foreach (var d in devices)
-						{
-							try
-							{
-								var name = adb.GetEmulatorName(d.Serial);
-								if (name.Equals(settings.Name, StringComparison.OrdinalIgnoreCase))
-								{
-									AnsiConsole.MarkupLine($"[yellow]Stopping emulator {d.Serial} ({settings.Name})...[/]");
-									adb.EmuKill(d.Serial);
-									// Wait briefly for process to terminate
-									System.Threading.Thread.Sleep(3000);
-									break;
-								}
-							}
-							catch { }
-						}
+						AnsiConsole.MarkupLine($"[yellow]Stopped running emulator for AVD '{settings.Name}'.[/]");
 					}
-					catch { }
 				}
 
 				var avd = new AvdManager(settings?.Home);
@@ -85,7 +68,10 @@ namespace AndroidSdk.Tool
 			catch (Exception)
 			{
 				if (settings.Force)
+				{
+					AnsiConsole.MarkupLine($"[yellow]Warning: failed to force-delete AVD '{settings.Name}' due to unexpected error.[/]");
 					return 0;
+				}
 				throw;
 			}
 			return 0;

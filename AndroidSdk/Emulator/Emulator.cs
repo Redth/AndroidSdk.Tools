@@ -42,6 +42,54 @@ namespace AndroidSdk
 			}
 		}
 
+		public bool StopByAvdName(string avdName, TimeSpan timeout)
+		{
+			if (string.IsNullOrWhiteSpace(avdName))
+				throw new ArgumentException("AVD name must be provided", nameof(avdName));
+
+			var adb = new Adb(AndroidSdkHome);
+			var serial = FindRunningEmulatorSerialByAvdName(adb, avdName);
+			if (string.IsNullOrWhiteSpace(serial))
+				return false;
+
+			adb.EmuKill(serial);
+
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+			while (sw.Elapsed < timeout)
+			{
+				var stillRunning = adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+				if (!stillRunning)
+					return true;
+
+				Thread.Sleep(250);
+			}
+
+			return !adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+		}
+
+		static string FindRunningEmulatorSerialByAvdName(Adb adb, string avdName)
+		{
+			foreach (var device in adb.GetDevices())
+			{
+				try
+				{
+					var runningName = adb.GetEmulatorName(device.Serial);
+					if (runningName.Equals(avdName, StringComparison.OrdinalIgnoreCase))
+						return device.Serial;
+				}
+				catch (InvalidDataException)
+				{
+					// Non-emulator devices are expected here.
+				}
+				catch (SdkToolFailedExitException)
+				{
+					// Some emulator instances may reject emu commands while shutting down.
+				}
+			}
+
+			return null;
+		}
+
 		public AndroidEmulatorProcess Start(string avdName, EmulatorStartOptions options = null)
 		{
 			if (options == null)
