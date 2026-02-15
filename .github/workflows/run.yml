@@ -148,9 +148,9 @@ jobs:
         echo "Waiting for app log marker..."
         
         # Poll logcat until E2E marker appears or timeout
-        # Note: adb logcat -d may return non-zero on API 36, so capture to file first
+        # Use CLI tool to capture logcat each attempt
         for i in $(seq 1 30); do
-          adb logcat -d > /tmp/logcat_poll.txt 2>/dev/null || true
+          dotnet $TOOL avd logcat --output /tmp/logcat_poll.txt 2>/dev/null || true
           if grep -q "E2E_APP_STARTED_SUCCESSFULLY" /tmp/logcat_poll.txt 2>/dev/null; then
             echo "  ✅ Marker found on attempt $i"
             break
@@ -159,12 +159,8 @@ jobs:
           sleep 5
         done
         
-        # Capture full logcat
-        dotnet $TOOL avd logcat --output artifacts/logcat.txt 2>/dev/null || true
-        if [ ! -s artifacts/logcat.txt ]; then
-          echo "⚠️ CLI logcat failed, falling back to raw adb logcat -d"
-          adb logcat -d > artifacts/logcat.txt 2>/dev/null || true
-        fi
+        # Copy the last poll as the final logcat artifact
+        cp /tmp/logcat_poll.txt artifacts/logcat.txt 2>/dev/null || true
         if [ ! -s artifacts/logcat.txt ]; then
           echo "❌ logcat.txt was not created or is empty"
           cat artifacts/device-launch.log 2>/dev/null || true
