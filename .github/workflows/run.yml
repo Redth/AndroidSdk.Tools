@@ -14,7 +14,7 @@ jobs:
         include:
           - os: ubuntu-latest
             gpu: swiftshader_indirect
-          - os: macos-13
+          - os: macos-latest
             gpu: guest
     runs-on: ${{ matrix.os }}
     steps:
@@ -23,11 +23,13 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
     - uses: actions/setup-java@v4
       with:
         distribution: 'microsoft'
         java-version: '21'
+    - name: Install Android workload
+      run: dotnet workload install android --source https://api.nuget.org/v3/index.json
     - name: Enable KVM
       if: runner.os == 'Linux'
       run: |
@@ -37,50 +39,50 @@ jobs:
     - name: Build the project
       run: dotnet build AndroidSdk.Tool
     - name: Print SDK information
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk info
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk info
     - name: Install Packages
       run: |
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-36" -p "system-images;android-36;google_apis;x86_64"
     - name: Create AVD
       run: |
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-36;google_apis;x86_64"
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd list
     - name: Start AVD
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
     - name: Prove that it booted
       run: |
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device list
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device info
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device list
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device info
     - name: Create test app
       run: |
         dotnet new android -n TestApp --output TestApp
         # Add a log marker to prove the app runs real code
         sed -i.bak 's/SetContentView(.*);/SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info("TestApp", "E2E_APP_STARTED_SUCCESSFULLY");/' TestApp/MainActivity.cs || true
-        dotnet build TestApp/TestApp.csproj -f net9.0-android -c Release
-        dotnet publish TestApp/TestApp.csproj -f net9.0-android -c Release
+        dotnet build TestApp/TestApp.csproj -f net10.0-android -c Release
+        dotnet publish TestApp/TestApp.csproj -f net10.0-android -c Release
     - name: Install test app
       run: |
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
         echo "Installing APK: $APK"
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package "$APK"
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package "$APK"
     - name: Launch test app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
     - name: Wait and capture logcat
       run: |
         sleep 5
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt
         echo "--- Checking for app log marker ---"
         grep "E2E_APP_STARTED_SUCCESSFULLY" logcat.txt && echo "✅ App ran successfully" || echo "⚠️ App log marker not found"
     - name: Uninstall test app
       if: always()
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
     - name: Install static test app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
     - name: Uninstall static test app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
     - name: Delete AVD
       if: always()
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test --force
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd delete -n test --force
     - name: Upload logcat
       if: always()
       uses: actions/upload-artifact@v4
