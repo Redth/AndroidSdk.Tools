@@ -142,16 +142,19 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
 
     - name: Launch and verify test app
+      timeout-minutes: 3
       run: |
         dotnet $TOOL device launch --package com.companyname.TestApp
-        echo "Waiting for app to run..."
-        sleep 30
-      env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
-
-    - name: Capture and verify logcat
-      timeout-minutes: 2
-      run: |
+        echo "Waiting for app log marker..."
+        
+        # Poll logcat until E2E marker appears or timeout
+        for i in $(seq 1 30); do
+          adb logcat -d 2>/dev/null | grep -q "E2E_APP_STARTED_SUCCESSFULLY" && break
+          echo "  Attempt $i/30 - marker not yet in logcat, waiting 5s..."
+          sleep 5
+        done
+        
+        # Capture full logcat
         dotnet $TOOL avd logcat --output artifacts/logcat.txt 2>/dev/null || true
         if [ ! -s artifacts/logcat.txt ]; then
           echo "⚠️ CLI logcat failed, falling back to raw adb logcat -d"
@@ -159,19 +162,22 @@ jobs:
         fi
         if [ ! -s artifacts/logcat.txt ]; then
           echo "❌ logcat.txt was not created or is empty"
-          cat artifacts/avd-logcat.log 2>/dev/null || true
+          cat artifacts/device-launch.log 2>/dev/null || true
           exit 1
         fi
+        
         echo "--- Logcat (last 30 lines) ---"
         tail -30 artifacts/logcat.txt
         echo "--- Checking for app log marker ---"
         if ! grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/logcat.txt; then
           echo "❌ App log marker 'E2E_APP_STARTED_SUCCESSFULLY' not found in logcat"
+          echo "--- Full logcat grep for TestApp ---"
+          grep -i "testapp\|companyname" artifacts/logcat.txt | tail -20 || true
           exit 1
         fi
-        echo "✅ App ran real code successfully"
+        echo "✅ App launched and ran real code successfully"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-logcat.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
 
     - name: Uninstall and verify test app
       if: always()
