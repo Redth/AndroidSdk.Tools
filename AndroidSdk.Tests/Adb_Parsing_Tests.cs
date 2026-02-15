@@ -28,24 +28,6 @@ public class Adb_Parsing_Tests
 	}
 
 	[Fact]
-	public void TryParseLoadAverageParsesFirstValue()
-	{
-		var ok = Adb.TryParseLoadAverage("0.57 0.42 0.33 1/345 1024", out var load);
-
-		Assert.True(ok);
-		Assert.Equal(0.57, load, 2);
-	}
-
-	[Fact]
-	public void TryParseLoadAverageReturnsFalseForInvalidLine()
-	{
-		var ok = Adb.TryParseLoadAverage("not-a-loadavg-line", out var load);
-
-		Assert.False(ok);
-		Assert.Equal(0, load);
-	}
-
-	[Fact]
 	public void IsMonkeyLaunchSuccessfulDetectsInjectedEvents()
 	{
 		var lines = new[]

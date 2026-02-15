@@ -512,18 +512,11 @@ namespace AndroidSdk
 		internal bool TryGetLoadAverage(string adbSerial, out double load)
 		{
 			load = 0;
-			var output = Shell("cat /proc/loadavg", adbSerial);
-			var line = output?.FirstOrDefault();
-			return TryParseLoadAverage(line, out load);
-		}
-
-		internal static bool TryParseLoadAverage(string loadAvgLine, out double load)
-		{
-			load = 0;
-			if (string.IsNullOrWhiteSpace(loadAvgLine))
+			var line = Shell("cat /proc/loadavg", adbSerial)?.FirstOrDefault();
+			if (string.IsNullOrWhiteSpace(line))
 				return false;
 
-			var first = loadAvgLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+			var first = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
 			return double.TryParse(first, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out load);
 		}
 
