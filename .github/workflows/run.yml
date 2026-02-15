@@ -47,12 +47,18 @@ jobs:
         mkdir -p "$HOME/.android/avd"
         echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
         echo "ANDROID_EMULATOR_HOME=$HOME/.android" >> "$GITHUB_ENV"
+        mkdir -p artifacts
+        echo "ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES=stdout|stderr" >> "$GITHUB_ENV"
 
     - name: Print SDK information
       run: dotnet $TOOL sdk info
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-info.log
 
     - name: Install Packages
       run: dotnet $TOOL sdk install -p "emulator" -p "platform-tools" -p "platforms;android-36" -p "${{ matrix.image }}"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-install.log
 
     - name: Create and verify AVD
       run: |
@@ -66,9 +72,12 @@ jobs:
         echo "AVDs JSON: $AVDS"
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
           echo "❌ AVD 'test' not found in avd list after create"
+          cat artifacts/avd-create.log 2>/dev/null || true
           exit 1
         fi
         echo "✅ AVD 'test' created successfully"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create.log
 
     - name: Start and verify AVD
       run: |
@@ -79,10 +88,14 @@ jobs:
         COUNT=$(echo "$DEVICES" | jq 'length')
         if [ "$COUNT" -lt 1 ]; then
           echo "❌ No devices found via 'device list --format json' — emulator failed to start"
+          echo "--- Process runner log ---"
+          cat artifacts/avd-start.log 2>/dev/null || true
           exit 1
         fi
         SERIAL=$(echo "$DEVICES" | jq -r '.[0].serial')
         echo "✅ Emulator is running (serial: $SERIAL, count: $COUNT)"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start.log
 
     - name: Create test app
       run: |
@@ -107,32 +120,41 @@ jobs:
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
           echo "❌ com.companyname.TestApp not found in device packages"
           echo "$PKGS" | jq '.[].packageName' | head -20
+          echo "--- Process runner log ---"
+          cat artifacts/device-install.log 2>/dev/null || true
           exit 1
         fi
         echo "✅ App installed and verified via CLI"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install.log
 
     - name: Launch and verify test app
       run: |
         dotnet $TOOL device launch --package com.companyname.TestApp
         echo "Waiting for app to run..."
         sleep 5
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch.log
 
     - name: Capture and verify logcat
       timeout-minutes: 2
       run: |
-        timeout 30 dotnet $TOOL avd logcat --output logcat.txt || true
-        if [ ! -f logcat.txt ] || [ ! -s logcat.txt ]; then
+        timeout 30 dotnet $TOOL avd logcat --output artifacts/logcat.txt || true
+        if [ ! -f artifacts/logcat.txt ] || [ ! -s artifacts/logcat.txt ]; then
           echo "❌ logcat.txt was not created or is empty"
+          cat artifacts/avd-logcat.log 2>/dev/null || true
           exit 1
         fi
         echo "--- Logcat (last 30 lines) ---"
-        tail -30 logcat.txt
+        tail -30 artifacts/logcat.txt
         echo "--- Checking for app log marker ---"
-        if ! grep -q "E2E_APP_STARTED_SUCCESSFULLY" logcat.txt; then
+        if ! grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/logcat.txt; then
           echo "❌ App log marker 'E2E_APP_STARTED_SUCCESSFULLY' not found in logcat"
           exit 1
         fi
         echo "✅ App ran real code successfully"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-logcat.log
 
     - name: Uninstall and verify test app
       if: always()
@@ -145,6 +167,8 @@ jobs:
         else
           echo "✅ App uninstalled and verified via CLI"
         fi
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall.log
 
     - name: Install and verify static test app
       if: runner.os == 'Linux'
@@ -154,9 +178,12 @@ jobs:
         PKGS=$(dotnet $TOOL device packages --format json 2>/dev/null)
         if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
           echo "❌ com.companyname.mauiapp12345 not found in device packages"
+          cat artifacts/static-install.log 2>/dev/null || true
           exit 1
         fi
         echo "✅ Static test app installed and verified via CLI"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-install.log
 
     - name: Uninstall and verify static test app
       if: runner.os == 'Linux'
@@ -169,15 +196,19 @@ jobs:
           exit 1
         fi
         echo "✅ Static test app uninstalled and verified via CLI"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/static-uninstall.log
 
     - name: Delete AVD
       if: always()
       run: dotnet $TOOL avd delete -n test --force
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-delete.log
 
-    - name: Upload logcat
+    - name: Upload artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: logcat-${{ matrix.os }}
-        path: logcat.txt
+        name: logs-${{ matrix.os }}
+        path: artifacts/
         if-no-files-found: ignore
