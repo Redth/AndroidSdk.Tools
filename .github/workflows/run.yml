@@ -14,8 +14,12 @@ jobs:
         include:
           - os: ubuntu-latest
             gpu: swiftshader_indirect
+            image: system-images;android-36;google_apis;x86_64
+            abi: google_apis/x86_64
           - os: macos-latest
             gpu: guest
+            image: system-images;android-36;google_apis;arm64-v8a
+            abi: google_apis/arm64-v8a
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -38,51 +42,115 @@ jobs:
         sudo udevadm trigger --name-match=kvm
     - name: Build the project
       run: dotnet build AndroidSdk.Tool
+
     - name: Print SDK information
       run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk info
+
     - name: Install Packages
+      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-36" -p "${{ matrix.image }}"
+
+    - name: Create and verify AVD
       run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-36" -p "system-images;android-36;google_apis;x86_64"
-    - name: Create AVD
-      run: |
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-36;google_apis;x86_64"
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
+        echo "--- Verifying AVD was created ---"
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd list
-    - name: Start AVD
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
-    - name: Prove that it booted
+        AVDS=$(dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd list --format json)
+        echo "AVDs JSON: $AVDS"
+        if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
+          echo "❌ AVD 'test' not found in avd list after create"
+          exit 1
+        fi
+        echo "✅ AVD 'test' created successfully"
+
+    - name: Start and verify AVD
       run: |
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+        echo "--- Verifying emulator is in device list ---"
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- device list
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device info
+        DEVICES=$(adb devices 2>/dev/null | grep -v "List of" | grep -v "^$" || true)
+        echo "ADB devices: $DEVICES"
+        if [ -z "$DEVICES" ]; then
+          echo "❌ No devices in adb devices — emulator failed to start"
+          exit 1
+        fi
+        echo "✅ Emulator is running"
+
     - name: Create test app
       run: |
         dotnet new android -n TestApp --output TestApp
-        # Add a log marker to prove the app runs real code
-        sed -i.bak 's/SetContentView(.*);/SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info("TestApp", "E2E_APP_STARTED_SUCCESSFULLY");/' TestApp/MainActivity.cs || true
+        sed -i.bak 's/SetContentView(.*);/SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info("TestApp", "E2E_APP_STARTED_SUCCESSFULLY");/' TestApp/MainActivity.cs
         dotnet build TestApp/TestApp.csproj -f net10.0-android -c Release
         dotnet publish TestApp/TestApp.csproj -f net10.0-android -c Release
-    - name: Install test app
+        APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
+        if [ -z "$APK" ]; then
+          echo "❌ Could not find published APK"
+          exit 1
+        fi
+        echo "✅ APK built: $APK"
+
+    - name: Install and verify test app
       run: |
         APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
         echo "Installing APK: $APK"
         dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package "$APK"
-    - name: Launch test app
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
-    - name: Wait and capture logcat
+        echo "--- Verifying app is installed ---"
+        if ! adb shell pm list packages 2>/dev/null | grep -q "com.companyname.testapp"; then
+          echo "❌ com.companyname.testapp not found in installed packages"
+          exit 1
+        fi
+        echo "✅ App installed successfully"
+
+    - name: Launch and verify test app
       run: |
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device launch --package com.companyname.testapp
         sleep 5
-        dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt
+        echo "--- Verifying app is running ---"
+        PID=$(adb shell pidof com.companyname.testapp 2>/dev/null || true)
+        if [ -z "$PID" ]; then
+          echo "⚠️ App process not found (may have already exited, checking logcat)"
+        else
+          echo "✅ App is running (PID: $PID)"
+        fi
+
+    - name: Capture and verify logcat
+      timeout-minutes: 2
+      run: |
+        timeout 30 dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd logcat --output logcat.txt || true
+        if [ ! -f logcat.txt ] || [ ! -s logcat.txt ]; then
+          echo "❌ logcat.txt was not created or is empty"
+          exit 1
+        fi
+        echo "--- Logcat (last 30 lines) ---"
+        tail -30 logcat.txt
         echo "--- Checking for app log marker ---"
-        grep "E2E_APP_STARTED_SUCCESSFULLY" logcat.txt && echo "✅ App ran successfully" || echo "⚠️ App log marker not found"
+        if ! grep -q "E2E_APP_STARTED_SUCCESSFULLY" logcat.txt; then
+          echo "❌ App log marker 'E2E_APP_STARTED_SUCCESSFULLY' not found in logcat"
+          exit 1
+        fi
+        echo "✅ App ran real code successfully"
+
     - name: Uninstall test app
       if: always()
       run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.testapp || true
-    - name: Install static test app
-      run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+
+    - name: Install and verify static test app
+      if: runner.os == 'Linux'
+      run: |
+        dotnet run --framework net10.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+        if ! adb shell pm list packages 2>/dev/null | grep -q "com.companyname.mauiapp12345"; then
+          echo "❌ Static test app not found after install"
+          exit 1
+        fi
+        echo "✅ Static test app installed"
+
     - name: Uninstall static test app
+      if: runner.os == 'Linux'
       run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+
     - name: Delete AVD
       if: always()
       run: dotnet run --framework net10.0 --project AndroidSdk.Tool -- avd delete -n test --force
+
     - name: Upload logcat
       if: always()
       uses: actions/upload-artifact@v4
