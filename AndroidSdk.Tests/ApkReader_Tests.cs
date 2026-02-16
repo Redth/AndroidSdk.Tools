@@ -63,7 +63,7 @@ public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputH
 
 		var targetSdkVersion = reader.ReadManifest().Manifest.UsesSdk.TargetSdkVersion;
 
-		Assert.Equal(34, targetSdkVersion);
+		Assert.Equal(36, targetSdkVersion);
 	}
 
 	[Fact]
