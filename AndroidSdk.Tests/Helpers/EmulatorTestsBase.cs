@@ -27,9 +27,14 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 		=> new()
 		{
 			Port = port,
-			NoWindow = IsCI, // Always headless on CI, but allow non-CI to specify if they want headless or not
-			Gpu = "swiftshader_indirect",
-			NoSnapshot = true,
+			// Always headless on CI, but allow non-CI to specify if they want headless or not
+			NoWindow = IsCI,
+			// Use the right GPU on Linux
+			Gpu = OperatingSystem.IsLinux()
+				? "swiftshader_indirect"
+				: "guest",
+			// Don't use snapshots on CI to better test cold boot and avoid snapshot corruption issues on CI agents
+			NoSnapshot = IsCI,
 			NoAudio = true,
 			NoBootAnim = true,
 			MemoryMegabytes = memoryMegabytes,
@@ -40,17 +45,17 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 	/// One-time emulator class setup fixture.
 	/// Installs the emulator image and creates a reusable AVD inside an isolated fixture-scoped AVD home.
 	/// </summary>
-	public class AvdInstallFixture : IDisposable
+	public class AvdCreateFixture : IDisposable
 	{
 		readonly AndroidSdkManager sdk;
 		readonly IMessageSink sink;
 		readonly AvdHomeScope avdHomeScope;
 
-		public AvdInstallFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
+		public AvdCreateFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
 		{
 			sdk = fixture.Sdk;
 			sink = messageSink;
-			avdHomeScope = new AvdHomeScope($"{nameof(EmulatorTestsBase)}.{nameof(AvdInstallFixture)}.{Guid.NewGuid():N}");
+			avdHomeScope = new AvdHomeScope($"{nameof(EmulatorTestsBase)}.{nameof(AvdCreateFixture)}.{Guid.NewGuid():N}");
 
 			sink.OnMessage(new DiagnosticMessage($"Installing system image {TestAvdPackageId} for emulator tests..."));
 			var installOk = sdk.SdkManager.Install(TestAvdPackageId);
@@ -99,13 +104,13 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
     public class EmulatorBootFixture : IDisposable
     {
 		readonly IMessageSink sink;
-		readonly AvdInstallFixture setup;
+		readonly AvdCreateFixture setup;
 		readonly AndroidSdkManager sdk;
 
         public EmulatorBootFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
         {
             sink = messageSink;
-            setup = new AvdInstallFixture(messageSink, fixture);
+            setup = new AvdCreateFixture(messageSink, fixture);
             sdk = fixture.Sdk;
 
             sink.OnMessage(new DiagnosticMessage("Starting emulator for tests that require a booted emulator..."));

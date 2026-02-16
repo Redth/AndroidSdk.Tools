@@ -24,7 +24,7 @@ jobs:
             image: system-images;android-36;google_apis;x86_64
             abi: google_apis/x86_64
           - os: macos-15-intel
-            gpu: swiftshader_indirect
+            gpu: guest
             image: system-images;android-36;google_apis;x86_64
             abi: google_apis/x86_64
     runs-on: ${{ matrix.os }}

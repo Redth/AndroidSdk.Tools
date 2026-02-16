@@ -19,7 +19,7 @@ public sealed class AvdHomeScope : IDisposable
 
 		var tempRoot = Path.GetTempPath();
 		if (!string.IsNullOrEmpty(previousAndroidAvdHome) && previousAndroidAvdHome.StartsWith(tempRoot, StringComparison.Ordinal))
-			throw new InvalidOperationException("ANDROID_AVD_HOME was not unset from a previous test scope.");
+			throw new InvalidOperationException($"ANDROID_AVD_HOME was not unset from a previous test scope: '{previousAndroidAvdHome}'.");
 
 		if (string.IsNullOrWhiteSpace(testId))
 			testId = Guid.NewGuid().ToString("N");
