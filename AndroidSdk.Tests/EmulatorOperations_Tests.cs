@@ -14,12 +14,8 @@ public class EmulatorOperations_Tests :
     IClassFixture<EmulatorTestsBase.AvdCreateFixture>,
     IClassFixture<EmulatorTestsBase.EmulatorBootFixture>
 {
-    const string StaticAppPackageName = "com.companyname.mauiapp12345";
-
     readonly EmulatorBootFixture boot;
     readonly Emulator.AndroidEmulatorProcess emulatorInstance;
-
-    static readonly string StaticAppApkPath = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
 
     public EmulatorOperations_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, EmulatorBootFixture boot)
         : base(outputHelper, fixture)

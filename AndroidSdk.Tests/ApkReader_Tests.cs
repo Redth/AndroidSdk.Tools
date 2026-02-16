@@ -13,23 +13,21 @@ namespace AndroidSdk.Tests;
 
 public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputHelper)
 {
-	public readonly string ApkFile = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
-
 	[Fact]
 	public void ReadPackageId()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var packageId = reader.ReadManifest().Manifest.PackageId;
 
 		Assert.NotNull(packageId);
-		Assert.Equal("com.companyname.mauiapp12345", packageId);
+		Assert.Equal(StaticAppPackageName, packageId);
 	}
 
 	[Fact]
 	public void ReadVersionName()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var versionName = reader.ReadManifest().Manifest.VersionName;
 
@@ -40,7 +38,7 @@ public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputH
 	[Fact]
 	public void ReadVersionCode()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var versionCode = reader.ReadManifest().Manifest.VersionCode;
 
@@ -51,7 +49,7 @@ public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputH
 	[Fact]
 	public void ReadMinSdkVersion()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var minSdkVersion = reader.ReadManifest().Manifest.UsesSdk.MinSdkVersion;
 
@@ -61,17 +59,17 @@ public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputH
 	[Fact]
 	public void ReadTargetSdkVersion()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var targetSdkVersion = reader.ReadManifest().Manifest.UsesSdk.TargetSdkVersion;
 
-		Assert.Equal(36, targetSdkVersion);
+		Assert.Equal(34, targetSdkVersion);
 	}
 
 	[Fact]
 	public void ReadMaxSdkVersion()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var maxSdkVersion = reader.ReadManifest().Manifest.UsesSdk.MaxSdkVersion;
 

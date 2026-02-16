@@ -24,6 +24,10 @@ public abstract class TestsBase : IDisposable
 	protected const string? SkipOnCI =
 		IsCI ? "This test cannot run on CI." : null;
 
+    protected const string StaticAppPackageName = "com.companyname.mauiapp12345";
+
+    protected static readonly string StaticAppApkPath = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
+
 	private readonly string logFile;
 	private readonly IDisposable processRunnerLogPathScope;
 

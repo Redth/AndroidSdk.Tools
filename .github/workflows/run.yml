@@ -43,9 +43,6 @@ jobs:
         distribution: 'microsoft'
         java-version: '21'
 
-    - name: Install Android workload
-      run: dotnet workload install android --source https://api.nuget.org/v3/index.json
-
     - name: Enable KVM
       if: runner.os == 'Linux'
       run: |
@@ -119,40 +116,8 @@ jobs:
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-validate.log
 
-    - name: Do Create test app
-      run: |
-        dotnet new android -n TestApp --output TestApp
-
-        # Insert Log.Info call after SetContentView - use python for cross-platform compatibility
-        python3 -c "
-        import re
-        with open('TestApp/MainActivity.cs', 'r') as f:
-            content = f.read()
-        content = content.replace(
-            'SetContentView(Resource.Layout.activity_main);',
-            'SetContentView(Resource.Layout.activity_main);\n\t\t\tAndroid.Util.Log.Info(\"TestApp\", \"E2E_APP_STARTED_SUCCESSFULLY\");'
-        )
-        with open('TestApp/MainActivity.cs', 'w') as f:
-            f.write(content)
-        "
-
-        dotnet build TestApp/TestApp.csproj -f net10.0-android -c Release
-        dotnet publish TestApp/TestApp.csproj -f net10.0-android -c Release
-
-        APK=$(find TestApp -name "*.apk" -path "*/publish/*" | head -1)
-        echo "TEST_APK=$APK" >> "$GITHUB_ENV"
-
-    - name: Validate Create test app
-      run: |
-        grep -n "E2E_APP_STARTED" TestApp/MainActivity.cs || { echo "❌ Code insertion failed"; cat TestApp/MainActivity.cs; exit 1; }
-        if [ -z "$TEST_APK" ]; then
-          echo "❌ Could not find published APK"
-          exit 1
-        fi
-        echo "✅ APK built: $TEST_APK"
-
     - name: Do Install test app
-      run: dotnet $TOOL device install --package "$TEST_APK"
+      run: dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-do.log
 
@@ -161,8 +126,8 @@ jobs:
         PKGS=$(dotnet $TOOL device packages --format json)
         echo "Packages JSON: $PKGS"
 
-        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
-          echo "❌ com.companyname.TestApp not found in device packages"
+        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.mauiapp12345 not found in device packages"
           echo "$PKGS" | jq '.[].packageName' | head -20
           echo "--- Process runner log ---"
           cat artifacts/device-install-do.log
@@ -173,7 +138,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-validate.log
 
     - name: Do Launch test app
-      run: dotnet $TOOL device launch --package com.companyname.TestApp
+      run: dotnet $TOOL device launch --package com.companyname.mauiapp12345
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-do.log
 
@@ -200,7 +165,7 @@ jobs:
 
     - name: Do Uninstall test app
       if: always()
-      run: dotnet $TOOL device uninstall --package com.companyname.TestApp
+      run: dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall-do.log
 
@@ -210,8 +175,8 @@ jobs:
         PKGS=$(dotnet $TOOL device packages --format json)
         echo "Packages JSON: $PKGS"
 
-        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.TestApp")' > /dev/null 2>&1; then
-          echo "❌ com.companyname.TestApp still found after uninstall"
+        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.mauiapp12345 still found after uninstall"
           exit 1
         else
           echo "✅ App uninstalled and verified via CLI"
