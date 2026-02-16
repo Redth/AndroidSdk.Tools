@@ -4,7 +4,7 @@ using Xunit;
 namespace AndroidSdk.Tests;
 
 [CollectionDefinition(Name)]
-public class AndroidSdkManagerCollection : ICollectionFixture<AndroidSdkManagerFixture>
+public class AndroidSdkManagerCollection : ICollectionFixture<AndroidSdkManagerFixture>, ICollectionFixture<BootedEmulatorFixture>
 {
 	public const string Name = "Android SDK Manager";
 

@@ -1,6 +1,5 @@
 ﻿#nullable enable
 using System.IO;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
@@ -9,7 +8,6 @@ namespace AndroidSdk.Tests;
 /// A base class for all tests that will require the Android SDK to be installed
 /// and ready to use without having to first download and update it.
 /// </summary>
-[Collection(AndroidSdkManagerCollection.Name)]
 public abstract class AndroidSdkManagerTestsBase : TestsBase
 {
 	public AndroidSdkManagerTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
