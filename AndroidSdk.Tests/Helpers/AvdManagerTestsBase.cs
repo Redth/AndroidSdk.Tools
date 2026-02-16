@@ -1,40 +1,12 @@
-﻿using System;
-using System.IO;
-using System.Threading;
-using Xunit.Abstractions;
+﻿using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
 /// <summary>
-/// A base class for all tests that will be working with AVDs and want to ensure the
-/// AVD environemnt is clean and free of any previous AVDs.
+/// AVD manager test base class.
+/// Keeps emulator-related tests on the shared Android SDK fixture while moving AVD-home ownership to explicit scopes.
 /// </summary>
-public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase
+public abstract class AvdManagerTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
+	: AndroidSdkManagerTestsBase(outputHelper, fixture)
 {
-	readonly string oldAndroidAvdHome;
-	readonly string tempAndroidAvdHome;
-
-	public AvdManagerTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-		: base(outputHelper, fixture)
-	{
-		oldAndroidAvdHome = Environment.GetEnvironmentVariable("ANDROID_AVD_HOME");
-
-		var tempRoot = Path.GetTempPath();
-		if (!string.IsNullOrEmpty(oldAndroidAvdHome) && oldAndroidAvdHome.StartsWith(tempRoot))
-			throw new InvalidOperationException("ANDROID_AVD_HOME was not un set from a previous test run.");
-
-		tempAndroidAvdHome = Path.Combine(tempRoot, "AndroidSdk.Tests", GetType().Name, "android-avd-home");
-		RecreateDir(tempAndroidAvdHome);
-
-		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", tempAndroidAvdHome);
-
-		outputHelper.WriteLine($"Set ANDROID_AVD_HOME to {tempAndroidAvdHome}");
-	}
-
-	public virtual void Dispose()
-	{
-		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", oldAndroidAvdHome);
-
-		DeleteDir(tempAndroidAvdHome);
-	}
 }

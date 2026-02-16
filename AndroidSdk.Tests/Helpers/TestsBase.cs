@@ -25,36 +25,45 @@ public abstract class TestsBase : IDisposable
 		IsCI ? "This test cannot run on CI." : null;
 
 	private readonly string logFile;
+	private readonly IDisposable processRunnerLogPathScope;
 
 	public TestsBase(ITestOutputHelper outputHelper)
 	{
 		OutputHelper = outputHelper;
 
 		logFile = Path.GetTempFileName();
-		Environment.SetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", logFile);
+		processRunnerLogPathScope = new EnvironmentVariablesScope(("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", logFile));
 	}
 
 	public virtual void Dispose()
 	{
-		if (!File.Exists(logFile))
-			return;
-
-		OutputHelper.WriteLine($"Process runner log ({logFile}):");
-		foreach (var line in File.ReadLines(logFile))
-		{
-			OutputHelper.WriteLine(line);
-		}
-
 		try
 		{
-			File.Delete(logFile);
+			if (File.Exists(logFile))
+			{
+				OutputHelper.WriteLine($"Process runner log ({logFile}):");
+				foreach (var line in File.ReadLines(logFile))
+					OutputHelper.WriteLine(line);
+			}
 		}
-		catch
+		finally
 		{
-			OutputHelper.WriteLine($"Failed to delete log file {logFile}");
-		}
+			try
+			{
+				if (File.Exists(logFile))
+					File.Delete(logFile);
+			}
+			catch (IOException ex)
+			{
+				OutputHelper.WriteLine($"Failed to delete log file {logFile}: {ex.Message}");
+			}
+			catch (UnauthorizedAccessException ex)
+			{
+				OutputHelper.WriteLine($"Failed to delete log file {logFile}: {ex.Message}");
+			}
 
-		Environment.SetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", "");
+			processRunnerLogPathScope.Dispose();
+		}
 	}
 
 	public ITestOutputHelper OutputHelper { get; private set; }
@@ -65,15 +74,22 @@ public abstract class TestsBase : IDisposable
 
 	protected void Retry(Func<bool> test, Action action)
 	{
+		Exception? lastException = null;
 		var tries = 10;
 		while (test() && tries > 0)
 		{
 			try
 			{
 				action();
+				lastException = null;
 			}
-			catch
+			catch (IOException ex)
 			{
+				lastException = ex;
+			}
+			catch (UnauthorizedAccessException ex)
+			{
+				lastException = ex;
 			}
 
 			if (test())
@@ -84,7 +100,11 @@ public abstract class TestsBase : IDisposable
 		}
 
 		if (test())
+		{
+			if (lastException is not null)
+				OutputHelper.WriteLine($"Last retry error: {lastException}");
 			Assert.Fail("Timed out trying to perform the action.");
+		}
 	}
 
 	protected void DeleteDir(string dir) =>

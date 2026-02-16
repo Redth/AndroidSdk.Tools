@@ -6,60 +6,36 @@ using Xunit.Sdk;
 
 namespace AndroidSdk.Tests;
 
-public class EmulatorOperations_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, EmulatorOperations_Tests.OneTimeBoot boot)
-    : EmulatorTestsBase(outputHelper, fixture), IClassFixture<EmulatorOperations_Tests.OneTimeBoot>
+/// <summary>
+/// Booted emulator operation tests (identity, install/uninstall, and app launch).
+/// </summary>
+public class EmulatorOperations_Tests : EmulatorTestsBase, IClassFixture<EmulatorTestsBase.EmulatorBootFixture>
 {
     const string StaticAppPackageName = "com.companyname.mauiapp12345";
 
-    readonly Emulator.AndroidEmulatorProcess emulatorInstance = boot.EmulatorInstance;
+    readonly EmulatorBootFixture boot;
+    readonly Emulator.AndroidEmulatorProcess emulatorInstance;
 
     static readonly string StaticAppApkPath = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
 
-    public class OneTimeBoot : OneTimeSetup
+    public EmulatorOperations_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, EmulatorBootFixture boot)
+        : base(outputHelper, fixture)
     {
-		readonly IMessageSink sink;
-
-        public OneTimeBoot(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
-            : base(messageSink, fixture)
-        {
-            sink = messageSink;
-
-            sink.OnMessage(new DiagnosticMessage("Starting emulator for tests that require a booted emulator..."));
-            EmulatorInstance = fixture.Sdk.Emulator.Start(TestEmulatorName, CreateHeadlessOptions(port: 5554));
-            sink.OnMessage(new DiagnosticMessage("Started emulator."));
-
-            sink.OnMessage(new DiagnosticMessage("Waiting for emulator to complete booting..."));
-            var booted = EmulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
-            sink.OnMessage(new DiagnosticMessage("Emulator boot complete."));
-
-            Assert.True(booted);
-            Assert.NotEmpty(EmulatorInstance.Serial);
-        }
-
-        public Emulator.AndroidEmulatorProcess EmulatorInstance { get; }
-
-        public override void Dispose()
-        {
-            sink.OnMessage(new DiagnosticMessage("Shutting down emulator..."));
-            var shutdown = EmulatorInstance.Shutdown();
-            Assert.True(shutdown);
-            sink.OnMessage(new DiagnosticMessage("Shut down emulator."));
-
-            base.Dispose();
-        }
+        this.boot = boot;
+        emulatorInstance = boot.EmulatorInstance;
     }
 
     public override void Dispose()
     {
         try
         {
-            outputHelper.WriteLine($"Uninstalling static app {StaticAppPackageName}...");
+            OutputHelper.WriteLine($"Uninstalling static app {StaticAppPackageName}...");
             Sdk.Adb.Uninstall(StaticAppPackageName, adbSerial: boot.EmulatorInstance.Serial);
-            outputHelper.WriteLine("Uninstalled static app.");
+            OutputHelper.WriteLine("Uninstalled static app.");
         }
         catch (Exception ex)
         {
-            outputHelper.WriteLine($"Failed to uninstall static app: {ex}");
+            OutputHelper.WriteLine($"Failed to uninstall static app: {ex}");
         }
 
         base.Dispose();

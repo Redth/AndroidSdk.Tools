@@ -11,14 +11,9 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class ApkReader_Tests : TestsBase
+public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputHelper)
 {
-	public ApkReader_Tests(ITestOutputHelper outputHelper) : base(outputHelper)
-	{
-		ApkFile = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
-	}
-
-	public readonly string ApkFile;
+	public readonly string ApkFile = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
 
 	[Fact]
 	public void ReadPackageId()
@@ -70,7 +65,7 @@ public class ApkReader_Tests : TestsBase
 
 		var targetSdkVersion = reader.ReadManifest().Manifest.UsesSdk.TargetSdkVersion;
 
-		Assert.Equal(34, targetSdkVersion);
+		Assert.Equal(36, targetSdkVersion);
 	}
 
 	[Fact]
@@ -82,5 +77,4 @@ public class ApkReader_Tests : TestsBase
 
 		Assert.Equal(0, maxSdkVersion);
 	}
-
 }

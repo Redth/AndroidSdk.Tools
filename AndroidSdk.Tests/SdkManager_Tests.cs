@@ -6,6 +6,9 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
+/// <summary>
+/// Integration tests for sdkmanager list, install, uninstall, license, and logging behavior.
+/// </summary>
 public class SdkManager_Tests : AndroidSdkManagerTestsBase
 {
 	public SdkManager_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
@@ -101,12 +104,17 @@ public class SdkManager_Tests : AndroidSdkManagerTestsBase
 	public void ProcessRunner_Logs()
 	{
 		var tmp = Path.GetTempFileName();
-		Environment.SetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", tmp);
-
-		var list = Sdk.SdkManager.List();
-
-		var logText = File.ReadAllText(tmp);
-
-		Assert.NotEmpty(logText);
+		try
+		{
+			using var processLogScope = new EnvironmentVariablesScope(("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", tmp));
+			Sdk.SdkManager.List();
+			var logText = File.ReadAllText(tmp);
+			Assert.NotEmpty(logText);
+		}
+		finally
+		{
+			if (File.Exists(tmp))
+				File.Delete(tmp);
+		}
 	}
 }

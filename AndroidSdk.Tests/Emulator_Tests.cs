@@ -1,15 +1,21 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, EmulatorTestsBase.OneTimeSetup setup)
-	: EmulatorTestsBase(outputHelper, fixture), IClassFixture<EmulatorTestsBase.OneTimeSetup>
+/// <summary>
+/// Emulator lifecycle tests that reuse a one-time prepared AVD/image fixture.
+/// </summary>
+public class Emulator_Tests : EmulatorTestsBase, IClassFixture<EmulatorTestsBase.AvdInstallFixture>
 {
+	public Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, EmulatorTestsBase.AvdInstallFixture setup)
+		: base(outputHelper, fixture)
+	{
+		_ = setup;
+	}
+
 	[Fact]
 	public void ListAvdsOnlyContainsCreatedAvd()
 	{

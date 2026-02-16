@@ -3,6 +3,10 @@ using Xunit;
 
 namespace AndroidSdk.Tests;
 
+/// <summary>
+/// SDK-scoped test collection.
+/// Provides only the shared Android SDK fixture and does not own AVD/emulator state.
+/// </summary>
 [CollectionDefinition(Name)]
 public class AndroidSdkManagerCollection : ICollectionFixture<AndroidSdkManagerFixture>
 {

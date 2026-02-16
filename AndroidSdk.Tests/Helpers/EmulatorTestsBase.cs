@@ -8,6 +8,10 @@ using Xunit.Sdk;
 
 namespace AndroidSdk.Tests;
 
+/// <summary>
+/// Emulator integration test base class.
+/// Centralizes shared emulator package/options behavior while fixture-level setup owns its own AVD home scope.
+/// </summary>
 public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
 	: AvdManagerTestsBase(outputHelper, fixture)
 {
@@ -32,15 +36,21 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 			PartitionSizeMegabytes = partitionSizeMegabytes,
 		};
 
-	public class OneTimeSetup : IDisposable
+	/// <summary>
+	/// One-time emulator class setup fixture.
+	/// Installs the emulator image and creates a reusable AVD inside an isolated fixture-scoped AVD home.
+	/// </summary>
+	public class AvdInstallFixture : IDisposable
 	{
 		readonly AndroidSdkManager sdk;
 		readonly IMessageSink sink;
+		readonly AvdHomeScope avdHomeScope;
 
-		public OneTimeSetup(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
+		public AvdInstallFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
 		{
 			sdk = fixture.Sdk;
 			sink = messageSink;
+			avdHomeScope = new AvdHomeScope($"{nameof(EmulatorTestsBase)}.{nameof(AvdInstallFixture)}.{Guid.NewGuid():N}");
 
 			sink.OnMessage(new DiagnosticMessage($"Installing system image {TestAvdPackageId} for emulator tests..."));
 			var installOk = sdk.SdkManager.Install(TestAvdPackageId);
@@ -60,19 +70,71 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 
 		public virtual void Dispose()
 		{
-			sink.OnMessage(new DiagnosticMessage($"Deleting AVD {TestEmulatorName}..."));
-			sdk.AvdManager.Delete(TestEmulatorName);
-			sink.OnMessage(new DiagnosticMessage("Deleted AVD."));
+			try
+			{
+				sink.OnMessage(new DiagnosticMessage($"Deleting AVD {TestEmulatorName}..."));
+				sdk.AvdManager.Delete(TestEmulatorName);
+				sink.OnMessage(new DiagnosticMessage("Deleted AVD."));
 
-			sink.OnMessage(new DiagnosticMessage($"Uninstalling system image {TestAvdPackageId}..."));
-			var uninstallOk = sdk.SdkManager.Uninstall(TestAvdPackageId);
-			Assert.True(uninstallOk);
-			sink.OnMessage(new DiagnosticMessage("Uninstalled system image."));
+				sink.OnMessage(new DiagnosticMessage($"Uninstalling system image {TestAvdPackageId}..."));
+				var uninstallOk = sdk.SdkManager.Uninstall(TestAvdPackageId);
+				Assert.True(uninstallOk);
+				sink.OnMessage(new DiagnosticMessage("Uninstalled system image."));
 
-			sink.OnMessage(new DiagnosticMessage("Asserting system image is uninstalled..."));
-			var list = sdk.SdkManager.List();
-			Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
-			sink.OnMessage(new DiagnosticMessage("Asserted system image is uninstalled."));
+				sink.OnMessage(new DiagnosticMessage("Asserting system image is uninstalled..."));
+				var list = sdk.SdkManager.List();
+				Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+				sink.OnMessage(new DiagnosticMessage("Asserted system image is uninstalled."));
+			}
+			finally
+			{
+				avdHomeScope.Dispose();
+			}
 		}
 	}
+
+    /// <summary>
+    /// One-time boot fixture that composes shared setup, boots the emulator, and tears down in reverse order.
+    /// </summary>
+    public class EmulatorBootFixture : IDisposable
+    {
+		readonly IMessageSink sink;
+		readonly AvdInstallFixture setup;
+		readonly AndroidSdkManager sdk;
+
+        public EmulatorBootFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
+        {
+            sink = messageSink;
+            setup = new AvdInstallFixture(messageSink, fixture);
+            sdk = fixture.Sdk;
+
+            sink.OnMessage(new DiagnosticMessage("Starting emulator for tests that require a booted emulator..."));
+            EmulatorInstance = sdk.Emulator.Start(TestEmulatorName, CreateHeadlessOptions(port: 5554));
+            sink.OnMessage(new DiagnosticMessage("Started emulator."));
+
+            sink.OnMessage(new DiagnosticMessage("Waiting for emulator to complete booting..."));
+            var booted = EmulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
+            sink.OnMessage(new DiagnosticMessage("Emulator boot complete."));
+
+            Assert.True(booted);
+            Assert.NotEmpty(EmulatorInstance.Serial);
+        }
+
+        public Emulator.AndroidEmulatorProcess EmulatorInstance { get; }
+
+        public void Dispose()
+        {
+			try
+			{
+				sink.OnMessage(new DiagnosticMessage("Shutting down emulator..."));
+				var shutdown = EmulatorInstance.Shutdown();
+				Assert.True(shutdown);
+				sink.OnMessage(new DiagnosticMessage("Shut down emulator."));
+			}
+			finally
+			{
+				setup.Dispose();
+			}
+        }
+    }
 }
