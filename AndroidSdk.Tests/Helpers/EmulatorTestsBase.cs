@@ -13,7 +13,7 @@ namespace AndroidSdk.Tests;
 /// Centralizes shared emulator package/options behavior while fixture-level setup owns its own AVD home scope.
 /// </summary>
 public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-	: AvdManagerTestsBase(outputHelper, fixture)
+	: AndroidSdkManagerTestsBase(outputHelper, fixture)
 {
 	protected static readonly string TestEmulatorName =
 		string.Concat("TestEmu", Guid.NewGuid().ToString("N").AsSpan(0, 6));
@@ -51,6 +51,13 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 		readonly IMessageSink sink;
 		readonly AvdHomeScope avdHomeScope;
 
+		// Only uninstall the system image if we're running in CI, to avoid uninstalling a potentially
+		// shared global SDK's system image on a developer machine that may be reused across test runs.
+		// The AVD home isolation ensures that the created AVD won't be visible to other test runs even
+		// if we don't uninstall the system image, so it should be safe to leave the system image
+		// installed on a developer machine for reuse across test runs.
+		readonly bool UninstallPackages = IsCI;
+
 		public AvdCreateFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
 		{
 			sdk = fixture.Sdk;
@@ -81,15 +88,18 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 				sdk.AvdManager.Delete(TestEmulatorName);
 				sink.OnMessage(new DiagnosticMessage("Deleted AVD."));
 
-				sink.OnMessage(new DiagnosticMessage($"Uninstalling system image {TestAvdPackageId}..."));
-				var uninstallOk = sdk.SdkManager.Uninstall(TestAvdPackageId);
-				Assert.True(uninstallOk);
-				sink.OnMessage(new DiagnosticMessage("Uninstalled system image."));
+				if (UninstallPackages)
+				{
+					sink.OnMessage(new DiagnosticMessage($"Uninstalling system image {TestAvdPackageId}..."));
+					var uninstallOk = sdk.SdkManager.Uninstall(TestAvdPackageId);
+					Assert.True(uninstallOk);
+					sink.OnMessage(new DiagnosticMessage("Uninstalled system image."));
 
-				sink.OnMessage(new DiagnosticMessage("Asserting system image is uninstalled..."));
-				var list = sdk.SdkManager.List();
-				Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
-				sink.OnMessage(new DiagnosticMessage("Asserted system image is uninstalled."));
+					sink.OnMessage(new DiagnosticMessage("Asserting system image is uninstalled..."));
+					var list = sdk.SdkManager.List();
+					Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+					sink.OnMessage(new DiagnosticMessage("Asserted system image is uninstalled."));
+				}
 			}
 			finally
 			{
@@ -104,14 +114,13 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
     public class EmulatorBootFixture : IDisposable
     {
 		readonly IMessageSink sink;
-		readonly AvdCreateFixture setup;
 		readonly AndroidSdkManager sdk;
 
         public EmulatorBootFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
         {
             sink = messageSink;
-            setup = new AvdCreateFixture(messageSink, fixture);
             sdk = fixture.Sdk;
+			new AvdHomeScope($"{nameof(EmulatorTestsBase)}.{nameof(AvdCreateFixture)}.{Guid.NewGuid():N}");
 
             sink.OnMessage(new DiagnosticMessage("Starting emulator for tests that require a booted emulator..."));
             EmulatorInstance = sdk.Emulator.Start(TestEmulatorName, CreateHeadlessOptions(port: 5554));
@@ -129,17 +138,10 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 
         public void Dispose()
         {
-			try
-			{
-				sink.OnMessage(new DiagnosticMessage("Shutting down emulator..."));
-				var shutdown = EmulatorInstance.Shutdown();
-				Assert.True(shutdown);
-				sink.OnMessage(new DiagnosticMessage("Shut down emulator."));
-			}
-			finally
-			{
-				setup.Dispose();
-			}
+			sink.OnMessage(new DiagnosticMessage("Shutting down emulator..."));
+			var shutdown = EmulatorInstance.Shutdown();
+			Assert.True(shutdown);
+			sink.OnMessage(new DiagnosticMessage("Shut down emulator."));
         }
     }
 }

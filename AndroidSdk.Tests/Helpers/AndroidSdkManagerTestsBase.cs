@@ -9,7 +9,7 @@ namespace AndroidSdk.Tests;
 /// Base class for tests that require a ready Android SDK fixture.
 /// It only injects SDK dependencies and does not own SDK lifecycle/setup state.
 /// </summary>
-[Collection(AndroidSdkManagerCollection.Name)]
+[Collection(nameof(AndroidSdkManagerCollection))]
 public abstract class AndroidSdkManagerTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
 	: TestsBase(outputHelper)
 {

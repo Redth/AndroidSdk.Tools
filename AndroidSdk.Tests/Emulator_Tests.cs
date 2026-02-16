@@ -8,7 +8,10 @@ namespace AndroidSdk.Tests;
 /// <summary>
 /// Emulator lifecycle tests that reuse a one-time prepared AVD/image fixture.
 /// </summary>
-public class Emulator_Tests : EmulatorTestsBase, IClassFixture<EmulatorTestsBase.AvdCreateFixture>
+[Collection(nameof(AndroidSdkManagerCollection))]
+public class Emulator_Tests :
+	EmulatorTestsBase,
+	IClassFixture<EmulatorTestsBase.AvdCreateFixture>
 {
 	public Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, AvdCreateFixture setup)
 		: base(outputHelper, fixture)

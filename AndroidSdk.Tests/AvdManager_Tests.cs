@@ -11,7 +11,7 @@ namespace AndroidSdk.Tests;
 /// Validates create/list/delete and locator-adjacent behaviors while isolating AVD home state per test.
 /// </summary>
 public class AvdManager_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-	: AvdManagerTestsBase(outputHelper, fixture), IClassFixture<AvdManager_Tests.OneTimeSetup>
+	: AndroidSdkManagerTestsBase(outputHelper, fixture), IClassFixture<AvdManager_Tests.OneTimeSetup>
 {
 	static readonly string TestAvdPackageId =
 		RuntimeInformation.ProcessArchitecture == Architecture.Arm64

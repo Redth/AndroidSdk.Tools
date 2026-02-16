@@ -2,14 +2,17 @@ using System;
 using System.IO;
 using Xunit;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace AndroidSdk.Tests;
 
 /// <summary>
 /// Booted emulator operation tests (identity, install/uninstall, and app launch).
 /// </summary>
-public class EmulatorOperations_Tests : EmulatorTestsBase, IClassFixture<EmulatorTestsBase.EmulatorBootFixture>
+[Collection(nameof(AndroidSdkManagerCollection))]
+public class EmulatorOperations_Tests :
+    EmulatorTestsBase,
+    IClassFixture<EmulatorTestsBase.AvdCreateFixture>,
+    IClassFixture<EmulatorTestsBase.EmulatorBootFixture>
 {
     const string StaticAppPackageName = "com.companyname.mauiapp12345";
 
