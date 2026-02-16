@@ -1,93 +1,94 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.IO;
 using Xunit;
 
 namespace AndroidSdk.Tests;
 
+/// <summary>
+/// Tests AVD location precedence and AVD file discovery behavior.
+/// </summary>
 public class AvdLocator_Tests
 {
 	[Fact]
 	public void LocatedPathForAndroidSdkHomeIncludesDotAndroid()
 	{
-		var oldVal = Environment.GetEnvironmentVariable("ANDROID_SDK_HOME");
-
-		var tempRoot = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdLocator_Tests), nameof(LocatedPathForAndroidSdkHomeIncludesDotAndroid));
+		var tempRoot = CreateTempRoot(nameof(LocatedPathForAndroidSdkHomeIncludesDotAndroid));
 		var expectedPath = Path.Combine(tempRoot, ".android", "avd");
 		Directory.CreateDirectory(expectedPath);
+		using var envVars = new EnvironmentVariablesScope(
+			("ANDROID_AVD_ROOT", null),
+			("ANDROID_AVD_HOME", null),
+			("ANDROID_USER_HOME", null),
+			("ANDROID_PREFS_ROOT", null),
+			("ANDROID_SDK_HOME", tempRoot));
 
 		try
 		{
-			Environment.SetEnvironmentVariable("ANDROID_SDK_HOME", tempRoot);
-
 			var l = new AvdLocator();
 			var paths = l.PreferredPaths();
 
-			Assert.Contains(expectedPath, paths);
+			Assert.Equal(expectedPath, paths[0]);
 		}
 		finally
 		{
-			Environment.SetEnvironmentVariable("ANDROID_SDK_HOME", oldVal);
-			if (Directory.Exists(tempRoot))
-				Directory.Delete(tempRoot, true);
+			CleanupDirectory(tempRoot);
 		}
 	}
 
 	[Fact]
 	public void LocatedPathForAndroidPrefsRootIncludesDotAndroid()
 	{
-		var oldVal = Environment.GetEnvironmentVariable("ANDROID_PREFS_ROOT");
-
-		var tempRoot = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdLocator_Tests), nameof(LocatedPathForAndroidPrefsRootIncludesDotAndroid));
+		var tempRoot = CreateTempRoot(nameof(LocatedPathForAndroidPrefsRootIncludesDotAndroid));
 		var expectedPath = Path.Combine(tempRoot, ".android", "avd");
 		Directory.CreateDirectory(expectedPath);
+		using var envVars = new EnvironmentVariablesScope(
+			("ANDROID_AVD_ROOT", null),
+			("ANDROID_AVD_HOME", null),
+			("ANDROID_USER_HOME", null),
+			("ANDROID_PREFS_ROOT", tempRoot));
 
 		try
 		{
-			Environment.SetEnvironmentVariable("ANDROID_PREFS_ROOT", tempRoot);
-
 			var l = new AvdLocator();
 			var paths = l.PreferredPaths();
 
-			Assert.Contains(expectedPath, paths);
+			Assert.Equal(expectedPath, paths[0]);
 		}
 		finally
 		{
-			Environment.SetEnvironmentVariable("ANDROID_PREFS_ROOT", oldVal);
-			if (Directory.Exists(tempRoot))
-				Directory.Delete(tempRoot, true);
+			CleanupDirectory(tempRoot);
 		}
 	}
 
 	[Fact]
 	public void LocatedPathForAndroidUserHomeUsesAvdSuffix()
 	{
-		var oldVal = Environment.GetEnvironmentVariable("ANDROID_USER_HOME");
-
-		var tempRoot = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdLocator_Tests), nameof(LocatedPathForAndroidUserHomeUsesAvdSuffix));
+		var tempRoot = CreateTempRoot(nameof(LocatedPathForAndroidUserHomeUsesAvdSuffix));
 		var expectedPath = Path.Combine(tempRoot, "avd");
 		Directory.CreateDirectory(expectedPath);
+		using var envVars = new EnvironmentVariablesScope(
+			("ANDROID_AVD_ROOT", null),
+			("ANDROID_AVD_HOME", null),
+			("ANDROID_USER_HOME", tempRoot));
 
 		try
 		{
-			Environment.SetEnvironmentVariable("ANDROID_USER_HOME", tempRoot);
-
 			var l = new AvdLocator();
 			var paths = l.PreferredPaths();
 
-			Assert.Contains(expectedPath, paths);
+			Assert.Equal(expectedPath, paths[0]);
 		}
 		finally
 		{
-			Environment.SetEnvironmentVariable("ANDROID_USER_HOME", oldVal);
-			if (Directory.Exists(tempRoot))
-				Directory.Delete(tempRoot, true);
+			CleanupDirectory(tempRoot);
 		}
 	}
 
 	[Fact]
 	public void ListAvdsFindsAvdsFromFileSystem()
 	{
-		var tempRoot = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdLocator_Tests), nameof(ListAvdsFindsAvdsFromFileSystem));
+		var tempRoot = CreateTempRoot(nameof(ListAvdsFindsAvdsFromFileSystem));
 		var avdHome = Path.Combine(tempRoot, "avd-home");
 
 		// Create a fake AVD structure
@@ -108,8 +109,16 @@ public class AvdLocator_Tests
 		}
 		finally
 		{
-			if (Directory.Exists(tempRoot))
-				Directory.Delete(tempRoot, true);
+			CleanupDirectory(tempRoot);
 		}
+	}
+
+	static string CreateTempRoot(string testName)
+		=> Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AvdLocator_Tests), testName);
+
+	static void CleanupDirectory(string path)
+	{
+		if (Directory.Exists(path))
+			Directory.Delete(path, true);
 	}
 }

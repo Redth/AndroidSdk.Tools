@@ -493,7 +493,6 @@ namespace AndroidSdk
 			return r.StandardOutput;
 		}
 
-
 		public void ScreenCapture(FileInfo saveToLocalFile, string adbSerial = null)
 		{
 			//adb shell screencap / sdcard / screen.png
@@ -632,7 +631,7 @@ namespace AndroidSdk
 		{
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
-			return Shell("monkey -p {packageName} -v 1", adbSerial);
+			return Shell($"monkey -p {packageName} -v 1", adbSerial);
 		}
 	}
 }

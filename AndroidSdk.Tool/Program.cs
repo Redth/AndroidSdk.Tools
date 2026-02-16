@@ -86,6 +86,10 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "device", "info", "--device 172.22.100.90" })
 						.WithExample(new[] { "device", "info", "--device emulator.*" })
 						.WithExample(new[] { "device", "info", "--device emulator.* --property ro.product.cpu.abi" });
+					sdkBranch.AddCommand<DevicePackagesCommand>("packages")
+						.WithDescription("Lists installed packages on a device")
+						.WithExample(new[] { "device", "packages" })
+						.WithExample(new[] { "device", "packages", "--format json" });
 					sdkBranch.AddCommand<DeviceInstallCommand>("install")
 						.WithDescription("Installs a package")
 						.WithExample(new[] { "device", "install", "--package com.example.App.apk" })
@@ -96,6 +100,14 @@ namespace AndroidSdk.Tool
 						.WithDescription("Uninstalls a package")
 						.WithExample(new[] { "device", "uninstall", "--package com.example.App" })
 						.WithExample(new[] { "device", "uninstall", "--package com.example.App --keep-data" });
+					sdkBranch.AddCommand<DeviceLaunchCommand>("launch")
+						.WithDescription("Launches an app on a device")
+						.WithExample(new[] { "device", "launch", "--package com.example.App" })
+						.WithExample(new[] { "device", "launch", "--package com.example.App --activity .MainActivity" });
+					sdkBranch.AddCommand<DeviceLogcatCommand>("logcat")
+						.WithDescription("Dumps logcat from a running emulator or device")
+						.WithExample(new[] { "device", "logcat" })
+						.WithExample(new[] { "device", "logcat", "--device emulator-5554 --output logcat.txt" });
 				});
 
 				config.AddBranch("avd", sdkBranch =>
@@ -166,6 +178,7 @@ namespace AndroidSdk.Tool
 	{
 		None,
 		Json,
+		JsonPretty,
 		Xml
 	}
 }

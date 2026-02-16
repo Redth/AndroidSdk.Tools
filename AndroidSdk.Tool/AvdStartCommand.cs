@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -134,6 +133,16 @@ namespace AndroidSdk.Tool
 		[DefaultValue(null)]
 		public bool? GrpcUseJwt { get; set; }
 
+		[Description("Disable all window, transition, and animator animation scales on the emulator (persists for this AVD until changed)")]
+		[CommandOption("--disable-animations")]
+		[DefaultValue(false)]
+		public bool DisableAnimations { get; set; }
+
+		[Description("Wait for guest CPU load average to drop below this threshold before proceeding")]
+		[CommandOption("--cpu-threshold")]
+		[DefaultValue(null)]
+		public double? CpuThreshold { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -211,12 +220,37 @@ namespace AndroidSdk.Tool
 						process?.Shutdown();
 					});
 
-					var timeout = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
+					var timeoutBudget = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
+					var waitStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
 					if (settings.WaitForBoot)
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
-						ok = process.WaitForBootComplete(timeout);
+						ok = process.WaitForBootComplete(timeoutBudget);
+					}
+
+					if (ok && process?.Serial != null)
+					{
+						if (settings.DisableAnimations)
+						{
+							ctx.Status($"Disabling animations on {settings.Name}...");
+							process.DisableAnimations();
+						}
+
+						if (settings.CpuThreshold.HasValue)
+						{
+							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
+							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(120));
+							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken);
+							if (cpuSettled)
+							{
+								ctx.Status("CPU settled and system stabilized");
+							}
+							else if (!cancellationToken.IsCancellationRequested)
+							{
+								AnsiConsole.MarkupLine("[yellow]Warning: CPU load did not settle within timeout[/]");
+							}
+						}
 					}
 
 					if (settings.WaitForExit)
@@ -240,6 +274,15 @@ namespace AndroidSdk.Tool
 			}
 
 			return Task.FromResult(ok ? 0 : 1);
+		}
+
+		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed, TimeSpan fallback)
+		{
+			if (timeoutBudget == TimeSpan.Zero)
+				return fallback;
+
+			var remaining = timeoutBudget - elapsed;
+			return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
 		}
 	}
 }

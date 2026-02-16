@@ -11,30 +11,23 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class ApkReader_Tests : TestsBase
+public class ApkReader_Tests(ITestOutputHelper outputHelper) : TestsBase(outputHelper)
 {
-	public ApkReader_Tests(ITestOutputHelper outputHelper) : base(outputHelper)
-	{
-		ApkFile = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
-	}
-
-	public readonly string ApkFile;
-
 	[Fact]
 	public void ReadPackageId()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var packageId = reader.ReadManifest().Manifest.PackageId;
 
 		Assert.NotNull(packageId);
-		Assert.Equal("com.companyname.mauiapp12345", packageId);
+		Assert.Equal(StaticAppPackageName, packageId);
 	}
 
 	[Fact]
 	public void ReadVersionName()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var versionName = reader.ReadManifest().Manifest.VersionName;
 
@@ -45,7 +38,7 @@ public class ApkReader_Tests : TestsBase
 	[Fact]
 	public void ReadVersionCode()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var versionCode = reader.ReadManifest().Manifest.VersionCode;
 
@@ -56,7 +49,7 @@ public class ApkReader_Tests : TestsBase
 	[Fact]
 	public void ReadMinSdkVersion()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var minSdkVersion = reader.ReadManifest().Manifest.UsesSdk.MinSdkVersion;
 
@@ -66,21 +59,20 @@ public class ApkReader_Tests : TestsBase
 	[Fact]
 	public void ReadTargetSdkVersion()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var targetSdkVersion = reader.ReadManifest().Manifest.UsesSdk.TargetSdkVersion;
 
-		Assert.Equal(34, targetSdkVersion);
+		Assert.Equal(36, targetSdkVersion);
 	}
 
 	[Fact]
 	public void ReadMaxSdkVersion()
 	{
-		var reader = new ApkReader(ApkFile);
+		var reader = new ApkReader(StaticAppApkPath);
 
 		var maxSdkVersion = reader.ReadManifest().Manifest.UsesSdk.MaxSdkVersion;
 
 		Assert.Equal(0, maxSdkVersion);
 	}
-
 }
