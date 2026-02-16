@@ -8,7 +8,7 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class SdkManager_CmdLineToolsVersionComparer_Tests : TestsBase, IDisposable
+public class SdkManager_CmdLineToolsVersionComparer_Tests : TestsBase
 {
 	private readonly DirectoryInfo tempDir;
 
@@ -21,9 +21,11 @@ public class SdkManager_CmdLineToolsVersionComparer_Tests : TestsBase, IDisposab
 		tempDir = new DirectoryInfo(tempPath);
 	}
 
-	public void Dispose()
+	public override void Dispose()
 	{
 		DeleteDir(tempDir.FullName);
+
+		base.Dispose();
 	}
 
 	[Theory]

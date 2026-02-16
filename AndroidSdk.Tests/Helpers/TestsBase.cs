@@ -12,18 +12,49 @@ namespace AndroidSdk.Tests;
 /// <summary>
 /// A base class for all tests in this assembly.
 /// </summary>
-public abstract class TestsBase
+public abstract class TestsBase : IDisposable
 {
-	protected const string? SkipOnCI =
+	protected const bool IsCI =
 #if IS_ON_CI
-		"This test cannot run on CI.";
+		true;
 #else
-		null;
+		false;
 #endif
+
+	protected const string? SkipOnCI =
+		IsCI ? "This test cannot run on CI." : null;
+
+	private readonly string logFile;
 
 	public TestsBase(ITestOutputHelper outputHelper)
 	{
 		OutputHelper = outputHelper;
+
+		logFile = Path.GetTempFileName();
+		Environment.SetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", logFile);
+	}
+
+	public virtual void Dispose()
+	{
+		if (!File.Exists(logFile))
+			return;
+
+		OutputHelper.WriteLine($"Process runner log ({logFile}):");
+		foreach (var line in File.ReadLines(logFile))
+		{
+			OutputHelper.WriteLine(line);
+		}
+
+		try
+		{
+			File.Delete(logFile);
+		}
+		catch
+		{
+			OutputHelper.WriteLine($"Failed to delete log file {logFile}");
+		}
+
+		Environment.SetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", "");
 	}
 
 	public ITestOutputHelper OutputHelper { get; private set; }

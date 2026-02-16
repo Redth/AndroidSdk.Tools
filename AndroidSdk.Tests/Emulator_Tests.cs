@@ -7,8 +7,8 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-	: EmulatorTestsBase(outputHelper, fixture)
+public class Emulator_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture, EmulatorTestsBase.OneTimeSetup setup)
+	: EmulatorTestsBase(outputHelper, fixture), IClassFixture<EmulatorTestsBase.OneTimeSetup>
 {
 	[Fact]
 	public void ListAvdsOnlyContainsCreatedAvd()

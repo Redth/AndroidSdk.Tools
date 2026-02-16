@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class SdkManager_Download_Tests : TestsBase, IDisposable
+public class SdkManager_Download_Tests : TestsBase
 {
 	string tempSdkPath;
 
@@ -17,10 +17,12 @@ public class SdkManager_Download_Tests : TestsBase, IDisposable
 		tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(SdkManager_Download_Tests));
 	}
 
-	public void Dispose()
+	public override void Dispose()
 	{
 		if (Directory.Exists(tempSdkPath))
 			Directory.Delete(tempSdkPath, true);
+
+		base.Dispose();
 	}
 
 	[Theory]

@@ -104,6 +104,10 @@ namespace AndroidSdk.Tool
 						.WithDescription("Launches an app on a device")
 						.WithExample(new[] { "device", "launch", "--package com.example.App" })
 						.WithExample(new[] { "device", "launch", "--package com.example.App --activity .MainActivity" });
+					sdkBranch.AddCommand<DeviceLogcatCommand>("logcat")
+						.WithDescription("Dumps logcat from a running emulator or device")
+						.WithExample(new[] { "device", "logcat" })
+						.WithExample(new[] { "device", "logcat", "--device emulator-5554 --output logcat.txt" });
 				});
 
 				config.AddBranch("avd", sdkBranch =>
@@ -128,10 +132,6 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "avd", "start", "--name MyEmulator" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot", "--no-snapshot" });
-					sdkBranch.AddCommand<AvdLogcatCommand>("logcat")
-						.WithDescription("Dumps logcat from a running emulator or device")
-						.WithExample(new[] { "avd", "logcat" })
-						.WithExample(new[] { "avd", "logcat", "--output", "logcat.txt" });
 				});
 
 				config.AddBranch("apk", sdkBranch =>

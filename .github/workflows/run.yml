@@ -181,7 +181,7 @@ jobs:
       timeout-minutes: 10
       run: |
         for i in $(seq 1 30); do
-          dotnet $TOOL avd logcat --output artifacts/logcat.log
+          dotnet $TOOL device logcat --output artifacts/logcat.log
           if grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/logcat.log; then
             echo "  ✅ Marker found on attempt $i"
             break
