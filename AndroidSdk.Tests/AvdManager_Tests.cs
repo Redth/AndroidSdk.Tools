@@ -19,7 +19,7 @@ public class AvdManager_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerF
 			: "system-images;android-30;google_apis;x86_64";
 
 	readonly string TestEmulatorName = "TestAvd" + Guid.NewGuid().ToString("N").Substring(0, 6);
-	readonly AvdHomeScope avdHomeScope = new($"{nameof(AvdManager_Tests)}.{Guid.NewGuid():N}");
+	readonly AvdHomeScope avdHomeScope = new(outputHelper, $"{nameof(AvdManager_Tests)}.{Guid.NewGuid():N}");
 
 	/// <summary>
 	/// One-time package setup.

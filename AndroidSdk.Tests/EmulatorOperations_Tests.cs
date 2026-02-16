@@ -32,13 +32,11 @@ public class EmulatorOperations_Tests :
     {
         try
         {
-            OutputHelper.WriteLine($"Uninstalling static app {StaticAppPackageName}...");
             Sdk.Adb.Uninstall(StaticAppPackageName, adbSerial: boot.EmulatorInstance.Serial);
-            OutputHelper.WriteLine("Uninstalled static app.");
         }
-        catch (Exception ex)
+        catch
         {
-            OutputHelper.WriteLine($"Failed to uninstall static app: {ex}");
+            // Ignore any exceptions from uninstall attempts in Dispose, as the app may not have been installed.
         }
 
         base.Dispose();

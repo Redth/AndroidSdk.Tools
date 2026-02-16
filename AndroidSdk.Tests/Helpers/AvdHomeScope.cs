@@ -1,6 +1,8 @@
 #nullable enable
 using System;
 using System.IO;
+using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace AndroidSdk.Tests;
 
@@ -10,12 +12,29 @@ namespace AndroidSdk.Tests;
 /// </summary>
 public sealed class AvdHomeScope : IDisposable
 {
+	readonly IMessageSink? sink;
+	readonly ITestOutputHelper? output;
+
 	readonly string? previousAndroidAvdHome;
 	readonly string tempAndroidAvdHome;
 
-	public AvdHomeScope(string? testId = null)
+	public AvdHomeScope(IMessageSink messageSink, string? testId = null)
+		: this(messageSink, null, testId)
 	{
+	}
+
+	public AvdHomeScope(ITestOutputHelper outputHelper, string? testId = null)
+		: this(null, outputHelper, testId)
+	{
+	}
+
+	AvdHomeScope(IMessageSink? messageSink, ITestOutputHelper? outputHelper, string? testId = null)
+	{
+		sink = messageSink;
+		output = outputHelper;
+
 		previousAndroidAvdHome = Environment.GetEnvironmentVariable("ANDROID_AVD_HOME");
+		Log($"Previous ANDROID_AVD_HOME: '{previousAndroidAvdHome}'");
 
 		var tempRoot = Path.GetTempPath();
 		if (!string.IsNullOrEmpty(previousAndroidAvdHome) && previousAndroidAvdHome.StartsWith(tempRoot, StringComparison.Ordinal))
@@ -27,10 +46,16 @@ public sealed class AvdHomeScope : IDisposable
 		tempAndroidAvdHome = Path.Combine(tempRoot, "AndroidSdk.Tests", nameof(AvdHomeScope), testId, "android-avd-home");
 
 		if (Directory.Exists(tempAndroidAvdHome))
+		{
 			Directory.Delete(tempAndroidAvdHome, true);
+			Log($"Deleted existing temporary AVD home directory '{tempAndroidAvdHome}'");
+		}
+
 		Directory.CreateDirectory(tempAndroidAvdHome);
+		Log($"Created temporary AVD home directory '{tempAndroidAvdHome}'");
 
 		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", tempAndroidAvdHome);
+		Log($"Set ANDROID_AVD_HOME to '{tempAndroidAvdHome}'");
 	}
 
 	public string AndroidAvdHome => tempAndroidAvdHome;
@@ -38,8 +63,18 @@ public sealed class AvdHomeScope : IDisposable
 	public void Dispose()
 	{
 		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", previousAndroidAvdHome);
+		Log($"Restored ANDROID_AVD_HOME to '{previousAndroidAvdHome}'");
 
 		if (Directory.Exists(tempAndroidAvdHome))
+		{
 			Directory.Delete(tempAndroidAvdHome, true);
+			Log($"Deleted temporary AVD home directory '{tempAndroidAvdHome}'");
+		}
+	}
+
+	void Log(string message)
+	{
+		sink?.OnMessage(new DiagnosticMessage(message));
+		output?.WriteLine(message);
 	}
 }

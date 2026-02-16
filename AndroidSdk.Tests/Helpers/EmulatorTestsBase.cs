@@ -62,7 +62,7 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 		{
 			sdk = fixture.Sdk;
 			sink = messageSink;
-			avdHomeScope = new AvdHomeScope($"{nameof(EmulatorTestsBase)}.{nameof(AvdCreateFixture)}.{Guid.NewGuid():N}");
+			avdHomeScope = new AvdHomeScope(messageSink, $"{nameof(EmulatorTestsBase)}.{nameof(AvdCreateFixture)}.{Guid.NewGuid():N}");
 
 			sink.OnMessage(new DiagnosticMessage($"Installing system image {TestAvdPackageId} for emulator tests..."));
 			var installOk = sdk.SdkManager.Install(TestAvdPackageId);
@@ -120,7 +120,6 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
         {
             sink = messageSink;
             sdk = fixture.Sdk;
-			new AvdHomeScope($"{nameof(EmulatorTestsBase)}.{nameof(AvdCreateFixture)}.{Guid.NewGuid():N}");
 
             sink.OnMessage(new DiagnosticMessage("Starting emulator for tests that require a booted emulator..."));
             EmulatorInstance = sdk.Emulator.Start(TestEmulatorName, CreateHeadlessOptions(port: 5554));
