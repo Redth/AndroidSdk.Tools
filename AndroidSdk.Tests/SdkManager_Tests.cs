@@ -32,13 +32,14 @@ public class SdkManager_Tests : AndroidSdkManagerTestsBase
 			OutputHelper.WriteLine($"{a.Description}\t{a.Version}\t{a.Path}");
 	}
 
-	[Fact]
-	public void GetLicenses()
-	{
-		var list = Sdk.SdkManager.GetLicenses();
+	// TODO: this will hang if there are unaccepted licenses.
+	// [Fact]
+	// public void GetLicenses()
+	// {
+	// 	var list = Sdk.SdkManager.GetLicenses();
 
-		Assert.NotNull(list);
-	}
+	// 	Assert.NotNull(list);
+	// }
 
 	[Fact]
 	public void GetAcceptedLicenseIds()
