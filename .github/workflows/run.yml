@@ -145,17 +145,19 @@ jobs:
     - name: Validate Launch test app
       timeout-minutes: 10
       run: |
+        FOUND=0
         for i in $(seq 1 30); do
           dotnet $TOOL device logcat --output artifacts/logcat.log
           if grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/logcat.log; then
             echo "  ✅ Marker found on attempt $i"
+            FOUND=1
             break
           fi
           echo "  Attempt $i/30 - marker not yet in logcat, waiting 5s..."
           sleep 5
         done
-        if [ ! -s artifacts/logcat.log ]; then
-          echo "❌ logcat.txt was not created or is empty"
+        if [ "$FOUND" -ne 1 ]; then
+          echo "❌ Marker not found in logcat after 30 attempts"
           cat artifacts/logcat.log
           exit 1
         fi
