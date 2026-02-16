@@ -6,7 +6,6 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-[Collection(AndroidSdkManagerCollection.Name)]
 public class SdkManager_Tests : AndroidSdkManagerTestsBase
 {
 	public SdkManager_Tests(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)

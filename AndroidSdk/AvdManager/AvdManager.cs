@@ -347,11 +347,6 @@ namespace AndroidSdk
 			proc.StartInfo.Environment["JAVA_TOOL_OPTIONS"] = $"-Dcom.android.sdkmanager.toolsdir=\"{toolPath}\"";
 			// Set the classpath to all the .jar files we found in the lib folder
 			proc.StartInfo.Environment["CLASSPATH"] = classPath;
-			// Keep avdmanager aligned with the caller's AVD-home selection.
-			var androidAvdHome = Environment.GetEnvironmentVariable("ANDROID_AVD_HOME");
-			if (string.IsNullOrEmpty(androidAvdHome))
-				androidAvdHome = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android", "avd");
-			proc.StartInfo.Environment["ANDROID_AVD_HOME"] = androidAvdHome;
 
 			// Java.exe
 			proc.StartInfo.FileName = java.FullName;

@@ -1,17 +1,29 @@
 #nullable enable
+using System;
+using System.Linq;
+using System.Runtime.InteropServices;
+using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace AndroidSdk.Tests;
 
 public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-	: AndroidSdkManagerTestsBase(outputHelper, fixture)
+	: AvdManagerTestsBase(outputHelper, fixture)
 {
+	protected static readonly string TestEmulatorName =
+		string.Concat("TestEmu", Guid.NewGuid().ToString("N").AsSpan(0, 6));
+
+	protected static readonly string TestAvdPackageId =
+		RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+			? "system-images;android-31;google_apis;arm64-v8a"
+			: "system-images;android-31;google_apis;x86_64";
+
 	protected static Emulator.EmulatorStartOptions CreateHeadlessOptions(uint? port = null, int? memoryMegabytes = null, int? partitionSizeMegabytes = null)
 		=> new()
 		{
 			Port = port,
-			NoWindow = IsCI,
+			NoWindow = IsCI, // Always headless on CI, but allow non-CI to specify if they want headless or not
 			Gpu = "swiftshader_indirect",
 			NoSnapshot = true,
 			NoAudio = true,
@@ -20,22 +32,47 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 			PartitionSizeMegabytes = partitionSizeMegabytes,
 		};
 
-	protected static void LogSdkToolException(IMessageSink sink, string action, SdkToolFailedExitException ex)
+	public class OneTimeSetup : IDisposable
 	{
-		sink.OnMessage(new DiagnosticMessage($"{action} failed. ExitCode={ex.ExitCode} Message={ex.Message}"));
+		readonly AndroidSdkManager sdk;
+		readonly IMessageSink sink;
 
-		if (ex.StdErr?.Length > 0)
+		public OneTimeSetup(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
 		{
-			sink.OnMessage(new DiagnosticMessage($"{action} stderr:"));
-			foreach (var line in ex.StdErr)
-				sink.OnMessage(new DiagnosticMessage(line));
+			sdk = fixture.Sdk;
+			sink = messageSink;
+
+			sink.OnMessage(new DiagnosticMessage($"Installing system image {TestAvdPackageId} for emulator tests..."));
+			var installOk = sdk.SdkManager.Install(TestAvdPackageId);
+			Assert.True(installOk);
+			sink.OnMessage(new DiagnosticMessage("Installed system image."));
+
+			sink.OnMessage(new DiagnosticMessage("Asserting system image is installed..."));
+			var list = sdk.SdkManager.List();
+			Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+			sink.OnMessage(new DiagnosticMessage("Asserted system image is installed."));
+
+			sink.OnMessage(new DiagnosticMessage($"Creating AVD {TestEmulatorName} for emulator tests..."));
+			sdk.AvdManager.Create(TestEmulatorName, TestAvdPackageId, "pixel", force: true);
+			Assert.Contains(sdk.AvdManager.ListAvds(), a => a.Name == TestEmulatorName);
+			sink.OnMessage(new DiagnosticMessage("Created AVD."));
 		}
 
-		if (ex.StdOut?.Length > 0)
+		public virtual void Dispose()
 		{
-			sink.OnMessage(new DiagnosticMessage($"{action} stdout:"));
-			foreach (var line in ex.StdOut)
-				sink.OnMessage(new DiagnosticMessage(line));
+			sink.OnMessage(new DiagnosticMessage($"Deleting AVD {TestEmulatorName}..."));
+			sdk.AvdManager.Delete(TestEmulatorName);
+			sink.OnMessage(new DiagnosticMessage("Deleted AVD."));
+
+			sink.OnMessage(new DiagnosticMessage($"Uninstalling system image {TestAvdPackageId}..."));
+			var uninstallOk = sdk.SdkManager.Uninstall(TestAvdPackageId);
+			Assert.True(uninstallOk);
+			sink.OnMessage(new DiagnosticMessage("Uninstalled system image."));
+
+			sink.OnMessage(new DiagnosticMessage("Asserting system image is uninstalled..."));
+			var list = sdk.SdkManager.List();
+			Assert.DoesNotContain(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+			sink.OnMessage(new DiagnosticMessage("Asserted system image is uninstalled."));
 		}
 	}
 }
