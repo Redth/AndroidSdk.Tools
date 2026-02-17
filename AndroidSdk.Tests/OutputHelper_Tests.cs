@@ -132,48 +132,17 @@ public class OutputHelper_Tests
         Assert.Equal(expected, actual);
     }
 
-    [Fact(Skip = "Spectre.Console table output capture is unreliable in this test environment")]
+    [Fact]
     public void Output_Items_Table_Formats_Correctly()
     {
         var data = new[] { new TestData { Name = "A", Value = 1 } };
         
         var actual = CaptureOutputItems(data, OutputFormat.None);
         
-        // If CaptureOutputItems returns empty, maybe AnsiConsole.Write(table) didn't write to Console.Out?
-        // But Output_Item_Table_Formats_Correctly DID write something.
-        // Let's check logic differences.
-        // CaptureOutputItems calls OutputHelper.Output<T>(items, ...) which calls OutputTable<T>.
-        // CaptureOutputItem calls OutputHelper.Output<T>(item, ...) which calls OutputObject<T>.
-        
-        // OutputTable:
-        // var table = new Table();
-        // foreach (var c in columns) table.AddColumn(c);
-        // foreach (var i in items) ... table.AddRow(row);
-        // AnsiConsole.Write(table);
-        
-        // Maybe AnsiConsole detects it's not a TTY and doesn't write anything? 
-        // But it worked for OutputObject.
-        
-        // Let's assert what we can. If actual is empty, something is wrong with capture or AnsiConsole configuration.
-        // But since the user wants "tests for ALL the options", providing best effort coverage is good.
-        // If it's empty, we might skip assertion or try to fix capture.
-        // But wait, Output_Item_Table_Formats_Correctly passed "Captured: ..." showing it DID capture.
-        
-        if (!string.IsNullOrEmpty(actual))
-        {
-            Assert.Contains("Name", actual);
-            Assert.Contains("Value", actual);
-            Assert.Contains("A", actual);
-            Assert.Contains("1", actual);
-        }
-        else
-        {
-            // If empty, fail to investigate why, unless we accept it for now.
-            // But let's try to fix it. Why would OutputTable be empty?
-            // Maybe exception happened and was swallowed?
-            // OutputHelper.Output wraps nothing in try-catch.
-            Assert.Fail("Captured output was empty for Output_Items_Table_Formats_Correctly");
-        }
+        Assert.Contains("Name", actual);
+        Assert.Contains("Value", actual);
+        Assert.Contains("A", actual);
+        Assert.Contains("1", actual);
     }
 
     [Fact]
@@ -182,61 +151,99 @@ public class OutputHelper_Tests
         var data = new TestData { Name = "A", Value = 1 };
         
         var actual = CaptureOutputItem(data, OutputFormat.None);
-        
+
         Assert.Contains("Property", actual);
         Assert.Contains("Value", actual);
         Assert.Contains("Name", actual);
         Assert.Contains("A", actual);
         Assert.Contains("1", actual);
-        // Don't check for "A:1" as table separates them
     }
 
     private string CaptureOutput<T>(T data, OutputFormat format)
     {
-        var oldOut = Console.Out;
         var sw = new StringWriter();
+        
+        // Capture Console.Out (for Json/Xml/None)
+        var oldOut = Console.Out;
+        Console.SetOut(sw);
+        
+        // Also capture AnsiConsole (for Table/None that might use it)
+        var oldConsole = AnsiConsole.Console;
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings 
+        { 
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Out = new AnsiConsoleOutput(sw),
+            Interactive = InteractionSupport.No,
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false }
+        });
+
         try
         {
-            Console.SetOut(sw);
             OutputHelper.Output(data, format);
             return sw.ToString();
         }
         finally
         {
             Console.SetOut(oldOut);
+            AnsiConsole.Console = oldConsole;
         }
     }
 
     private string CaptureOutputItems<T>(IEnumerable<T> data, OutputFormat format)
     {
-        var oldOut = Console.Out;
         var sw = new StringWriter();
+        
+        var oldOut = Console.Out;
+        Console.SetOut(sw);
+        
+        var oldConsole = AnsiConsole.Console;
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings 
+        { 
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Out = new AnsiConsoleOutput(sw),
+            Interactive = InteractionSupport.No,
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false }
+        });
+
         try
         {
-            Console.SetOut(sw);
             // Explicitly call the IEnumerable overload
             OutputHelper.Output<T>(data, format, new[] { "Name", "Value" }, i => 
             {
                 var p = i as TestData;
                 return p != null ? new[] { p.Name, p.Value.ToString() } : new[] { i.ToString(), "" };
             });
-            // Force flush just in case
             sw.Flush();
             return sw.ToString();
         }
         finally
         {
             Console.SetOut(oldOut);
+            AnsiConsole.Console = oldConsole;
         }
     }
     
     private string CaptureOutputItem<T>(T data, OutputFormat format)
     {
-        var oldOut = Console.Out;
         var sw = new StringWriter();
+        
+        var oldOut = Console.Out;
+        Console.SetOut(sw);
+        
+        var oldConsole = AnsiConsole.Console;
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings 
+        { 
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Out = new AnsiConsoleOutput(sw),
+            Interactive = InteractionSupport.No,
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false }
+        });
+
         try
         {
-            Console.SetOut(sw);
             OutputHelper.Output(data, format, new[] { "Name", "Value" }, i => 
             {
                 var p = i as TestData;
@@ -247,6 +254,7 @@ public class OutputHelper_Tests
         finally
         {
             Console.SetOut(oldOut);
+            AnsiConsole.Console = oldConsole;
         }
     }
 }
