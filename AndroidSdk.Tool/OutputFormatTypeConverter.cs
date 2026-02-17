@@ -11,9 +11,17 @@ namespace AndroidSdk.Tool
 
 		public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
 		{
-			var str = value.ToString();
+			var str = value?.ToString();
+
+			if (string.IsNullOrEmpty(str))
+				return OutputFormat.None;
+
 			if (str.Equals("json", StringComparison.OrdinalIgnoreCase))
 				return OutputFormat.Json;
+
+			if (str.Equals("jsonpretty", StringComparison.OrdinalIgnoreCase)
+				|| str.Equals("json-pretty", StringComparison.OrdinalIgnoreCase))
+				return OutputFormat.JsonPretty;
 
 			if (str.Equals("xml", StringComparison.OrdinalIgnoreCase))
 				return OutputFormat.Xml;

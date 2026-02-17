@@ -166,6 +166,7 @@ namespace AndroidSdk.Tool
 	{
 		None,
 		Json,
+		JsonPretty,
 		Xml
 	}
 }

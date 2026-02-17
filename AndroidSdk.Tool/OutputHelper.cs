@@ -10,9 +10,9 @@ using System.Xml.Serialization;
 
 namespace AndroidSdk.Tool
 {
-	static class OutputHelper
+	public static class OutputHelper
 	{
-		internal static void Output<T>(IEnumerable<T> items, OutputFormat? format, string[] columns, Func<T, string[]> getRow)
+		public static void Output<T>(IEnumerable<T> items, OutputFormat? format, string[] columns, Func<T, string[]> getRow)
 		{
 			if ((format ?? OutputFormat.None) == OutputFormat.None)
 			{
@@ -21,13 +21,15 @@ namespace AndroidSdk.Tool
 			else
 			{
 				if (format == OutputFormat.Json)
-					AnsiConsole.WriteLine(JsonSerialize<IEnumerable<T>>(items));
+					Console.WriteLine(JsonSerialize<IEnumerable<T>>(items));
+				else if (format == OutputFormat.JsonPretty)
+					Console.WriteLine(JsonSerialize<IEnumerable<T>>(items, indented: true));
 				else if (format == OutputFormat.Xml)
-					AnsiConsole.WriteLine(XmlSerialize<IEnumerable<T>>(items));
+					Console.WriteLine(XmlSerialize<IEnumerable<T>>(items));
 			}
 		}
 
-		internal static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
+		public static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
 		{
 			if ((format ?? OutputFormat.None) == OutputFormat.None)
 			{
@@ -36,13 +38,15 @@ namespace AndroidSdk.Tool
 			else
 			{
 				if (format == OutputFormat.Json)
-					AnsiConsole.WriteLine(JsonSerialize<T>(item));
+					Console.WriteLine(JsonSerialize<T>(item));
+				else if (format == OutputFormat.JsonPretty)
+					Console.WriteLine(JsonSerialize<T>(item, indented: true));
 				else if (format == OutputFormat.Xml)
-					AnsiConsole.WriteLine(XmlSerialize<T>(item));
+					Console.WriteLine(XmlSerialize<T>(item));
 			}
 		}
 
-		internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
+		public static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
 		{
 			var table = new Table();
 
@@ -59,7 +63,7 @@ namespace AndroidSdk.Tool
 			AnsiConsole.Write(table);
 		}
 
-		internal static void OutputObject<T>(T item, string[] properties, Func<T, string[]> getValues)
+		public static void OutputObject<T>(T item, string[] properties, Func<T, string[]> getValues)
 		{
 			var table = new Table();
 			var values = getValues(item);
@@ -79,7 +83,7 @@ namespace AndroidSdk.Tool
 			AnsiConsole.Write(table);
 		}
 
-		internal static void Output<T>(T data, OutputFormat outputFormat)
+		public static void Output<T>(T data, OutputFormat outputFormat)
 		{
 			var r = string.Empty;
 			switch (outputFormat)
@@ -99,6 +103,9 @@ namespace AndroidSdk.Tool
 				case OutputFormat.Json:
 					r = JsonSerialize<T>(data);
 					break;
+				case OutputFormat.JsonPretty:
+					r = JsonSerialize<T>(data, indented: true);
+					break;
 				case OutputFormat.Xml:
 					r = XmlSerialize<T>(data);
 					break;
@@ -107,9 +114,10 @@ namespace AndroidSdk.Tool
 			Console.Write(r);
 		}
 
-		static string JsonSerialize<T>(T obj)
+		static string JsonSerialize<T>(T obj, bool indented = false)
 		{
-			return Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+			var formatting = indented ? Newtonsoft.Json.Formatting.Indented : Newtonsoft.Json.Formatting.None;
+			return Newtonsoft.Json.JsonConvert.SerializeObject(obj, formatting);
 
 			//var s = new DataContractJsonSerializerSettings();
 			//s.UseSimpleDictionaryFormat = true;
