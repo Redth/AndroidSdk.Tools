@@ -20,7 +20,7 @@ namespace AndroidSdk.Tool
 		[CommandOption("-h|--home")]
 		public string Home { get; set; }
 
-		[Description("Stop the running emulator before deleting (never fails)")]
+		[Description("Stop the running emulator (if any) before deleting and suppress all errors (cleanup mode)")]
 		[CommandOption("--force")]
 		[DefaultValue(false)]
 		public bool Force { get; set; }
