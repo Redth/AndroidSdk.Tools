@@ -9,7 +9,7 @@ namespace AndroidSdk.Tests;
 /// A base class for all tests that will be working with AVDs and want to ensure the
 /// AVD environemnt is clean and free of any previous AVDs.
 /// </summary>
-public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase, IDisposable
+public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase
 {
 	readonly string oldAndroidAvdHome;
 	readonly string tempAndroidAvdHome;
@@ -23,16 +23,18 @@ public abstract class AvdManagerTestsBase : AndroidSdkManagerTestsBase, IDisposa
 		if (!string.IsNullOrEmpty(oldAndroidAvdHome) && oldAndroidAvdHome.StartsWith(tempRoot))
 			throw new InvalidOperationException("ANDROID_AVD_HOME was not un set from a previous test run.");
 
-		tempAndroidAvdHome = Path.Combine(tempRoot, "AndroidSdk.Tests", GetType().Name, "android-avd-home");
+		tempAndroidAvdHome = Path.Combine(tempRoot, "AndroidSdk.Tests", GetType().Name, Guid.NewGuid().ToString("N"), "android-avd-home");
 		RecreateDir(tempAndroidAvdHome);
 
 		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", tempAndroidAvdHome);
 	}
 
-	public virtual void Dispose()
+	public override void Dispose()
 	{
 		Environment.SetEnvironmentVariable("ANDROID_AVD_HOME", oldAndroidAvdHome);
 
 		DeleteDir(tempAndroidAvdHome);
+
+		base.Dispose();
 	}
 }

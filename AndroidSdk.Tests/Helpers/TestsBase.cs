@@ -12,18 +12,62 @@ namespace AndroidSdk.Tests;
 /// <summary>
 /// A base class for all tests in this assembly.
 /// </summary>
-public abstract class TestsBase
+public abstract class TestsBase : IDisposable
 {
-	protected const string? SkipOnCI =
+	protected const bool IsCI =
 #if IS_ON_CI
-		"This test cannot run on CI.";
+		true;
 #else
-		null;
+		false;
 #endif
+
+	protected const string? SkipOnCI =
+		IsCI ? "This test cannot run on CI." : null;
+
+	protected const string StaticAppPackageName = "com.companyname.mauiapp12345";
+
+	protected static readonly string StaticAppApkPath = Path.GetFullPath(Path.Combine(TestDataDirectory, "com.companyname.mauiapp12345-Signed.apk"));
+
+	private readonly string logFile;
+	private readonly IDisposable processRunnerLogPathScope;
 
 	public TestsBase(ITestOutputHelper outputHelper)
 	{
 		OutputHelper = outputHelper;
+
+		logFile = Path.GetTempFileName();
+		processRunnerLogPathScope = new EnvironmentVariablesScope(("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH", logFile));
+	}
+
+	public virtual void Dispose()
+	{
+		try
+		{
+			if (File.Exists(logFile) && new FileInfo(logFile).Length > 0)
+			{
+				OutputHelper.WriteLine($"Process runner log ({logFile}):");
+				foreach (var line in File.ReadLines(logFile))
+					OutputHelper.WriteLine(line);
+			}
+		}
+		finally
+		{
+			try
+			{
+				if (File.Exists(logFile))
+					File.Delete(logFile);
+			}
+			catch (IOException ex)
+			{
+				OutputHelper.WriteLine($"Failed to delete log file {logFile}: {ex.Message}");
+			}
+			catch (UnauthorizedAccessException ex)
+			{
+				OutputHelper.WriteLine($"Failed to delete log file {logFile}: {ex.Message}");
+			}
+
+			processRunnerLogPathScope.Dispose();
+		}
 	}
 
 	public ITestOutputHelper OutputHelper { get; private set; }
@@ -34,15 +78,22 @@ public abstract class TestsBase
 
 	protected void Retry(Func<bool> test, Action action)
 	{
+		Exception? lastException = null;
 		var tries = 10;
 		while (test() && tries > 0)
 		{
 			try
 			{
 				action();
+				lastException = null;
 			}
-			catch
+			catch (IOException ex)
 			{
+				lastException = ex;
+			}
+			catch (UnauthorizedAccessException ex)
+			{
+				lastException = ex;
 			}
 
 			if (test())
@@ -53,7 +104,11 @@ public abstract class TestsBase
 		}
 
 		if (test())
+		{
+			if (lastException is not null)
+				OutputHelper.WriteLine($"Last retry error: {lastException}");
 			Assert.Fail("Timed out trying to perform the action.");
+		}
 	}
 
 	protected void DeleteDir(string dir) =>

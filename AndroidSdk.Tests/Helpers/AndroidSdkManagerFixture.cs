@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,18 +9,18 @@ using Xunit.Sdk;
 
 namespace AndroidSdk.Tests;
 
-public class AndroidSdkManagerFixture : IAsyncLifetime
+/// <summary>
+/// Shared SDK fixture that can use a global SDK when enabled and otherwise
+/// provisions an isolated temp SDK once per collection and
+/// only cleans up SDK directories that it created and owns.
+/// </summary>
+public class AndroidSdkManagerFixture(IMessageSink messageSink) : IAsyncLifetime
 {
+	private const bool TryUsingGlobalSdk = true;
+
 	private string? tempSdkPath;
 
-	public const bool TryUsingGlobalSdk = true;
-
-	public AndroidSdkManagerFixture(IMessageSink messageSink)
-	{
-		MessageSink = messageSink;
-	}
-
-	public IMessageSink MessageSink { get; }
+	public IMessageSink MessageSink { get; } = messageSink;
 
 	public DirectoryInfo AndroidSdkHome { get; private set; } = null!;
 
@@ -32,8 +33,21 @@ public class AndroidSdkManagerFixture : IAsyncLifetime
 
 	public Task DisposeAsync()
 	{
-		if (!string.IsNullOrEmpty(tempSdkPath) && Directory.Exists(tempSdkPath))
+		if (string.IsNullOrEmpty(tempSdkPath) || !Directory.Exists(tempSdkPath))
+			return Task.CompletedTask;
+
+		try
+		{
 			Directory.Delete(tempSdkPath, true);
+		}
+		catch (IOException ex)
+		{
+			MessageSink.OnMessage(new DiagnosticMessage("Failed to delete TEMP android sdk at {0}: {1}", tempSdkPath, ex.Message));
+		}
+		catch (UnauthorizedAccessException ex)
+		{
+			MessageSink.OnMessage(new DiagnosticMessage("Failed to delete TEMP android sdk at {0}: {1}", tempSdkPath, ex.Message));
+		}
 
 		return Task.CompletedTask;
 	}
@@ -56,7 +70,7 @@ public class AndroidSdkManagerFixture : IAsyncLifetime
 
 		if (AndroidSdkHome == null || !AndroidSdkHome.Exists)
 		{
-			tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AndroidSdkManagerFixture), "android-sdk");
+			tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(AndroidSdkManagerFixture), Guid.NewGuid().ToString("N"), "android-sdk");
 
 			Directory.CreateDirectory(tempSdkPath);
 

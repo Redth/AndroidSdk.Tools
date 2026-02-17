@@ -7,20 +7,33 @@ using Xunit.Abstractions;
 
 namespace AndroidSdk.Tests;
 
-public class SdkManager_Download_Tests : TestsBase, IDisposable
+public class SdkManager_Download_Tests : TestsBase
 {
 	string tempSdkPath;
 
 	public SdkManager_Download_Tests(ITestOutputHelper outputHelper)
 		: base(outputHelper)
 	{
-		tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(SdkManager_Download_Tests));
+		tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(SdkManager_Download_Tests), Guid.NewGuid().ToString("N"));
 	}
 
-	public void Dispose()
+	public override void Dispose()
 	{
-		if (Directory.Exists(tempSdkPath))
-			Directory.Delete(tempSdkPath, true);
+		try
+		{
+			if (Directory.Exists(tempSdkPath))
+				Directory.Delete(tempSdkPath, true);
+		}
+		catch (IOException ex)
+		{
+			OutputHelper.WriteLine($"Failed to delete temp SDK at {tempSdkPath}: {ex.Message}");
+		}
+		catch (UnauthorizedAccessException ex)
+		{
+			OutputHelper.WriteLine($"Failed to delete temp SDK at {tempSdkPath}: {ex.Message}");
+		}
+
+		base.Dispose();
 	}
 
 	[Theory]

@@ -6,20 +6,14 @@ using Xunit.Abstractions;
 namespace AndroidSdk.Tests;
 
 /// <summary>
-/// A base class for all tests that will require the Android SDK to be installed
-/// and ready to use without having to first download and update it.
+/// Base class for tests that require a ready Android SDK fixture.
+/// It only injects SDK dependencies and does not own SDK lifecycle/setup state.
 /// </summary>
-[Collection(AndroidSdkManagerCollection.Name)]
-public abstract class AndroidSdkManagerTestsBase : TestsBase
+[Collection(nameof(AndroidSdkManagerCollection))]
+public abstract class AndroidSdkManagerTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
+	: TestsBase(outputHelper)
 {
-	public AndroidSdkManagerTestsBase(ITestOutputHelper outputHelper, AndroidSdkManagerFixture fixture)
-		: base(outputHelper)
-	{
-		AndroidSdkHome = fixture.AndroidSdkHome;
-		Sdk = fixture.Sdk;
-	}
+	public DirectoryInfo AndroidSdkHome { get; } = fixture.AndroidSdkHome;
 
-	public DirectoryInfo AndroidSdkHome { get; }
-
-	public AndroidSdkManager Sdk { get; }
+	public AndroidSdkManager Sdk { get; } = fixture.Sdk;
 }
