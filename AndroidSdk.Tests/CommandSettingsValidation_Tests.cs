@@ -29,6 +29,31 @@ public class CommandSettingsValidation_Tests
 	}
 
 	[Fact]
+	public void AvdDeleteCommandSettingsAllowForceWhenNameIsSet()
+	{
+		var settings = new AvdDeleteCommandSettings { Name = "Pixel", Force = true };
+
+		var result = settings.Validate();
+
+		Assert.True(result.Successful);
+	}
+
+	[Fact]
+	public void AvdStartCommandSettingsAllowDisableAnimationsAndCpuThreshold()
+	{
+		var settings = new AvdStartCommandSettings
+		{
+			Name = "Pixel",
+			DisableAnimations = true,
+			CpuThreshold = 0.5
+		};
+
+		var result = settings.Validate();
+
+		Assert.True(result.Successful);
+	}
+
+	[Fact]
 	public void OutputFormatTypeConverterSupportsJsonPretty()
 	{
 		var converter = new OutputFormatTypeConverter();

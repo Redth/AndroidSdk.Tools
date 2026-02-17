@@ -20,6 +20,11 @@ namespace AndroidSdk.Tool
 		[CommandOption("-h|--home")]
 		public string Home { get; set; }
 
+		[Description("Stop the running emulator (if any) before deleting and suppress all errors (cleanup mode)")]
+		[CommandOption("--force")]
+		[DefaultValue(false)]
+		public bool Force { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -35,14 +40,39 @@ namespace AndroidSdk.Tool
 		{
 			try
 			{
+				if (settings.Force)
+				{
+					var emu = new Emulator(settings?.Home);
+					var stopped = emu.StopAvd(settings.Name, TimeSpan.FromSeconds(10));
+					if (stopped)
+					{
+						AnsiConsole.MarkupLine($"[yellow]Stopped running emulator for AVD '{settings.Name}'.[/]");
+					}
+				}
+
 				var avd = new AvdManager(settings?.Home);
 
 				avd.Delete(settings.Name);
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{
+				if (settings.Force)
+				{
+					// --force never fails (cleanup command)
+					AnsiConsole.MarkupLine($"[yellow]AVD '{settings.Name}' may not exist (ignored with --force)[/]");
+					return 0;
+				}
 				Program.WriteException(sdkEx);
 				return 1;
+			}
+			catch (Exception)
+			{
+				if (settings.Force)
+				{
+					AnsiConsole.MarkupLine($"[yellow]Warning: failed to force-delete AVD '{settings.Name}' due to unexpected error.[/]");
+					return 0;
+				}
+				throw;
 			}
 			return 0;
 		}
