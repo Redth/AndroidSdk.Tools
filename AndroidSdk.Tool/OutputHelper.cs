@@ -21,9 +21,11 @@ namespace AndroidSdk.Tool
 			else
 			{
 				if (format == OutputFormat.Json)
-					AnsiConsole.WriteLine(JsonSerialize<IEnumerable<T>>(items));
+					Console.WriteLine(JsonSerialize<IEnumerable<T>>(items));
+				else if (format == OutputFormat.JsonPretty)
+					Console.WriteLine(JsonSerialize<IEnumerable<T>>(items, indented: true));
 				else if (format == OutputFormat.Xml)
-					AnsiConsole.WriteLine(XmlSerialize<IEnumerable<T>>(items));
+					Console.WriteLine(XmlSerialize<IEnumerable<T>>(items));
 			}
 		}
 
@@ -36,9 +38,11 @@ namespace AndroidSdk.Tool
 			else
 			{
 				if (format == OutputFormat.Json)
-					AnsiConsole.WriteLine(JsonSerialize<T>(item));
+					Console.WriteLine(JsonSerialize<T>(item));
+				else if (format == OutputFormat.JsonPretty)
+					Console.WriteLine(JsonSerialize<T>(item, indented: true));
 				else if (format == OutputFormat.Xml)
-					AnsiConsole.WriteLine(XmlSerialize<T>(item));
+					Console.WriteLine(XmlSerialize<T>(item));
 			}
 		}
 
@@ -99,6 +103,9 @@ namespace AndroidSdk.Tool
 				case OutputFormat.Json:
 					r = JsonSerialize<T>(data);
 					break;
+				case OutputFormat.JsonPretty:
+					r = JsonSerialize<T>(data, indented: true);
+					break;
 				case OutputFormat.Xml:
 					r = XmlSerialize<T>(data);
 					break;
@@ -107,9 +114,10 @@ namespace AndroidSdk.Tool
 			Console.Write(r);
 		}
 
-		static string JsonSerialize<T>(T obj)
+		static string JsonSerialize<T>(T obj, bool indented = false)
 		{
-			return Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+			var formatting = indented ? Newtonsoft.Json.Formatting.Indented : Newtonsoft.Json.Formatting.None;
+			return Newtonsoft.Json.JsonConvert.SerializeObject(obj, formatting);
 
 			//var s = new DataContractJsonSerializerSettings();
 			//s.UseSimpleDictionaryFormat = true;
