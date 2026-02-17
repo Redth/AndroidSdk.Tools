@@ -14,7 +14,7 @@ public class SdkManager_Download_Tests : TestsBase
 	public SdkManager_Download_Tests(ITestOutputHelper outputHelper)
 		: base(outputHelper)
 	{
-		tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(SdkManager_Download_Tests));
+		tempSdkPath = Path.Combine(Path.GetTempPath(), "AndroidSdk.Tests", nameof(SdkManager_Download_Tests), Guid.NewGuid().ToString("N"));
 	}
 
 	public override void Dispose()

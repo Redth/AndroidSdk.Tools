@@ -43,7 +43,7 @@ public abstract class TestsBase : IDisposable
 	{
 		try
 		{
-			if (File.Exists(logFile))
+			if (File.Exists(logFile) && new FileInfo(logFile).Length > 0)
 			{
 				OutputHelper.WriteLine($"Process runner log ({logFile}):");
 				foreach (var line in File.ReadLines(logFile))
