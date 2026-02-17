@@ -72,6 +72,11 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 				var installOk = sdk.SdkManager.Install(TestAvdPackageId);
 				Assert.True(installOk);
 				sink.OnMessage(new DiagnosticMessage("Installed system image."));
+
+				sink.OnMessage(new DiagnosticMessage("Asserting system image is installed..."));
+				var list = sdk.SdkManager.List();
+				Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+				sink.OnMessage(new DiagnosticMessage("Asserted system image is installed."));
 			}
 			else
 			{
