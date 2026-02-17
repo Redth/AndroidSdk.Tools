@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Xunit;
 using AndroidSdk.Tool;
-using System.Text.RegularExpressions;
 
 namespace AndroidSdk.Tests;
 
@@ -80,6 +79,32 @@ public class OutputHelper_Tests
         
         var actual = CaptureOutputItems(data, OutputFormat.Json);
         Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void Output_Items_JsonPretty_Formats_Correctly()
+    {
+        var data = new[] { new TestData { Name = "A", Value = 1 } };
+        
+        var actual = CaptureOutputItems(data, OutputFormat.JsonPretty);
+        
+        Assert.Contains("\"Name\": \"A\"", actual);
+        Assert.Contains("\"Value\": 1", actual);
+        Assert.StartsWith("[", actual.TrimStart());
+        Assert.EndsWith("]", actual.TrimEnd());
+    }
+
+    [Fact]
+    public void Output_Item_JsonPretty_Formats_Correctly()
+    {
+        var data = new TestData { Name = "A", Value = 1 };
+        
+        var actual = CaptureOutputItem(data, OutputFormat.JsonPretty);
+        
+        Assert.Contains("\"Name\": \"A\"", actual);
+        Assert.Contains("\"Value\": 1", actual);
+        Assert.StartsWith("{", actual.TrimStart());
+        Assert.EndsWith("}", actual.TrimEnd());
     }
 
     [Fact]

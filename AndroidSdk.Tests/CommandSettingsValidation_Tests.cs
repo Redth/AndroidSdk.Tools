@@ -37,4 +37,14 @@ public class CommandSettingsValidation_Tests
 
 		Assert.Equal(OutputFormat.JsonPretty, format);
 	}
+
+	[Fact]
+	public void OutputFormatTypeConverterSupportsJsonPrettyWithHyphen()
+	{
+		var converter = new OutputFormatTypeConverter();
+
+		var format = converter.ConvertFrom("json-pretty");
+
+		Assert.Equal(OutputFormat.JsonPretty, format);
+	}
 }
