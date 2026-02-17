@@ -64,15 +64,24 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 			sink = messageSink;
 			avdHomeScope = new AvdHomeScope(messageSink, $"{nameof(EmulatorTestsBase)}.{nameof(AvdCreateFixture)}.{Guid.NewGuid():N}");
 
-			sink.OnMessage(new DiagnosticMessage($"Installing system image {TestAvdPackageId} for emulator tests..."));
-			var installOk = sdk.SdkManager.Install(TestAvdPackageId);
-			Assert.True(installOk);
-			sink.OnMessage(new DiagnosticMessage("Installed system image."));
+			sink.OnMessage(new DiagnosticMessage($"Checking if system image {TestAvdPackageId} is installed..."));
+			var installedList = sdk.SdkManager.List();
+			if (!installedList.InstalledPackages.Any(p => p.Path == TestAvdPackageId))
+			{
+				sink.OnMessage(new DiagnosticMessage($"Installing system image {TestAvdPackageId} for emulator tests..."));
+				var installOk = sdk.SdkManager.Install(TestAvdPackageId);
+				Assert.True(installOk);
+				sink.OnMessage(new DiagnosticMessage("Installed system image."));
 
-			sink.OnMessage(new DiagnosticMessage("Asserting system image is installed..."));
-			var list = sdk.SdkManager.List();
-			Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
-			sink.OnMessage(new DiagnosticMessage("Asserted system image is installed."));
+				sink.OnMessage(new DiagnosticMessage("Asserting system image is installed..."));
+				var list = sdk.SdkManager.List();
+				Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
+				sink.OnMessage(new DiagnosticMessage("Asserted system image is installed."));
+			}
+			else
+			{
+				sink.OnMessage(new DiagnosticMessage("System image already installed. Skipping download."));
+			}
 
 			sink.OnMessage(new DiagnosticMessage($"Creating AVD {TestEmulatorName} for emulator tests..."));
 			sdk.AvdManager.Create(TestEmulatorName, TestAvdPackageId, "pixel", force: true);
