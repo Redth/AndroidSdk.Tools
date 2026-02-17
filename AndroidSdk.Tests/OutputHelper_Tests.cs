@@ -63,7 +63,11 @@ public class OutputHelper_Tests
     [Fact]
     public void Output_Items_None_Formats_Correctly()
     {
-        var data = new[] { new TestData { Name = "A", Value = 1 }, new TestData { Name = "B", Value = 2 } };
+        var data = new[] 
+        { 
+            new TestData { Name = "A", Value = 1 },
+            new TestData { Name = "B", Value = 2 }
+        };
         // Items with None format iterates and prints ToString() + NewLine
         var expected = "A:1" + Environment.NewLine + "B:2" + Environment.NewLine;
         
@@ -114,21 +118,6 @@ public class OutputHelper_Tests
         var expected = "{\"Name\":\"A\",\"Value\":1}" + Environment.NewLine;
         
         var actual = CaptureOutputItem(data, OutputFormat.Json);
-        Assert.Equal(expected, actual);
-    }
-
-    [Fact]
-    public void Output_Enumerable_ToString_Formats_Correctly()
-    {
-        var data = new[] 
-        { 
-            new TestData { Name = "A", Value = 1 },
-            new TestData { Name = "B", Value = 2 }
-        };
-        // Items with None format iterates and prints ToString() + NewLine
-        var expected = "A:1" + Environment.NewLine + "B:2" + Environment.NewLine;
-        
-        var actual = CaptureOutput(data, OutputFormat.None);
         Assert.Equal(expected, actual);
     }
 
