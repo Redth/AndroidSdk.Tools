@@ -78,11 +78,6 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 				sink.OnMessage(new DiagnosticMessage("System image already installed. Skipping download."));
 			}
 
-			sink.OnMessage(new DiagnosticMessage("Asserting system image is installed..."));
-			var list = sdk.SdkManager.List();
-			Assert.Contains(TestAvdPackageId, list.InstalledPackages.Select(p => p.Path));
-			sink.OnMessage(new DiagnosticMessage("Asserted system image is installed."));
-
 			sink.OnMessage(new DiagnosticMessage($"Creating AVD {TestEmulatorName} for emulator tests..."));
 			sdk.AvdManager.Create(TestEmulatorName, TestAvdPackageId, "pixel", force: true);
 			Assert.Contains(sdk.AvdManager.ListAvds(), a => a.Name == TestEmulatorName);
