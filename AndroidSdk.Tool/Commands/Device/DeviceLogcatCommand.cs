@@ -27,8 +27,8 @@ public class DeviceLogcatCommand : SingleDeviceCommand<DeviceLogcatCommandSettin
 		}
 		catch (SdkToolFailedExitException sdkEx) when (sdkEx.StdOut?.Length > 0)
 		{
-			// adb logcat -d may return non-zero on some API levels (e.g. 36)
-			// but still produce valid output - use it
+			// adb logcat -d can occasionally return non-zero while still producing usable output.
+			// In that case, preserve the collected stdout instead of failing the command.
 			lines = new List<string>(sdkEx.StdOut);
 		}
 
