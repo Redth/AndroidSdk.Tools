@@ -41,6 +41,9 @@ namespace AndroidSdk
 		public string AdbSerial { get; set; }
 		AdbRunner runner;
 
+		internal static readonly Regex RxPackageListInfo =
+			new Regex("^package:(?<path>.+)=(?<package>[^\\s=]+)\\s+installer=(?<installer>.*)$", RegexOptions.Singleline | RegexOptions.Compiled);
+
 		public List<PackageListInfo> ListPackages(bool includeUninstalled = false, PackageListState showState = PackageListState.All, PackageSourceType showSource = PackageSourceType.All)
 		{
 			// list packages [options] filter
@@ -72,12 +75,15 @@ namespace AndroidSdk
 
 			var r = runner.RunAdb(AndroidSdkHome, builder);
 
-			var results = new List<PackageListInfo>();
+			return ParsePackageListOutput(r.StandardOutput);
+		}
 
-			const string rxPackageListInfo = "^package:(?<path>.*?)=(?<package>.*?)\\s+installer=(?<installer>.*?)$";
-			foreach (var line in r.StandardOutput)
+		internal static List<PackageListInfo> ParsePackageListOutput(IEnumerable<string> outputLines)
+		{
+			var results = new List<PackageListInfo>();
+			foreach (var line in outputLines ?? Enumerable.Empty<string>())
 			{
-				var m = Regex.Match(line, rxPackageListInfo, RegexOptions.Singleline);
+				var m = RxPackageListInfo.Match(line ?? string.Empty);
 
 				var installPath = m?.Groups?["path"]?.Value;
 				var packageName = m?.Groups?["package"]?.Value;
@@ -90,8 +96,8 @@ namespace AndroidSdk
 						PackageName = packageName,
 						Installer = installer,
 					});
-
 			}
+
 			return results;
 		}
 
