@@ -8,6 +8,7 @@ namespace AndroidSdk.Tests;
 /// <summary>
 /// Tests AVD location precedence and AVD file discovery behavior.
 /// </summary>
+[Collection(nameof(AndroidSdkManagerCollection))]
 public class AvdLocator_Tests
 {
 	[Fact]
