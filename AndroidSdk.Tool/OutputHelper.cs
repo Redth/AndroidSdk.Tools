@@ -10,9 +10,9 @@ using System.Xml.Serialization;
 
 namespace AndroidSdk.Tool
 {
-	static class OutputHelper
+	public static class OutputHelper
 	{
-		internal static void Output<T>(IEnumerable<T> items, OutputFormat? format, string[] columns, Func<T, string[]> getRow)
+		public static void Output<T>(IEnumerable<T> items, OutputFormat? format, string[] columns, Func<T, string[]> getRow)
 		{
 			if ((format ?? OutputFormat.None) == OutputFormat.None)
 			{
@@ -29,7 +29,7 @@ namespace AndroidSdk.Tool
 			}
 		}
 
-		internal static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
+		public static void Output<T>(T item, OutputFormat? format, string[] properties, Func<T, string[]> getValues)
 		{
 			if ((format ?? OutputFormat.None) == OutputFormat.None)
 			{
@@ -46,7 +46,7 @@ namespace AndroidSdk.Tool
 			}
 		}
 
-		internal static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
+		public static void OutputTable<T>(IEnumerable<T> items, string[] columns, Func<T, string[]> getRow)
 		{
 			var table = new Table();
 
@@ -63,7 +63,7 @@ namespace AndroidSdk.Tool
 			AnsiConsole.Write(table);
 		}
 
-		internal static void OutputObject<T>(T item, string[] properties, Func<T, string[]> getValues)
+		public static void OutputObject<T>(T item, string[] properties, Func<T, string[]> getValues)
 		{
 			var table = new Table();
 			var values = getValues(item);
@@ -83,7 +83,7 @@ namespace AndroidSdk.Tool
 			AnsiConsole.Write(table);
 		}
 
-		internal static void Output<T>(T data, OutputFormat outputFormat)
+		public static void Output<T>(T data, OutputFormat outputFormat)
 		{
 			var r = string.Empty;
 			switch (outputFormat)
