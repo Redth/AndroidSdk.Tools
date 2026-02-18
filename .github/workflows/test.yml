@@ -32,4 +32,4 @@ jobs:
       if: always()
       with:
         files: ./*.Tests/TestResults/*.trx
-
+        check_run: false
