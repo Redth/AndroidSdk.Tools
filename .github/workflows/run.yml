@@ -119,38 +119,31 @@ jobs:
 
     - name: Do Install test app
       run: |
-        INSTALLED=0
-        for i in $(seq 1 3); do
-          echo "Install attempt $i"
-          if dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"; then
-            PKGS=$(dotnet $TOOL device packages --format json)
-            if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
-              INSTALLED=1
-              break
-            fi
-          fi
-          sleep 5
-        done
-        if [ "$INSTALLED" -ne 1 ]; then
-          echo "❌ Failed to install test app after retries"
-          exit 1
-        fi
+        dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-do.log
 
     - name: Validate Install test app
       run: |
-        PKGS=$(dotnet $TOOL device packages --format json)
-        echo "Packages JSON: $PKGS"
+        FOUND=0
+        for i in $(seq 1 12); do
+          PKGS=$(dotnet $TOOL device packages --format json)
+          if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+            echo "✅ App installed and verified via CLI (attempt $i)"
+            FOUND=1
+            break
+          fi
+          echo "Attempt $i/12 - package not visible yet, waiting 5s..."
+          sleep 5
+        done
 
-        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
-          echo "❌ com.companyname.mauiapp12345 not found in device packages"
+        if [ "$FOUND" -ne 1 ]; then
+          echo "❌ com.companyname.mauiapp12345 not found in device packages after retries"
           echo "$PKGS" | jq '.[].packageName' | head -20
           echo "--- Process runner log ---"
           cat artifacts/device-install-do.log
           exit 1
         fi
-        echo "✅ App installed and verified via CLI"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-validate.log
 
