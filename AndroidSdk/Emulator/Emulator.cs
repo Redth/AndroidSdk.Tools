@@ -58,14 +58,28 @@ namespace AndroidSdk
 			var sw = System.Diagnostics.Stopwatch.StartNew();
 			while (sw.Elapsed < timeout)
 			{
-				var stillRunning = adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
-				if (!stillRunning)
-					return true;
+				try
+				{
+					var stillRunning = adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+					if (!stillRunning)
+						return true;
+				}
+				catch (SdkToolFailedExitException)
+				{
+					// adb can transiently fail during shutdown.
+				}
 
 				Thread.Sleep(250);
 			}
 
-			return !adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+			try
+			{
+				return !adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+			}
+			catch (SdkToolFailedExitException)
+			{
+				return false;
+			}
 		}
 
 		static string FindRunningEmulatorSerialByAvdName(Adb adb, string avdName)
