@@ -40,8 +40,8 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 		if (string.IsNullOrEmpty(settings.Activity))
 		{
 			intentArgs = settings.Package;
-			_ = adb.LaunchApp(intentArgs, device.Serial);
-			success = true;
+			var output = adb.LaunchApp(intentArgs, device.Serial);
+			success = output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase));
 		}
 		else
 		{
