@@ -118,7 +118,23 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-validate.log
 
     - name: Do Install test app
-      run: dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"
+      run: |
+        INSTALLED=0
+        for i in $(seq 1 3); do
+          echo "Install attempt $i"
+          if dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"; then
+            PKGS=$(dotnet $TOOL device packages --format json)
+            if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+              INSTALLED=1
+              break
+            fi
+          fi
+          sleep 5
+        done
+        if [ "$INSTALLED" -ne 1 ]; then
+          echo "❌ Failed to install test app after retries"
+          exit 1
+        fi
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-do.log
 
