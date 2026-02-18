@@ -632,22 +632,26 @@ namespace AndroidSdk
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
 			const int maxAttempts = 3;
+			IEnumerable<string> output = new string[0];
+
 			for (var attempt = 1; attempt <= maxAttempts; attempt++)
 			{
 				try
 				{
-					var output = Shell($"monkey -p {packageName} --pct-syskeys 0 -v 1", adbSerial);
-					if (output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase)) || attempt == maxAttempts)
+					output = Shell($"monkey -p {packageName} --pct-syskeys 0 -v 1", adbSerial);
+					if (output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase)))
 						return output;
 				}
-				catch (SdkToolFailedExitException) when (attempt < maxAttempts)
+				catch (SdkToolFailedExitException ex)
 				{
+					output = ex.StdOut;
 				}
 
-				Task.Delay(500).Wait();
+				if (attempt < maxAttempts)
+					Task.Delay(1000).Wait();
 			}
 
-			throw new InvalidOperationException("Unreachable");
+			return output;
 		}
 	}
 }
