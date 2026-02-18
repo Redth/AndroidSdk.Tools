@@ -99,8 +99,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
 
     - name: Do Start AVD
-      run: |
-        dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+      run: dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
 
@@ -122,8 +121,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-validate.log
 
     - name: Do Install test app
-      run: |
-        dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"
+      run: dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-do.log
 
@@ -157,8 +155,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-do.log
 
     - name: Validate Launch test app
-      run: |
-        echo "✅ Launch command completed (logcat marker validation follows)"
+      run: echo "✅ Launch command completed (logcat marker validation follows)"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-validate.log
 
