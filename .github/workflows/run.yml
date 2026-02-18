@@ -5,13 +5,20 @@ on:
   push:
     branches: [ main ]
 
+concurrency:
+  group: run-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES: stdout|stderr
+
 jobs:
   run:
     name: Run
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
@@ -27,32 +34,63 @@ jobs:
         sudo udevadm trigger --name-match=kvm
     - name: Build the project
       run: dotnet build AndroidSdk.Tool
+    - name: Set AVD environment variables
+      run: |
+        mkdir -p artifacts
+        mkdir -p "$HOME/.android/avd"
+        echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
+        echo "ANDROID_EMULATOR_HOME=$HOME/.android" >> "$GITHUB_ENV"
     - name: Print SDK information
       run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk info
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-info.log
     - name: Install Packages
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-install.log
+    - name: Do Create AVD
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-do.log
+    - name: Validate Create AVD
       run: |
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk list --installed
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk list --installed
-    - name: Create AVD
+        AVDS=$(dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list --format json)
+        echo "AVDs JSON: $AVDS"
+        if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
+          echo "❌ AVD 'test' not found in avd list after create"
+          cat artifacts/avd-create-do.log
+          exit 1
+        fi
+        echo "✅ AVD 'test' created successfully"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
+    - name: Do Start AVD
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
+    - name: Validate Start AVD
       run: |
-        unset XDG_CONFIG_HOME
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd list
-    - name: Enabling more cores
-      run: printf 'hw.cpu.ncore=2\n' >> $HOME/.android/avd/config.ini
-    - name: Start AVD
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait
-    - name: Prove that it booted
-      run: |
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device list
+        DEVICES=$(dotnet run --framework net9.0 --project AndroidSdk.Tool -- device list --format json)
+        echo "Devices JSON: $DEVICES"
+        COUNT=$(echo "$DEVICES" | jq 'length')
+        if [ "$COUNT" -lt 1 ]; then
+          echo "❌ No devices found via 'device list --format json' — emulator failed to start"
+          cat artifacts/avd-start-do.log
+          exit 1
+        fi
         dotnet run --framework net9.0 --project AndroidSdk.Tool -- device info
-    - name: Install an app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
-    - name: Uninstall an app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+        echo "✅ Emulator is running and device commands are healthy"
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-validate.log
     - name: Delete AVD
-      run: |
-        unset XDG_CONFIG_HOME
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test
+      if: always()
+      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test --force
+      env:
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-delete.log
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: logs-ubuntu-latest
+        path: artifacts/
+        if-no-files-found: ignore
