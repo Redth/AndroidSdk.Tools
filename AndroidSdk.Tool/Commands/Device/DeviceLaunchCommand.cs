@@ -4,6 +4,7 @@ using Spectre.Console.Cli;
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace AndroidSdk.Tool;
 
