@@ -28,6 +28,10 @@ jobs:
             image: system-images;android-34;google_apis;x86_64
             abi: google_apis/x86_64
     runs-on: ${{ matrix.os }}
+    env:
+      AVD_NAME: test
+      TEST_APP_PACKAGE: com.companyname.mauiapp12345
+      APP_START_MARKER: E2E_APP_STARTED_SUCCESSFULLY
     steps:
 
     - name: Checkout
@@ -73,7 +77,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-install.log
 
     - name: Do Create AVD
-      run: dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
+      run: dotnet $TOOL avd create -f -n "$AVD_NAME" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-do.log
 
@@ -85,18 +89,18 @@ jobs:
         AVDS=$(dotnet $TOOL avd list --format json)
         echo "AVDs JSON: $AVDS"
 
-        if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
-          echo "❌ AVD 'test' not found in avd list after create"
+        if ! echo "$AVDS" | jq -e --arg avd "$AVD_NAME" '.[] | select(.name == $avd)' > /dev/null 2>&1; then
+          echo "❌ AVD '$AVD_NAME' not found in avd list after create"
           cat artifacts/avd-create-do.log
           exit 1
         fi
-        echo "✅ AVD 'test' created successfully"
+        echo "✅ AVD '$AVD_NAME' created successfully"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
 
     - name: Do Start AVD
       run: |
-        dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+        dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
 
@@ -128,7 +132,7 @@ jobs:
         FOUND=0
         for i in $(seq 1 12); do
           PKGS=$(dotnet $TOOL device packages --format json)
-          if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          if echo "$PKGS" | jq -e --arg pkg "$TEST_APP_PACKAGE" '.[] | select(.packageName == $pkg)' > /dev/null 2>&1; then
             echo "✅ App installed and verified via CLI (attempt $i)"
             FOUND=1
             break
@@ -138,7 +142,7 @@ jobs:
         done
 
         if [ "$FOUND" -ne 1 ]; then
-          echo "❌ com.companyname.mauiapp12345 not found in device packages after retries"
+          echo "❌ $TEST_APP_PACKAGE not found in device packages after retries"
           echo "$PKGS" | jq '.[].packageName' | head -20
           echo "--- Process runner log ---"
           cat artifacts/device-install-do.log
@@ -148,7 +152,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-validate.log
 
     - name: Do Launch test app
-      run: dotnet $TOOL device launch --package com.companyname.mauiapp12345
+      run: dotnet $TOOL device launch --package "$TEST_APP_PACKAGE"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-do.log
 
@@ -169,7 +173,7 @@ jobs:
         FOUND=0
         for i in $(seq 1 30); do
           dotnet $TOOL device logcat --output artifacts/device-logcat.txt
-          if grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/device-logcat.txt; then
+          if grep -q "$APP_START_MARKER" artifacts/device-logcat.txt; then
             echo "✅ Marker found on attempt $i"
             FOUND=1
             break
@@ -178,7 +182,7 @@ jobs:
           sleep 5
         done
         if [ "$FOUND" -ne 1 ]; then
-          echo "❌ Marker not found in logcat after 30 attempts"
+          echo "❌ Marker '$APP_START_MARKER' not found in logcat after 30 attempts"
           cat artifacts/device-logcat.txt
           exit 1
         fi
@@ -187,7 +191,7 @@ jobs:
 
     - name: Do Uninstall test app
       if: always()
-      run: dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
+      run: dotnet $TOOL device uninstall --package "$TEST_APP_PACKAGE"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall-do.log
 
@@ -197,8 +201,8 @@ jobs:
         PKGS=$(dotnet $TOOL device packages --format json)
         echo "Packages JSON: $PKGS"
 
-        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
-          echo "❌ com.companyname.mauiapp12345 still found after uninstall"
+        if echo "$PKGS" | jq -e --arg pkg "$TEST_APP_PACKAGE" '.[] | select(.packageName == $pkg)' > /dev/null 2>&1; then
+          echo "❌ $TEST_APP_PACKAGE still found after uninstall"
           exit 1
         else
           echo "✅ App uninstalled and verified via CLI"
@@ -208,7 +212,7 @@ jobs:
 
     - name: Delete AVD
       if: always()
-      run: dotnet $TOOL avd delete -n test --force
+      run: dotnet $TOOL avd delete -n "$AVD_NAME" --force
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-delete.log
 
