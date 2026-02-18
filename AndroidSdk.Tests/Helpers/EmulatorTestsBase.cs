@@ -116,4 +116,40 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 			}
 		}
 	}
+
+	/// <summary>
+	/// One-time boot fixture that composes shared setup, boots the emulator, and tears down in reverse order.
+	/// </summary>
+	public class EmulatorBootFixture : IDisposable
+	{
+		readonly IMessageSink sink;
+		readonly AndroidSdkManager sdk;
+
+		public EmulatorBootFixture(IMessageSink messageSink, AndroidSdkManagerFixture fixture)
+		{
+			sink = messageSink;
+			sdk = fixture.Sdk;
+
+			sink.OnMessage(new DiagnosticMessage("Starting emulator for tests that require a booted emulator..."));
+			EmulatorInstance = sdk.Emulator.Start(TestEmulatorName, CreateHeadlessOptions(port: 5554));
+			sink.OnMessage(new DiagnosticMessage("Started emulator."));
+
+			sink.OnMessage(new DiagnosticMessage("Waiting for emulator to complete booting..."));
+			var booted = EmulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
+			sink.OnMessage(new DiagnosticMessage("Emulator boot complete."));
+
+			Assert.True(booted);
+			Assert.NotEmpty(EmulatorInstance.Serial);
+		}
+
+		public Emulator.AndroidEmulatorProcess EmulatorInstance { get; }
+
+		public void Dispose()
+		{
+			sink.OnMessage(new DiagnosticMessage("Shutting down emulator..."));
+			var shutdown = EmulatorInstance.Shutdown();
+			Assert.True(shutdown);
+			sink.OnMessage(new DiagnosticMessage("Shut down emulator."));
+		}
+	}
 }
