@@ -54,7 +54,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-do.log
     - name: Validate Create AVD
       run: |
-        AVDS=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- avd list --format json)
+        AVDS=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- avd list --format json | tail -n 1)
         echo "AVDs JSON: $AVDS"
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
           echo "❌ AVD 'test' not found in avd list after create"
@@ -70,7 +70,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
     - name: Validate Start AVD
       run: |
-        DEVICES=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- device list --format json)
+        DEVICES=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- device list --format json | tail -n 1)
         echo "Devices JSON: $DEVICES"
         COUNT=$(echo "$DEVICES" | jq 'length')
         if [ "$COUNT" -lt 1 ]; then
