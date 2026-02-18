@@ -36,13 +36,7 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 {
 	public override int Execute([NotNull] CommandContext context, [NotNull] DeviceLaunchCommandSettings settings, [NotNull] Adb adb, [NotNull] Adb.AdbDevice device)
 	{
-		string intentArgs;
-
-		if (!string.IsNullOrEmpty(settings.Activity))
-		{
-			intentArgs = $"{settings.Package}/{settings.Activity}";
-		}
-		else
+		if (string.IsNullOrEmpty(settings.Activity))
 		{
 			var output = adb.LaunchApp(settings.Package, device.Serial);
 			if (output?.Any(l => !string.IsNullOrEmpty(l)
@@ -56,6 +50,7 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 			return 1;
 		}
 
+		var intentArgs = $"{settings.Package}/{settings.Activity}";
 		var am = new ActivityManager(adb.AndroidSdkHome?.FullName, device.Serial);
 		var success = am.StartActivity(intentArgs, new ActivityManager.ActivityManagerStartOptions
 		{
