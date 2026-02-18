@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using AndroidSdk;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -72,14 +71,7 @@ public class EmulatorOperations_Tests :
 	{
 		Sdk.Adb.Install(new FileInfo(StaticAppApkPath), emulatorInstance.Serial);
 
-		try
-		{
-			var output = Sdk.Adb.LaunchApp(StaticAppPackageName, emulatorInstance.Serial);
-			Assert.Contains(output, l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase));
-		}
-		catch (SdkToolFailedExitException ex)
-		{
-			Assert.Contains(ex.StdOut, l => l.Contains($":AllowPackage: {StaticAppPackageName}", StringComparison.OrdinalIgnoreCase));
-		}
+		var output = Sdk.Adb.LaunchApp(StaticAppPackageName, emulatorInstance.Serial);
+		Assert.Contains(output, l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase));
 	}
 }
