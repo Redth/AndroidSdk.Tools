@@ -14,48 +14,77 @@ env:
 
 jobs:
   run:
-    name: Run
-    runs-on: ubuntu-latest
+    name: Run (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            gpu: swiftshader_indirect
+            image: system-images;android-34;google_apis;x86_64
+            abi: google_apis/x86_64
+          - os: macos-15-intel
+            gpu: guest
+            image: system-images;android-34;google_apis;x86_64
+            abi: google_apis/x86_64
+    runs-on: ${{ matrix.os }}
     steps:
+
     - name: Checkout
       uses: actions/checkout@v4
+
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
+
     - uses: actions/setup-java@v4
       with:
         distribution: 'microsoft'
         java-version: '21'
+
     - name: Enable KVM
+      if: runner.os == 'Linux'
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
+
     - name: Build the project
-      run: dotnet build AndroidSdk.Tool
+      run: |
+        dotnet build AndroidSdk.Tool/AndroidSdk.Tool.csproj -f net10.0
+        echo "TOOL=$PWD/AndroidSdk.Tool/bin/Debug/net10.0/android.dll" >> "$GITHUB_ENV"
+
     - name: Set AVD environment variables
       run: |
         mkdir -p artifacts
         mkdir -p "$HOME/.android/avd"
         echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
         echo "ANDROID_EMULATOR_HOME=$HOME/.android" >> "$GITHUB_ENV"
+
     - name: Print SDK information
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk info
+      run: dotnet $TOOL sdk info
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-info.log
+
     - name: Install Packages
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "system-images;android-34;google_apis;x86_64"
+      run: dotnet $TOOL sdk install -p "emulator" -p "platform-tools" -p "platforms;android-34" -p "${{ matrix.image }}"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/sdk-install.log
+
     - name: Do Create AVD
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd create -f -n "test" -a "google_apis/x86_64" -s "system-images;android-34;google_apis;x86_64"
+      run: dotnet $TOOL avd create -f -n "test" -a "${{ matrix.abi }}" -s "${{ matrix.image }}"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-do.log
+
     - name: Validate Create AVD
       run: |
-        AVDS=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- avd list --format json | tail -n 1)
+        ls -la "$ANDROID_AVD_HOME" || echo "AVD HOME dir not found"
+        ls -la "$HOME/.config/.android/avd/" || echo "XDG path not found"
+
+        AVDS=$(dotnet $TOOL avd list --format json)
         echo "AVDs JSON: $AVDS"
+
         if ! echo "$AVDS" | jq -e '.[] | select(.name == "test")' > /dev/null 2>&1; then
           echo "❌ AVD 'test' not found in avd list after create"
           cat artifacts/avd-create-do.log
@@ -64,45 +93,56 @@ jobs:
         echo "✅ AVD 'test' created successfully"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
+
     - name: Do Start AVD
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd start -p 5554 -n test --no-window --gpu swiftshader_indirect --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+      run: |
+        dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
+
     - name: Validate Start AVD
       run: |
-        DEVICES=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- device list --format json | tail -n 1)
+        DEVICES=$(dotnet $TOOL device list --format json)
         echo "Devices JSON: $DEVICES"
+
         COUNT=$(echo "$DEVICES" | jq 'length')
         if [ "$COUNT" -lt 1 ]; then
           echo "❌ No devices found via 'device list --format json' — emulator failed to start"
+          echo "--- Process runner log ---"
           cat artifacts/avd-start-do.log
           exit 1
         fi
-        dotnet run --framework net9.0 --project AndroidSdk.Tool -- device info
-        echo "✅ Emulator is running and device commands are healthy"
+        SERIAL=$(echo "$DEVICES" | jq -r '.[0].serial')
+        echo "✅ Emulator is running (serial: $SERIAL, count: $COUNT)"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-validate.log
+
     - name: Do Install test app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device install --package AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk
+      run: dotnet $TOOL device install --package "AndroidSdk.Tests/testdata/com.companyname.mauiapp12345-Signed.apk"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-do.log
+
     - name: Validate Install test app
       run: |
-        PACKAGE_NAME="com.companyname.mauiapp12345"
-        PACKAGES=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- device packages --format json | tail -n 1)
-        echo "$PACKAGES" > artifacts/packages-after-install.json
-        if ! echo "$PACKAGES" | jq -e --arg pkg "$PACKAGE_NAME" '.[] | select(.packageName == $pkg)' > /dev/null 2>&1; then
-          echo "❌ Package '$PACKAGE_NAME' missing after install"
+        PKGS=$(dotnet $TOOL device packages --format json)
+        echo "Packages JSON: $PKGS"
+
+        if ! echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.mauiapp12345 not found in device packages"
+          echo "$PKGS" | jq '.[].packageName' | head -20
+          echo "--- Process runner log ---"
           cat artifacts/device-install-do.log
           exit 1
         fi
-        echo "✅ Package '$PACKAGE_NAME' installed successfully"
+        echo "✅ App installed and verified via CLI"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-install-validate.log
+
     - name: Do Launch test app
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device launch --package com.companyname.mauiapp12345
+      run: dotnet $TOOL device launch --package com.companyname.mauiapp12345
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-do.log
+
     - name: Validate Launch test app
       run: |
         if ! grep -qi "Events injected" artifacts/device-launch-do.log; then
@@ -113,16 +153,18 @@ jobs:
         echo "✅ Launch validation passed with strict 'Events injected' marker"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-validate.log
+
     - name: Do Capture logcat
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device logcat --output artifacts/device-logcat.txt
+      run: dotnet $TOOL device logcat --output artifacts/device-logcat.txt
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-logcat-do.log
+
     - name: Validate launch marker in logcat
       timeout-minutes: 10
       run: |
         FOUND=0
         for i in $(seq 1 30); do
-          dotnet run --framework net9.0 --project AndroidSdk.Tool -- device logcat --output artifacts/device-logcat.txt
+          dotnet $TOOL device logcat --output artifacts/device-logcat.txt
           if grep -q "E2E_APP_STARTED_SUCCESSFULLY" artifacts/device-logcat.txt; then
             echo "✅ Marker found on attempt $i"
             FOUND=1
@@ -138,34 +180,38 @@ jobs:
         fi
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-logcat-validate.log
+
     - name: Do Uninstall test app
       if: always()
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- device uninstall --package com.companyname.mauiapp12345
+      run: dotnet $TOOL device uninstall --package com.companyname.mauiapp12345
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall-do.log
+
     - name: Validate Uninstall test app
       if: always()
       run: |
-        PACKAGE_NAME="com.companyname.mauiapp12345"
-        PACKAGES=$(dotnet run --no-launch-profile --framework net9.0 --project AndroidSdk.Tool -- device packages --format json | tail -n 1)
-        echo "$PACKAGES" > artifacts/packages-after-uninstall.json
-        if echo "$PACKAGES" | jq -e --arg pkg "$PACKAGE_NAME" '.[] | select(.packageName == $pkg)' > /dev/null 2>&1; then
-          echo "❌ Package '$PACKAGE_NAME' still present after uninstall"
-          cat artifacts/device-uninstall-do.log
+        PKGS=$(dotnet $TOOL device packages --format json)
+        echo "Packages JSON: $PKGS"
+
+        if echo "$PKGS" | jq -e '.[] | select(.packageName == "com.companyname.mauiapp12345")' > /dev/null 2>&1; then
+          echo "❌ com.companyname.mauiapp12345 still found after uninstall"
           exit 1
+        else
+          echo "✅ App uninstalled and verified via CLI"
         fi
-        echo "✅ Package '$PACKAGE_NAME' uninstalled successfully"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-uninstall-validate.log
+
     - name: Delete AVD
       if: always()
-      run: dotnet run --framework net9.0 --project AndroidSdk.Tool -- avd delete -n test --force
+      run: dotnet $TOOL avd delete -n test --force
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-delete.log
+
     - name: Upload artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: logs-ubuntu-latest
+        name: logs-${{ matrix.os }}
         path: artifacts/
         if-no-files-found: ignore
