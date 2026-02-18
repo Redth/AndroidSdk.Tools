@@ -28,6 +28,7 @@ namespace AndroidSdk
 		readonly Regex rxListVers = new Regex("\\s+Version:\\s+(?<ver>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxListLoc = new Regex("\\s+Installed Location:\\s+(?<loc>.*?)$", RegexOptions.Compiled | RegexOptions.Singleline);
 		readonly Regex rxLicenseIdLine = new Regex(@"^License\s+(?<id>[a-zA-Z\-]+):$", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+		readonly Regex rxNonPackageLine = new Regex(@"^\[[\s=]*\]\s+\d+%\s|^Info:\s|^Loading\s|^Warning:\s", RegexOptions.Compiled);
 
 
 		JdkInfo? jdk = null;
@@ -203,8 +204,6 @@ namespace AndroidSdk
 
 		public SdkManagerList List()
 		{
-			var result = new SdkManagerList();
-
 			CheckSdkManagerVersion();
 
 			var builder = new ProcessArgumentBuilder();
@@ -213,7 +212,15 @@ namespace AndroidSdk
 
 			BuildStandardOptions(builder);
 
-			var p = Run(builder);
+			// Use stdout only to avoid stderr warnings/errors being parsed as packages
+			var p = Run(builder, includeStdOut: true, includeStdErr: false);
+
+			return ParseListOutput(p);
+		}
+
+		internal SdkManagerList ParseListOutput(IEnumerable<string> lines)
+		{
+			var result = new SdkManagerList();
 
 			int section = 0;
 
@@ -222,9 +229,20 @@ namespace AndroidSdk
 			var version = string.Empty;
 			var location = string.Empty;
 
-			foreach (var line in p)
+			foreach (var rawLine in lines)
 			{
+				// sdkmanager progress bars use \r to overwrite the line, which causes
+				// multiple progress updates to be concatenated into a single line.
+				// Split on \r and process each segment independently.
+				var segments = rawLine.Split(new[] { '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+				foreach (var line in segments)
+				{
 				if (line.StartsWith("------"))
+					continue;
+
+				// Skip progress bars, Info:, Loading, and Warning lines
+				if (rxNonPackageLine.IsMatch(line))
 					continue;
 
 				if (line.ToLowerInvariant().Contains("installed packages:"))
@@ -299,6 +317,7 @@ namespace AndroidSdk
 					description = null;
 					version = null;
 					location = null;
+				}
 				}
 			}
 
