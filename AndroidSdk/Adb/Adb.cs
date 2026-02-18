@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -648,7 +647,7 @@ namespace AndroidSdk
 				}
 
 				if (attempt < maxAttempts)
-					Task.Delay(1000).Wait();
+					System.Threading.Thread.Sleep(1000);
 			}
 
 			return output;

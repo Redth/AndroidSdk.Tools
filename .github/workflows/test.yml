@@ -48,20 +48,20 @@ jobs:
     - name: Test
       run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=TestResults.trx"
     - name: Upload Test Results
-      if: (!cancelled())
+      if: (always() && !cancelled())
       uses: actions/upload-artifact@v4
       with:
         name: Test Results (${{ matrix.os }})
         path: ./*.Tests/TestResults/*.trx
 
   publish-test-results:
-    name: "Publish Tests Results"
+    name: "Publish Test Results"
     needs: test
     runs-on: ubuntu-latest
     permissions:
       checks: write
       pull-requests: write
-    if: (!cancelled())
+    if: (always() && !cancelled())
     steps:
 
       - name: Download Artifacts
