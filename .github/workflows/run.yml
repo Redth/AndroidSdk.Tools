@@ -99,7 +99,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
 
     - name: Do Start AVD
-      run: dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+      run: dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations --cpu-threshold 3.0
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
 
@@ -155,16 +155,6 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-do.log
 
     - name: Validate Launch test app
-      run: echo "✅ Launch command completed (logcat marker validation follows)"
-      env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-validate.log
-
-    - name: Do Capture logcat
-      run: dotnet $TOOL device logcat --output artifacts/device-logcat.txt
-      env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-logcat-do.log
-
-    - name: Validate launch marker in logcat
       timeout-minutes: 10
       run: |
         FOUND=0
@@ -183,8 +173,9 @@ jobs:
           cat artifacts/device-logcat.txt
           exit 1
         fi
+        echo "✅ Launch validated via logcat marker"
       env:
-        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-logcat-validate.log
+        ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-validate.log
 
     - name: Do Uninstall test app
       if: always()
