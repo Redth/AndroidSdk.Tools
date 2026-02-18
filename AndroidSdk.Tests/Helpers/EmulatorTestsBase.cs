@@ -135,7 +135,7 @@ public abstract class EmulatorTestsBase(ITestOutputHelper outputHelper, AndroidS
 			sink.OnMessage(new DiagnosticMessage("Started emulator."));
 
 			sink.OnMessage(new DiagnosticMessage("Waiting for emulator to complete booting..."));
-			var booted = EmulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
+			var booted = EmulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(20));
 			sink.OnMessage(new DiagnosticMessage("Emulator boot complete."));
 
 			Assert.True(booted);
