@@ -36,36 +36,31 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 {
 	public override int Execute([NotNull] CommandContext context, [NotNull] DeviceLaunchCommandSettings settings, [NotNull] Adb adb, [NotNull] Adb.AdbDevice device)
 	{
+		bool success;
+		string intentArgs;
 		if (string.IsNullOrEmpty(settings.Activity))
 		{
-			var output = adb.LaunchApp(settings.Package, device.Serial);
-			if (output?.Any(l => !string.IsNullOrEmpty(l)
-				&& l.IndexOf("Events injected", System.StringComparison.OrdinalIgnoreCase) >= 0) == true)
-			{
-				AnsiConsole.MarkupLine($"[green]Launched {settings.Package}[/]");
-				return 0;
-			}
-
-			AnsiConsole.MarkupLine($"[red]Failed to launch {settings.Package}[/]");
-			return 1;
+			intentArgs = settings.Package;
+			var output = adb.LaunchApp(intentArgs, device.Serial);
+			success = output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase));
 		}
-
-		var intentArgs = $"{settings.Package}/{settings.Activity}";
-		var am = new ActivityManager(adb.AndroidSdkHome?.FullName, device.Serial);
-		var success = am.StartActivity(intentArgs, new ActivityManager.ActivityManagerStartOptions
+		else
 		{
-			WaitForLaunch = settings.WaitForLaunch,
-		});
+			intentArgs = $"{settings.Package}/{settings.Activity}";
+			var am = new ActivityManager(adb.AndroidSdkHome?.FullName, device.Serial);
+			success = am.StartActivity(intentArgs, new ActivityManager.ActivityManagerStartOptions
+			{
+				WaitForLaunch = settings.WaitForLaunch,
+			});
+		}
 
 		if (success)
 		{
 			AnsiConsole.MarkupLine($"[green]Launched {intentArgs}[/]");
-		}
-		else
-		{
-			AnsiConsole.MarkupLine($"[red]Failed to launch {intentArgs}[/]");
+			return 0;
 		}
 
-		return success ? 0 : 1;
+		AnsiConsole.MarkupLine($"[red]Failed to launch {intentArgs}[/]");
+		return 1;
 	}
 }
