@@ -7,6 +7,27 @@ namespace AndroidSdk.Tests;
 public class CommandSettingsValidation_Tests
 {
 	[Fact]
+	public void DeviceLaunchCommandSettingsRequirePackage()
+	{
+		var settings = new DeviceLaunchCommandSettings { Package = "" };
+
+		var result = settings.Validate();
+
+		Assert.False(result.Successful);
+		Assert.Contains("--package", result.Message);
+	}
+
+	[Fact]
+	public void DeviceLaunchCommandSettingsAcceptPackage()
+	{
+		var settings = new DeviceLaunchCommandSettings { Package = "com.companyname.TestApp" };
+
+		var result = settings.Validate();
+
+		Assert.True(result.Successful);
+	}
+
+	[Fact]
 	public void AvdDeleteCommandSettingsRequireName()
 	{
 		var settings = new AvdDeleteCommandSettings { Name = "" };
