@@ -4,7 +4,6 @@ using Spectre.Console.Cli;
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace AndroidSdk.Tool;
 
@@ -41,8 +40,8 @@ public class DeviceLaunchCommand : SingleDeviceCommand<DeviceLaunchCommandSettin
 		if (string.IsNullOrEmpty(settings.Activity))
 		{
 			intentArgs = settings.Package;
-			var output = adb.LaunchApp(intentArgs, device.Serial);
-			success = output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase));
+			_ = adb.LaunchApp(intentArgs, device.Serial);
+			success = true;
 		}
 		else
 		{
