@@ -1,6 +1,5 @@
 #nullable enable
 using Spectre.Console.Cli;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -19,18 +18,7 @@ public class DeviceLogcatCommand : SingleDeviceCommand<DeviceLogcatCommandSettin
 	public override int Execute([NotNull] CommandContext context, [NotNull] DeviceLogcatCommandSettings settings, [NotNull] Adb adb, [NotNull] Adb.AdbDevice device)
 	{
 		var options = new Adb.AdbLogcatOptions();
-
-		List<string> lines;
-		try
-		{
-			lines = adb.Logcat(options, adbSerial: device.Serial);
-		}
-		catch (SdkToolFailedExitException sdkEx) when (sdkEx.StdOut?.Length > 0)
-		{
-			// adb logcat -d can occasionally return non-zero while still producing usable output.
-			// In that case, preserve the collected stdout instead of failing the command.
-			lines = new List<string>(sdkEx.StdOut);
-		}
+		var lines = adb.Logcat(options, adbSerial: device.Serial);
 
 		if (!string.IsNullOrEmpty(settings.OutputPath))
 		{
