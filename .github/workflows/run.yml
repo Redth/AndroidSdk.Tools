@@ -96,7 +96,7 @@ jobs:
 
     - name: Do Start AVD
       run: |
-        dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations
+        dotnet $TOOL avd start -p 5554 -n test --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --timeout 300 --disable-animations
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
 
