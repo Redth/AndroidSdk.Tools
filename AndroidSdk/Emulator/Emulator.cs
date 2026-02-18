@@ -70,7 +70,18 @@ namespace AndroidSdk
 
 		static string FindRunningEmulatorSerialByAvdName(Adb adb, string avdName)
 		{
-			foreach (var device in adb.GetDevices())
+			IEnumerable<Adb.AdbDevice> devices;
+			try
+			{
+				devices = adb.GetDevices();
+			}
+			catch (SdkToolFailedExitException)
+			{
+				// adb can transiently fail while the server/emulator is still coming up.
+				return null;
+			}
+
+			foreach (var device in devices)
 			{
 				try
 				{

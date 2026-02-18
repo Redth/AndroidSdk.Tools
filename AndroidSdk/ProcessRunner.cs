@@ -14,6 +14,8 @@ namespace AndroidSdk
 		readonly List<string> standardError;
 		readonly List<string> output;
 		readonly Process process;
+		readonly TaskCompletionSource<bool> standardOutputClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		readonly TaskCompletionSource<bool> standardErrorClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
 		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder)
 			: this(executable, builder, CancellationToken.None)
@@ -110,6 +112,10 @@ namespace AndroidSdk
 					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stdout) != 0)
 						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stdout);
 				}
+				else
+				{
+					standardOutputClosed.TrySetResult(true);
+				}
 			};
 			process.ErrorDataReceived += (s, e) =>
 			{
@@ -120,6 +126,10 @@ namespace AndroidSdk
 
 					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stderr) != 0)
 						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stderr);
+				}
+				else
+				{
+					standardErrorClosed.TrySetResult(true);
 				}
 			};
 			process.Start();
@@ -190,6 +200,7 @@ namespace AndroidSdk
 		public ProcessResult WaitForExit()
 		{
 			process.WaitForExit();
+			Task.WaitAll(new[] { standardOutputClosed.Task, standardErrorClosed.Task }, TimeSpan.FromSeconds(5));
 
 			if (standardError?.Any(l => l?.Contains("error: more than one device/emulator") ?? false) ?? false)
 				throw new InvalidOperationException("More than one Device/Emulator detected, you must specify which Serial to target.");

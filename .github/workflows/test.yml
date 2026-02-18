@@ -45,12 +45,7 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
-    - name: Test (Linux)
-      if: runner.os == 'Linux'
-      run: dotnet test --configuration Release --filter "FullyQualifiedName!~EmulatorOperations_Tests&FullyQualifiedName!~ProcessRunner_Tests.RunInputWithError" --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=TestResults.trx"
-
-    - name: Test (macOS)
-      if: runner.os == 'macOS'
+    - name: Test
       run: dotnet test --configuration Release --logger:"console;verbosity=detailed" --logger:"trx;LogFileName=TestResults.trx"
     - name: Upload Test Results
       if: (!cancelled())

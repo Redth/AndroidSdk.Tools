@@ -631,7 +631,23 @@ namespace AndroidSdk
 		{
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
-			return Shell($"monkey -p {packageName} -v 1", adbSerial);
+			const int maxAttempts = 3;
+			for (var attempt = 1; attempt <= maxAttempts; attempt++)
+			{
+				try
+				{
+					var output = Shell($"monkey -p {packageName} --pct-syskeys 0 -v 1", adbSerial);
+					if (output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase)) || attempt == maxAttempts)
+						return output;
+				}
+				catch (SdkToolFailedExitException) when (attempt < maxAttempts)
+				{
+				}
+
+				Task.Delay(500).Wait();
+			}
+
+			throw new InvalidOperationException("Unreachable");
 		}
 	}
 }
