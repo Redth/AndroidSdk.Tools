@@ -1,0 +1,85 @@
+using System;
+using System.IO;
+using System.Linq;
+using AndroidSdk;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace AndroidSdk.Tests;
+
+/// <summary>
+/// Booted emulator operation tests (identity, install/uninstall, and app launch).
+/// </summary>
+[Collection(nameof(AndroidSdkManagerCollection))]
+public class EmulatorOperations_Tests :
+	EmulatorTestsBase,
+	IClassFixture<EmulatorTestsBase.AvdCreateFixture>,
+	IClassFixture<EmulatorTestsBase.EmulatorBootFixture>
+{
+	readonly EmulatorBootFixture boot;
+	readonly Emulator.AndroidEmulatorProcess emulatorInstance;
+
+	public EmulatorOperations_Tests(
+		ITestOutputHelper outputHelper,
+		AndroidSdkManagerFixture fixture,
+		AvdCreateFixture setup,
+		EmulatorBootFixture boot)
+		: base(outputHelper, fixture)
+	{
+		_ = setup;
+		this.boot = boot;
+		emulatorInstance = boot.EmulatorInstance;
+	}
+
+	public override void Dispose()
+	{
+		var pm = new PackageManager(AndroidSdkHome, boot.EmulatorInstance.Serial);
+		if (pm.ListPackages().Any(p => p.PackageName == StaticAppPackageName))
+			Sdk.Adb.Uninstall(StaticAppPackageName, adbSerial: boot.EmulatorInstance.Serial);
+
+		base.Dispose();
+	}
+
+	[Fact]
+	public void BootedEmulatorHasExpectedIdentity()
+	{
+		Assert.Equal("emulator-5554", emulatorInstance.Serial);
+		Assert.Equal(TestEmulatorName, emulatorInstance.AvdName);
+
+		var devices = Sdk.Adb.GetDevices();
+		Assert.Contains(devices, d => d.Serial == emulatorInstance.Serial);
+
+		var emuName = Sdk.Adb.GetEmulatorName(emulatorInstance.Serial);
+		Assert.Equal(TestEmulatorName, emuName);
+	}
+
+	[Fact]
+	public void InstallVerifyAndUninstallStaticApp()
+	{
+		Sdk.Adb.Install(new FileInfo(StaticAppApkPath), emulatorInstance.Serial);
+
+		var pm = new PackageManager(AndroidSdkHome, emulatorInstance.Serial);
+		var packagesAfterInstall = pm.ListPackages();
+		Assert.Contains(packagesAfterInstall, p => p.PackageName == StaticAppPackageName);
+
+		Sdk.Adb.Uninstall(StaticAppPackageName, adbSerial: emulatorInstance.Serial);
+		var packagesAfterUninstall = pm.ListPackages();
+		Assert.DoesNotContain(packagesAfterUninstall, p => p.PackageName == StaticAppPackageName);
+	}
+
+	[Fact]
+	public void LaunchStaticAppLaunches()
+	{
+		Sdk.Adb.Install(new FileInfo(StaticAppApkPath), emulatorInstance.Serial);
+
+		try
+		{
+			var output = Sdk.Adb.LaunchApp(StaticAppPackageName, emulatorInstance.Serial);
+			Assert.Contains(output, l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase));
+		}
+		catch (SdkToolFailedExitException ex)
+		{
+			Assert.Contains(ex.StdOut, l => l.Contains($":AllowPackage: {StaticAppPackageName}", StringComparison.OrdinalIgnoreCase));
+		}
+	}
+}
