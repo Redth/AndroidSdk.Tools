@@ -285,7 +285,7 @@ namespace AndroidSdk.Tool
 		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed, TimeSpan fallback)
 		{
 			if (timeoutBudget == TimeSpan.Zero)
-				return fallback;
+				return TimeSpan.Zero;
 
 			var remaining = timeoutBudget - elapsed;
 			return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;

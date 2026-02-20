@@ -421,7 +421,8 @@ namespace AndroidSdk
 				var adb = new Adb(androidSdkHome);
 
 				using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-				cts.CancelAfter(timeout);
+				if (timeout != TimeSpan.Zero)
+					cts.CancelAfter(timeout);
 
 				while (!cts.IsCancellationRequested)
 				{
