@@ -409,7 +409,12 @@ namespace AndroidSdk
 			}
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
+				=> WaitForCpuLoadBelow(threshold, timeout, settleDelay, token, out _);
+
+			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token, out double lastLoad)
 			{
+				lastLoad = -1;
+
 				if (string.IsNullOrWhiteSpace(Serial))
 					return false;
 
@@ -427,12 +432,16 @@ namespace AndroidSdk
 					if (!string.IsNullOrWhiteSpace(line))
 					{
 						var first = line.Split([' '], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-						if (double.TryParse(first, NumberStyles.Float, CultureInfo.InvariantCulture, out var load) && load < threshold)
+						if (double.TryParse(first, NumberStyles.Float, CultureInfo.InvariantCulture, out var load))
 						{
-							if (settleDelay > TimeSpan.Zero && cts.Token.WaitHandle.WaitOne(settleDelay))
-								return false;
+							lastLoad = load;
+							if (load < threshold)
+							{
+								if (settleDelay > TimeSpan.Zero && cts.Token.WaitHandle.WaitOne(settleDelay))
+									return false;
 
-							return true;
+								return true;
+							}
 						}
 					}
 
