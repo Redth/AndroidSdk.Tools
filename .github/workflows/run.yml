@@ -99,7 +99,7 @@ jobs:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-create-validate.log
 
     - name: Do Start AVD
-      run: dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --disable-animations --cpu-threshold 3.0
+      run: dotnet $TOOL avd start -p 5554 -n "$AVD_NAME" --no-window --gpu ${{ matrix.gpu }} --no-snapshot --no-audio --no-boot-anim --wait --no-anim --cpu-threshold 3.0
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/avd-start-do.log
 

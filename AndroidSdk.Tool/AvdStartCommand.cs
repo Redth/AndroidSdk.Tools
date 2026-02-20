@@ -134,7 +134,7 @@ namespace AndroidSdk.Tool
 		public bool? GrpcUseJwt { get; set; }
 
 		[Description("Disable all window, transition, and animator animation scales on the emulator (persists for this AVD until changed)")]
-		[CommandOption("--disable-animations")]
+		[CommandOption("--no-animations|--no-anim")]
 		[DefaultValue(false)]
 		public bool DisableAnimations { get; set; }
 
@@ -254,6 +254,7 @@ namespace AndroidSdk.Tool
 							else if (!cancellationToken.IsCancellationRequested)
 							{
 								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
+								ok = false;
 							}
 						}
 					}
