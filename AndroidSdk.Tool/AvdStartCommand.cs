@@ -134,7 +134,7 @@ namespace AndroidSdk.Tool
 		public bool? GrpcUseJwt { get; set; }
 
 		[Description("Disable all window, transition, and animator animation scales on the emulator (persists for this AVD until changed)")]
-		[CommandOption("--disable-animations")]
+		[CommandOption("--no-animations|--no-anim|--disable-animations")]
 		[DefaultValue(false)]
 		public bool DisableAnimations { get; set; }
 
@@ -226,7 +226,10 @@ namespace AndroidSdk.Tool
 					if (settings.WaitForBoot)
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
+						var bootSw = System.Diagnostics.Stopwatch.StartNew();
 						ok = process.WaitForBootComplete(timeoutBudget);
+						bootSw.Stop();
+						AnsiConsole.MarkupLine($"[grey]Boot wait completed in {bootSw.Elapsed.TotalSeconds:F1}s[/]");
 					}
 
 					if (ok && process?.Serial != null)
@@ -241,14 +244,16 @@ namespace AndroidSdk.Tool
 						{
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
 							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(120));
-							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken);
+							var cpuSw = System.Diagnostics.Stopwatch.StartNew();
+							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken, out var lastLoad);
+							cpuSw.Stop();
 							if (cpuSettled)
 							{
-								ctx.Status("CPU settled and system stabilized");
+								AnsiConsole.MarkupLine($"[grey]CPU settled to {lastLoad:F2} (threshold {settings.CpuThreshold.Value}) in {cpuSw.Elapsed.TotalSeconds:F1}s[/]");
 							}
 							else if (!cancellationToken.IsCancellationRequested)
 							{
-								AnsiConsole.MarkupLine("[yellow]Warning: CPU load did not settle within timeout[/]");
+								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
 							}
 						}
 					}
