@@ -29,13 +29,14 @@ public class SdkLocator : PathLocator
 				paths.Add(monodroidConfig.AndroidSdkPath);
 		}
 
-		var androidSdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
-		if (!string.IsNullOrEmpty(androidSdkRoot))
-			paths.Add(androidSdkRoot);
-
 		var androidHome = Environment.GetEnvironmentVariable("ANDROID_HOME");
 		if (!string.IsNullOrEmpty(androidHome))
 			paths.Add(androidHome);
+
+		// ANDROID_SDK_ROOT is deprecated in favor of ANDROID_HOME
+		var androidSdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
+		if (!string.IsNullOrEmpty(androidSdkRoot))
+			paths.Add(androidSdkRoot);
 
 		return paths.ToArray();
 	}
