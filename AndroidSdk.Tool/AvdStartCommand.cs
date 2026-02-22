@@ -180,8 +180,6 @@ namespace AndroidSdk.Tool
 
 	public class AvdStartCommand : CancellableAsyncCommand<AvdStartCommandSettings>
 	{
-		const int DefaultCpuSettleTimeoutSeconds = 120;
-
 		public override Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] AvdStartCommandSettings settings, CancellationToken cancellationToken)
 		{
 			var ok = true;
@@ -250,7 +248,7 @@ namespace AndroidSdk.Tool
 						if (settings.CpuThreshold.HasValue)
 						{
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
-							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(DefaultCpuSettleTimeoutSeconds));
+							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed);
 							var cpuSw = System.Diagnostics.Stopwatch.StartNew();
 							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken, out var lastLoad);
 							cpuSw.Stop();
@@ -288,10 +286,10 @@ namespace AndroidSdk.Tool
 			return Task.FromResult(ok ? 0 : 1);
 		}
 
-		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed, TimeSpan fallback)
+		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed)
 		{
 			if (timeoutBudget == TimeSpan.Zero)
-				return fallback;
+				return TimeSpan.Zero;
 
 			var remaining = timeoutBudget - elapsed;
 			return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
