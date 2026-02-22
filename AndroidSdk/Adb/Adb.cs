@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
@@ -631,7 +630,27 @@ namespace AndroidSdk
 		{
 			// Use a trick to have monkey launch the app by package name
 			// so we don't need know the activity class for the main launcher
-			return Shell($"monkey -p {packageName} -v 1", adbSerial);
+			const int maxAttempts = 3;
+			IEnumerable<string> output = new string[0];
+
+			for (var attempt = 1; attempt <= maxAttempts; attempt++)
+			{
+				try
+				{
+					output = Shell($"monkey -p {packageName} --pct-syskeys 0 -v 1", adbSerial);
+					if (output.Any(l => l.Contains("Events injected", StringComparison.OrdinalIgnoreCase)))
+						return output;
+				}
+				catch (SdkToolFailedExitException ex)
+				{
+					output = ex.StdOut;
+				}
+
+				if (attempt < maxAttempts)
+					System.Threading.Thread.Sleep(1000);
+			}
+
+			return output;
 		}
 	}
 }

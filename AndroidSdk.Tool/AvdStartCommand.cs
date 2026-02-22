@@ -73,6 +73,10 @@ namespace AndroidSdk.Tool
 		[CommandOption("--memory")]
 		public uint? Memory { get; set; }
 
+		[Description("The number of virtual CPU cores (overrides the emulator default)")]
+		[CommandOption("--cores")]
+		public int? Cores { get; set; }
+
 		[Description("The system/data partition size in MB")]
 		[CommandOption("--partition-size|--data-partition-size")]
 		public uint? PartitionSize { get; set; }
@@ -134,7 +138,7 @@ namespace AndroidSdk.Tool
 		public bool? GrpcUseJwt { get; set; }
 
 		[Description("Disable all window, transition, and animator animation scales on the emulator (persists for this AVD until changed)")]
-		[CommandOption("--disable-animations")]
+		[CommandOption("--no-animations|--no-anim")]
 		[DefaultValue(false)]
 		public bool DisableAnimations { get; set; }
 
@@ -208,6 +212,7 @@ namespace AndroidSdk.Tool
 						Verbose = settings.Verbose,
 						Screen = settings.ScreenMode,
 						MemoryMegabytes = (int?)settings.Memory,
+						Cores = settings.Cores,
 						PartitionSizeMegabytes = (int?)settings.PartitionSize,
 						CacheSizeMegabytes = (int?)settings.CacheSize,
 						GrpcPort = (int?)settings.GrpcPort,
@@ -221,12 +226,19 @@ namespace AndroidSdk.Tool
 					});
 
 					var timeoutBudget = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
-					var waitStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+					using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+					if (timeoutBudget != TimeSpan.Zero)
+						timeoutCts.CancelAfter(timeoutBudget);
+					var timeoutToken = timeoutCts.Token;
 
 					if (settings.WaitForBoot)
 					{
 						ctx.Status($"Waiting for {settings.Name} to finish booting...");
-						ok = process.WaitForBootComplete(timeoutBudget);
+						var bootSw = System.Diagnostics.Stopwatch.StartNew();
+						ok = process.WaitForBootComplete(timeoutToken);
+						bootSw.Stop();
+						AnsiConsole.MarkupLine($"[grey]Boot wait completed in {bootSw.Elapsed.TotalSeconds:F1}s[/]");
 					}
 
 					if (ok && process?.Serial != null)
@@ -240,15 +252,16 @@ namespace AndroidSdk.Tool
 						if (settings.CpuThreshold.HasValue)
 						{
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
-							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(120));
-							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken);
+							var cpuSw = System.Diagnostics.Stopwatch.StartNew();
+							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, TimeSpan.Zero, TimeSpan.FromSeconds(10), timeoutToken, out var lastLoad);
+							cpuSw.Stop();
 							if (cpuSettled)
 							{
-								ctx.Status("CPU settled and system stabilized");
+								AnsiConsole.MarkupLine($"[grey]CPU settled to {lastLoad:F2} (threshold {settings.CpuThreshold.Value}) in {cpuSw.Elapsed.TotalSeconds:F1}s[/]");
 							}
-							else if (!cancellationToken.IsCancellationRequested)
+							else if (!timeoutToken.IsCancellationRequested)
 							{
-								AnsiConsole.MarkupLine("[yellow]Warning: CPU load did not settle within timeout[/]");
+								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
 							}
 						}
 					}
@@ -276,13 +289,5 @@ namespace AndroidSdk.Tool
 			return Task.FromResult(ok ? 0 : 1);
 		}
 
-		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed, TimeSpan fallback)
-		{
-			if (timeoutBudget == TimeSpan.Zero)
-				return fallback;
-
-			var remaining = timeoutBudget - elapsed;
-			return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
-		}
 	}
 }

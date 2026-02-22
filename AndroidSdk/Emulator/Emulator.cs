@@ -58,19 +58,44 @@ namespace AndroidSdk
 			var sw = System.Diagnostics.Stopwatch.StartNew();
 			while (sw.Elapsed < timeout)
 			{
-				var stillRunning = adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
-				if (!stillRunning)
-					return true;
+				try
+				{
+					var stillRunning = adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+					if (!stillRunning)
+						return true;
+				}
+				catch (SdkToolFailedExitException)
+				{
+					// adb can transiently fail during shutdown.
+				}
 
 				Thread.Sleep(250);
 			}
 
-			return !adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+			try
+			{
+				return !adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
+			}
+			catch (SdkToolFailedExitException)
+			{
+				return false;
+			}
 		}
 
 		static string FindRunningEmulatorSerialByAvdName(Adb adb, string avdName)
 		{
-			foreach (var device in adb.GetDevices())
+			IEnumerable<Adb.AdbDevice> devices;
+			try
+			{
+				devices = adb.GetDevices();
+			}
+			catch (SdkToolFailedExitException)
+			{
+				// adb can transiently fail while the server/emulator is still coming up.
+				return null;
+			}
+
+			foreach (var device in devices)
 			{
 				try
 				{
@@ -128,6 +153,9 @@ namespace AndroidSdk
 
 			if (options.CacheSizeMegabytes.HasValue)
 				builder.Append($"-cache-size {options.CacheSizeMegabytes}");
+
+			if (options.Cores.HasValue)
+				builder.Append($"-cores {options.Cores}");
 
 			if (options.SdCard != null)
 			{
@@ -362,36 +390,71 @@ namespace AndroidSdk
 						return false;
 				}
 
-				// Always wait for launcher after boot (like iOS waits for SpringBoard)
-				while (booted && !token.IsCancellationRequested)
+				// After boot_completed=1, wait for the launcher to gain focus.
+				// On slow emulators (e.g. macOS without KVM) ANR dialogs can
+				// steal mCurrentFocus and block the launcher from appearing.
+				// Dismiss them so the launcher can take focus. Use a hard 120s
+				// timeout so we never block indefinitely — if the launcher
+				// doesn't appear, proceed anyway since boot IS complete.
+				if (booted && !token.IsCancellationRequested)
 				{
-					if (process.HasExited)
-						break;
+					var launcherTimeout = TimeSpan.FromSeconds(120);
+					var launcherSw = System.Diagnostics.Stopwatch.StartNew();
 
-					var output = adb.Shell("dumpsys window displays", Serial);
-					if (output.Any(l =>
-						l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
-						l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
+					while (launcherSw.Elapsed < launcherTimeout && !token.IsCancellationRequested)
 					{
-						break;
-					}
+						if (process.HasExited)
+							break;
 
-					if (token.WaitHandle.WaitOne(1000))
-						break;
+						try
+						{
+							var output = adb.Shell("dumpsys window displays", Serial);
+
+							if (output.Any(l =>
+								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+								l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
+							{
+								break;
+							}
+
+							// ANR dialogs block the launcher from getting focus.
+							// Dismiss them by pressing BACK so the launcher can appear.
+							if (output.Any(l =>
+								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+								l.Contains("Application Not Responding", StringComparison.OrdinalIgnoreCase)))
+							{
+								try { adb.Shell("input keyevent KEYCODE_BACK", Serial); }
+								catch (SdkToolFailedExitException) { }
+							}
+						}
+						catch (SdkToolFailedExitException)
+						{
+							// adb can transiently fail; retry on next iteration.
+						}
+
+						if (token.WaitHandle.WaitOne(2000))
+							break;
+					}
 				}
 
 				return booted;
 			}
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
+				=> WaitForCpuLoadBelow(threshold, timeout, settleDelay, token, out _);
+
+			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token, out double lastLoad)
 			{
+				lastLoad = -1;
+
 				if (string.IsNullOrWhiteSpace(Serial))
 					return false;
 
 				var adb = new Adb(androidSdkHome);
 
 				using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-				cts.CancelAfter(timeout);
+				if (timeout != TimeSpan.Zero)
+					cts.CancelAfter(timeout);
 
 				while (!cts.IsCancellationRequested)
 				{
@@ -402,12 +465,16 @@ namespace AndroidSdk
 					if (!string.IsNullOrWhiteSpace(line))
 					{
 						var first = line.Split([' '], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-						if (double.TryParse(first, NumberStyles.Float, CultureInfo.InvariantCulture, out var load) && load < threshold)
+						if (double.TryParse(first, NumberStyles.Float, CultureInfo.InvariantCulture, out var load))
 						{
-							if (settleDelay > TimeSpan.Zero && cts.Token.WaitHandle.WaitOne(settleDelay))
-								return false;
+							lastLoad = load;
+							if (load < threshold)
+							{
+								if (settleDelay > TimeSpan.Zero && cts.Token.WaitHandle.WaitOne(settleDelay))
+									return false;
 
-							return true;
+								return true;
+							}
 						}
 					}
 
