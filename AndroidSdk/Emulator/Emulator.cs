@@ -390,26 +390,34 @@ namespace AndroidSdk
 						return false;
 				}
 
-				// Best-effort wait for launcher after boot (like iOS waits for SpringBoard).
-				// Cap at 60 s so we never hang when the emulator's foreground window
-				// doesn't contain "launcher" (common on macOS / some API levels).
-				var launcherTimeout = System.Diagnostics.Stopwatch.StartNew();
+				// Wait for launcher after boot (like iOS waits for SpringBoard).
+				// On slow emulators (e.g. macOS without KVM) ANR dialogs can steal
+				// mCurrentFocus and block the launcher from appearing. Dismiss them
+				// so the launcher can take focus.
 				while (booted && !token.IsCancellationRequested)
 				{
 					if (process.HasExited)
 						break;
 
-					if (launcherTimeout.Elapsed.TotalSeconds >= 60)
-						break;
-
 					try
 					{
 						var output = adb.Shell("dumpsys window displays", Serial);
+
 						if (output.Any(l =>
 							l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
 							l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
 						{
 							break;
+						}
+
+						// ANR dialogs block the launcher from getting focus.
+						// Dismiss them by pressing BACK so the launcher can appear.
+						if (output.Any(l =>
+							l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+							l.Contains("Application Not Responding", StringComparison.OrdinalIgnoreCase)))
+						{
+							try { adb.Shell("input keyevent KEYCODE_BACK", Serial); }
+							catch (SdkToolFailedExitException) { }
 						}
 					}
 					catch (SdkToolFailedExitException)
