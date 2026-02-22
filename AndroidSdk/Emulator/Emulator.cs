@@ -373,7 +373,6 @@ namespace AndroidSdk
 				}
 
 				// Keep trying to see if the boot complete prop is set
-				var booted = false;
 				while (!token.IsCancellationRequested)
 				{
 					if (process.HasExited)
@@ -382,33 +381,14 @@ namespace AndroidSdk
 					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")) ||
 						adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
 					{
-						booted = true;
-						break;
+						return true;
 					}
 
 					if (token.WaitHandle.WaitOne(1000))
 						return false;
 				}
 
-				// Always wait for launcher after boot (like iOS waits for SpringBoard)
-				while (booted && !token.IsCancellationRequested)
-				{
-					if (process.HasExited)
-						break;
-
-					var output = adb.Shell("dumpsys window displays", Serial);
-					if (output.Any(l =>
-						l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
-						l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
-					{
-						break;
-					}
-
-					if (token.WaitHandle.WaitOne(1000))
-						break;
-				}
-
-				return booted;
+				return false;
 			}
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
