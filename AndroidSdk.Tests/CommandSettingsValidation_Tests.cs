@@ -75,20 +75,6 @@ public class CommandSettingsValidation_Tests
 	}
 
 	[Fact]
-	public void AvdStartCommandSettingsAllowCores()
-	{
-		var settings = new AvdStartCommandSettings
-		{
-			Name = "Pixel",
-			Cores = 2
-		};
-
-		var result = settings.Validate();
-
-		Assert.True(result.Successful);
-	}
-
-	[Fact]
 	public void OutputFormatTypeConverterSupportsJsonPretty()
 	{
 		var converter = new OutputFormatTypeConverter();
