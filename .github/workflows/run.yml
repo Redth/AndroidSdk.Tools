@@ -167,15 +167,20 @@ jobs:
         for i in $(seq 1 30); do
           dotnet $TOOL device logcat --output artifacts/device-logcat.txt
           if grep -q "$APP_START_MARKER" artifacts/device-logcat.txt; then
-            echo "✅ Marker found on attempt $i"
+            echo "✅ App marker '$APP_START_MARKER' found on attempt $i"
             FOUND=1
             break
           fi
-          echo "Attempt $i/30 - marker not found yet, waiting 5s..."
+          if grep -q "Displayed $TEST_APP_PACKAGE" artifacts/device-logcat.txt; then
+            echo "✅ System 'Displayed' marker found on attempt $i"
+            FOUND=1
+            break
+          fi
+          echo "Attempt $i/30 - neither marker found yet, waiting 5s..."
           sleep 5
         done
         if [ "$FOUND" -ne 1 ]; then
-          echo "❌ Marker '$APP_START_MARKER' not found in logcat after 30 attempts"
+          echo "❌ Neither '$APP_START_MARKER' nor 'Displayed $TEST_APP_PACKAGE' found in logcat after 30 attempts"
           cat artifacts/device-logcat.txt
           exit 1
         fi

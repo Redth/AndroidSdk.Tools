@@ -373,6 +373,7 @@ namespace AndroidSdk
 				}
 
 				// Keep trying to see if the boot complete prop is set
+				var booted = false;
 				while (!token.IsCancellationRequested)
 				{
 					if (process.HasExited)
@@ -381,14 +382,62 @@ namespace AndroidSdk
 					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")) ||
 						adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
 					{
-						return true;
+						booted = true;
+						break;
 					}
 
 					if (token.WaitHandle.WaitOne(1000))
 						return false;
 				}
 
-				return false;
+				// After boot_completed=1, wait for the launcher to gain focus.
+				// On slow emulators (e.g. macOS without KVM) ANR dialogs can
+				// steal mCurrentFocus and block the launcher from appearing.
+				// Dismiss them so the launcher can take focus. Use a hard 120s
+				// timeout so we never block indefinitely — if the launcher
+				// doesn't appear, proceed anyway since boot IS complete.
+				if (booted && !token.IsCancellationRequested)
+				{
+					var launcherTimeout = TimeSpan.FromSeconds(120);
+					var launcherSw = System.Diagnostics.Stopwatch.StartNew();
+
+					while (launcherSw.Elapsed < launcherTimeout && !token.IsCancellationRequested)
+					{
+						if (process.HasExited)
+							break;
+
+						try
+						{
+							var output = adb.Shell("dumpsys window displays", Serial);
+
+							if (output.Any(l =>
+								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+								l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
+							{
+								break;
+							}
+
+							// ANR dialogs block the launcher from getting focus.
+							// Dismiss them by pressing BACK so the launcher can appear.
+							if (output.Any(l =>
+								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+								l.Contains("Application Not Responding", StringComparison.OrdinalIgnoreCase)))
+							{
+								try { adb.Shell("input keyevent KEYCODE_BACK", Serial); }
+								catch (SdkToolFailedExitException) { }
+							}
+						}
+						catch (SdkToolFailedExitException)
+						{
+							// adb can transiently fail; retry on next iteration.
+						}
+
+						if (token.WaitHandle.WaitOne(2000))
+							break;
+					}
+				}
+
+				return booted;
 			}
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
