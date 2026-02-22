@@ -31,7 +31,7 @@ jobs:
             image: system-images;android-34;google_apis;x86_64
             abi: google_apis/x86_64
             cores: 2
-            cpu_threshold: 3
+            cpu_threshold: 25
             timeout_seconds: 1800
     runs-on: ${{ matrix.os }}
     env:
@@ -163,23 +163,30 @@ jobs:
     - name: Validate Launch test app
       timeout-minutes: 10
       run: |
-        FOUND=0
+        FOUND_APP=0
+        FOUND_DISPLAYED=0
         for i in $(seq 1 30); do
           dotnet $TOOL device logcat --output artifacts/device-logcat.txt
-          if grep -q "$APP_START_MARKER" artifacts/device-logcat.txt; then
-            echo "✅ Marker found on attempt $i"
-            FOUND=1
+          if [ "$FOUND_APP" -eq 0 ] && grep -q "$APP_START_MARKER" artifacts/device-logcat.txt; then
+            echo "✅ App marker '$APP_START_MARKER' found on attempt $i"
+            FOUND_APP=1
+          fi
+          if [ "$FOUND_DISPLAYED" -eq 0 ] && grep -q "Displayed $TEST_APP_PACKAGE" artifacts/device-logcat.txt; then
+            echo "✅ System 'Displayed' marker found on attempt $i"
+            FOUND_DISPLAYED=1
+          fi
+          if [ "$FOUND_APP" -eq 1 ] && [ "$FOUND_DISPLAYED" -eq 1 ]; then
             break
           fi
-          echo "Attempt $i/30 - marker not found yet, waiting 5s..."
+          echo "Attempt $i/30 - waiting 5s... (app_marker=$FOUND_APP, displayed=$FOUND_DISPLAYED)"
           sleep 5
         done
-        if [ "$FOUND" -ne 1 ]; then
-          echo "❌ Marker '$APP_START_MARKER' not found in logcat after 30 attempts"
+        if [ "$FOUND_APP" -ne 1 ] || [ "$FOUND_DISPLAYED" -ne 1 ]; then
+          echo "❌ Not all markers found after 30 attempts (app_marker=$FOUND_APP, displayed=$FOUND_DISPLAYED)"
           cat artifacts/device-logcat.txt
           exit 1
         fi
-        echo "✅ Launch validated via logcat marker"
+        echo "✅ Launch validated — both markers found"
       env:
         ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH: artifacts/device-launch-validate.log
 
