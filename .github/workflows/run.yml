@@ -31,7 +31,7 @@ jobs:
             image: system-images;android-34;google_apis;x86_64
             abi: google_apis/x86_64
             cores: 2
-            cpu_threshold: 30
+            cpu_threshold: 3
             timeout_seconds: 1800
     runs-on: ${{ matrix.os }}
     env:
