@@ -73,6 +73,10 @@ namespace AndroidSdk.Tool
 		[CommandOption("--memory")]
 		public uint? Memory { get; set; }
 
+		[Description("The number of virtual CPU cores (overrides the emulator default)")]
+		[CommandOption("--cores")]
+		public int? Cores { get; set; }
+
 		[Description("The system/data partition size in MB")]
 		[CommandOption("--partition-size|--data-partition-size")]
 		public uint? PartitionSize { get; set; }
@@ -176,6 +180,8 @@ namespace AndroidSdk.Tool
 
 	public class AvdStartCommand : CancellableAsyncCommand<AvdStartCommandSettings>
 	{
+		const int DefaultCpuSettleTimeoutSeconds = 120;
+
 		public override Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] AvdStartCommandSettings settings, CancellationToken cancellationToken)
 		{
 			var ok = true;
@@ -208,6 +214,7 @@ namespace AndroidSdk.Tool
 						Verbose = settings.Verbose,
 						Screen = settings.ScreenMode,
 						MemoryMegabytes = (int?)settings.Memory,
+						Cores = settings.Cores,
 						PartitionSizeMegabytes = (int?)settings.PartitionSize,
 						CacheSizeMegabytes = (int?)settings.CacheSize,
 						GrpcPort = (int?)settings.GrpcPort,
@@ -243,7 +250,7 @@ namespace AndroidSdk.Tool
 						if (settings.CpuThreshold.HasValue)
 						{
 							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
-							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed);
+							var cpuWaitTimeout = GetStepTimeout(timeoutBudget, waitStopwatch.Elapsed, TimeSpan.FromSeconds(DefaultCpuSettleTimeoutSeconds));
 							var cpuSw = System.Diagnostics.Stopwatch.StartNew();
 							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, cpuWaitTimeout, TimeSpan.FromSeconds(10), cancellationToken, out var lastLoad);
 							cpuSw.Stop();
@@ -254,7 +261,6 @@ namespace AndroidSdk.Tool
 							else if (!cancellationToken.IsCancellationRequested)
 							{
 								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
-								ok = false;
 							}
 						}
 					}
@@ -282,10 +288,10 @@ namespace AndroidSdk.Tool
 			return Task.FromResult(ok ? 0 : 1);
 		}
 
-		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed)
+		static TimeSpan GetStepTimeout(TimeSpan timeoutBudget, TimeSpan elapsed, TimeSpan fallback)
 		{
 			if (timeoutBudget == TimeSpan.Zero)
-				return TimeSpan.Zero;
+				return fallback;
 
 			var remaining = timeoutBudget - elapsed;
 			return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
