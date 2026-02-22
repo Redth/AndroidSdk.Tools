@@ -37,6 +37,8 @@ namespace AndroidSdk
 
 			public int? CacheSizeMegabytes { get; set; }
 
+			public int? Cores { get; set; }
+
 			public FileInfo SdCard { get; set; }
 
 			public bool WipeData { get; set; }

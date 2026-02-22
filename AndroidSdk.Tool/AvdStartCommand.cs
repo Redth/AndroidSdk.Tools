@@ -73,6 +73,10 @@ namespace AndroidSdk.Tool
 		[CommandOption("--memory")]
 		public uint? Memory { get; set; }
 
+		[Description("The number of virtual CPU cores (overrides the emulator default)")]
+		[CommandOption("--cores")]
+		public int? Cores { get; set; }
+
 		[Description("The system/data partition size in MB")]
 		[CommandOption("--partition-size|--data-partition-size")]
 		public uint? PartitionSize { get; set; }
@@ -208,6 +212,7 @@ namespace AndroidSdk.Tool
 						Verbose = settings.Verbose,
 						Screen = settings.ScreenMode,
 						MemoryMegabytes = (int?)settings.Memory,
+						Cores = settings.Cores,
 						PartitionSizeMegabytes = (int?)settings.PartitionSize,
 						CacheSizeMegabytes = (int?)settings.CacheSize,
 						GrpcPort = (int?)settings.GrpcPort,
@@ -254,7 +259,6 @@ namespace AndroidSdk.Tool
 							else if (!cancellationToken.IsCancellationRequested)
 							{
 								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
-								ok = false;
 							}
 						}
 					}
