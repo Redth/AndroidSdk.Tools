@@ -390,18 +390,31 @@ namespace AndroidSdk
 						return false;
 				}
 
-				// Always wait for launcher after boot (like iOS waits for SpringBoard)
+				// Best-effort wait for launcher after boot (like iOS waits for SpringBoard).
+				// Cap at 60 s so we never hang when the emulator's foreground window
+				// doesn't contain "launcher" (common on macOS / some API levels).
+				var launcherTimeout = System.Diagnostics.Stopwatch.StartNew();
 				while (booted && !token.IsCancellationRequested)
 				{
 					if (process.HasExited)
 						break;
 
-					var output = adb.Shell("dumpsys window displays", Serial);
-					if (output.Any(l =>
-						l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
-						l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
-					{
+					if (launcherTimeout.Elapsed.TotalSeconds >= 60)
 						break;
+
+					try
+					{
+						var output = adb.Shell("dumpsys window displays", Serial);
+						if (output.Any(l =>
+							l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
+							l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
+						{
+							break;
+						}
+					}
+					catch (SdkToolFailedExitException)
+					{
+						// adb can transiently fail; retry on next iteration.
 					}
 
 					if (token.WaitHandle.WaitOne(1000))
