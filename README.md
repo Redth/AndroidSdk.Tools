@@ -8,7 +8,7 @@
 ![.NET Tool - AndroidSDK.Tool](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=AndroidSDK.Tool&color=blue)
 ![.NET Library - AndroidSDK](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=AndroidSDK&color=blue)
 
-## DotNet Tool
+## .NET Tool
 
 In addition to the `AndroidSDK` NuGet Package, there is also a dotnet tool `AndroidSDK.Tool`:
 
