@@ -147,15 +147,10 @@ namespace AndroidSdk.Tool
 		[DefaultValue(null)]
 		public double? CpuThreshold { get; set; }
 
-		[Description("Number of consecutive fast device responses required before proceeding (ensures device is stable and responsive after boot)")]
-		[CommandOption("--stability-check")]
+		[Description("Maximum response time in seconds for device stability probes (waits for 3 consecutive responses under this threshold before proceeding)")]
+		[CommandOption("--response-threshold")]
 		[DefaultValue(null)]
-		public int? StabilityCheck { get; set; }
-
-		[Description("Maximum response time in seconds for each stability check probe (default: 5)")]
-		[CommandOption("--stability-threshold")]
-		[DefaultValue(5)]
-		public int StabilityThreshold { get; set; }
+		public int? ResponseThreshold { get; set; }
 
 		public override ValidationResult Validate()
 		{
@@ -275,10 +270,10 @@ namespace AndroidSdk.Tool
 							}
 						}
 
-						if (settings.StabilityCheck.HasValue)
+						if (settings.ResponseThreshold.HasValue)
 						{
-							var required = settings.StabilityCheck.Value;
-							var maxTime = settings.StabilityThreshold;
+							var maxTime = settings.ResponseThreshold.Value;
+							const int required = 3;
 							ctx.Status($"Waiting for {required} consecutive fast responses (< {maxTime}s each) on {settings.Name}...");
 							var stabSw = System.Diagnostics.Stopwatch.StartNew();
 							var stable = process.WaitForStableResponses(required, maxTime, TimeSpan.Zero, timeoutToken, out var consecutiveCount, out var lastResponseTime);
