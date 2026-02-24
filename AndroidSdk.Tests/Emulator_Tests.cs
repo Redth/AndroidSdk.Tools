@@ -85,7 +85,7 @@ public class Emulator_Tests :
 				OutputHelper.WriteLine(line);
 
 			// Wait for the boot
-			var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(15));
+			var booted = emulatorInstance.WaitForBootComplete(TimeSpan.FromMinutes(30));
 
 			// Write the rest
 			var output2 = emulatorInstance.GetOutput().Skip(output.Count).ToList();

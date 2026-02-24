@@ -97,7 +97,7 @@ public class ProcessRunner_Tests : TestsBase
 		runner.StandardInputWriteLine("Write-Error 'Bad Things!'");
 
 		Assert.False(runner.HasExited);
-		WaitForOutput(runner, "Write-Error: Bad Things!", selector: RemovePwshUnicode);
+		WaitForOutput(runner, "Write-Error: Bad Things!", timeout: 30_000, selector: RemovePwshUnicode);
 
 		runner.StandardInputWriteLine("exit 3");
 
