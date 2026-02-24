@@ -1,12 +1,14 @@
 # Android SDK Tools
 .NET Library and global dotnet tool for various android adb, avd, and emulator needs.
 
-![.NET Core](https://github.com/Redth/AndroidSdk.Tools/workflows/.NET%20Core/badge.svg)
+[![Build](https://github.com/Redth/AndroidSdk.Tools/actions/workflows/build-publish.yml/badge.svg)](https://github.com/Redth/AndroidSdk.Tools/actions/workflows/build-publish.yml)
+[![Tests](https://github.com/Redth/AndroidSdk.Tools/actions/workflows/test.yml/badge.svg)](https://github.com/Redth/AndroidSdk.Tools/actions/workflows/test.yml)
+[![Run](https://github.com/Redth/AndroidSdk.Tools/actions/workflows/run.yml/badge.svg)](https://github.com/Redth/AndroidSdk.Tools/actions/workflows/run.yml)
 
 ![.NET Tool - AndroidSDK.Tool](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=AndroidSDK.Tool&color=blue)
 ![.NET Library - AndroidSDK](https://img.shields.io/nuget/vpre/AndroidSDK.Tool?label=AndroidSDK&color=blue)
 
-## DotNet Tool
+## .NET Tool
 
 In addition to the `AndroidSDK` NuGet Package, there is also a dotnet tool `AndroidSDK.Tool`:
 
