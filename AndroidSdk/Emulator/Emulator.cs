@@ -485,6 +485,60 @@ namespace AndroidSdk
 				return false;
 			}
 
+			internal bool WaitForStableResponses(int requiredConsecutive, int maxResponseTimeSeconds, TimeSpan timeout, CancellationToken token)
+				=> WaitForStableResponses(requiredConsecutive, maxResponseTimeSeconds, timeout, token, out _, out _);
+
+			internal bool WaitForStableResponses(int requiredConsecutive, int maxResponseTimeSeconds, TimeSpan timeout, CancellationToken token, out int consecutiveCount, out double lastResponseTime)
+			{
+				consecutiveCount = 0;
+				lastResponseTime = -1;
+
+				if (string.IsNullOrWhiteSpace(Serial))
+					return false;
+
+				var adb = new Adb(androidSdkHome);
+
+				using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+				if (timeout != TimeSpan.Zero)
+					cts.CancelAfter(timeout);
+
+				while (!cts.IsCancellationRequested)
+				{
+					if (process.HasExited)
+						return false;
+
+					var sw = System.Diagnostics.Stopwatch.StartNew();
+					try
+					{
+						var result = adb.Shell("getprop ro.build.display.id", Serial)?.FirstOrDefault();
+						sw.Stop();
+						lastResponseTime = sw.Elapsed.TotalSeconds;
+
+						if (!string.IsNullOrWhiteSpace(result) && lastResponseTime <= maxResponseTimeSeconds)
+						{
+							consecutiveCount++;
+							if (consecutiveCount >= requiredConsecutive)
+								return true;
+						}
+						else
+						{
+							consecutiveCount = 0;
+						}
+					}
+					catch (SdkToolFailedExitException)
+					{
+						sw.Stop();
+						lastResponseTime = sw.Elapsed.TotalSeconds;
+						consecutiveCount = 0;
+					}
+
+					if (cts.Token.WaitHandle.WaitOne(5000))
+						return false;
+				}
+
+				return false;
+			}
+
 			public void DisableAnimations()
 			{
 				if (string.IsNullOrWhiteSpace(Serial))

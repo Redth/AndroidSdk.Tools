@@ -147,6 +147,16 @@ namespace AndroidSdk.Tool
 		[DefaultValue(null)]
 		public double? CpuThreshold { get; set; }
 
+		[Description("Number of consecutive fast device responses required before proceeding (ensures device is stable and responsive after boot)")]
+		[CommandOption("--stability-check")]
+		[DefaultValue(null)]
+		public int? StabilityCheck { get; set; }
+
+		[Description("Maximum response time in seconds for each stability check probe (default: 5)")]
+		[CommandOption("--stability-threshold")]
+		[DefaultValue(5)]
+		public int StabilityThreshold { get; set; }
+
 		public override ValidationResult Validate()
 		{
 			if (string.IsNullOrEmpty(Name))
@@ -262,6 +272,24 @@ namespace AndroidSdk.Tool
 							else if (!timeoutToken.IsCancellationRequested)
 							{
 								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
+							}
+						}
+
+						if (settings.StabilityCheck.HasValue)
+						{
+							var required = settings.StabilityCheck.Value;
+							var maxTime = settings.StabilityThreshold;
+							ctx.Status($"Waiting for {required} consecutive fast responses (< {maxTime}s each) on {settings.Name}...");
+							var stabSw = System.Diagnostics.Stopwatch.StartNew();
+							var stable = process.WaitForStableResponses(required, maxTime, TimeSpan.Zero, timeoutToken, out var consecutiveCount, out var lastResponseTime);
+							stabSw.Stop();
+							if (stable)
+							{
+								AnsiConsole.MarkupLine($"[grey]Device stable ({required} consecutive responses < {maxTime}s) in {stabSw.Elapsed.TotalSeconds:F1}s[/]");
+							}
+							else if (!timeoutToken.IsCancellationRequested)
+							{
+								AnsiConsole.MarkupLine($"[yellow]Warning: Device did not stabilize within {stabSw.Elapsed.TotalSeconds:F1}s (got {consecutiveCount}/{required} consecutive, last response: {lastResponseTime:F1}s)[/]");
 							}
 						}
 					}
