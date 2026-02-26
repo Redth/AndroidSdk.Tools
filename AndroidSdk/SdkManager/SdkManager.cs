@@ -71,6 +71,9 @@ namespace AndroidSdk
 
 		public override FileInfo? FindToolPath(DirectoryInfo? androidSdkHome)
 		{
+			if (androidSdkHome is null)
+				return null;
+
 			var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 			var ext = isWindows ? ".bat" : string.Empty;
 
@@ -564,6 +567,8 @@ namespace AndroidSdk
 				throw new InvalidOperationException("Unable to find the JDK.");
 
 			var sdkManager = FindToolPath(AndroidSdkHome);
+			if (sdkManager is null)
+				throw new InvalidOperationException("Unable to find the Android SDK Manager. Ensure the Android SDK is installed and ANDROID_HOME is set.");
 
 			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
 			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));

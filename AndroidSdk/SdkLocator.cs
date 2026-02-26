@@ -29,13 +29,14 @@ public class SdkLocator : PathLocator
 				paths.Add(monodroidConfig.AndroidSdkPath);
 		}
 
-		var androidSdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
-		if (!string.IsNullOrEmpty(androidSdkRoot))
-			paths.Add(androidSdkRoot);
-
 		var androidHome = Environment.GetEnvironmentVariable("ANDROID_HOME");
 		if (!string.IsNullOrEmpty(androidHome))
 			paths.Add(androidHome);
+
+		// ANDROID_SDK_ROOT is deprecated in favor of ANDROID_HOME
+		var androidSdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
+		if (!string.IsNullOrEmpty(androidSdkRoot))
+			paths.Add(androidSdkRoot);
 
 		return paths.ToArray();
 	}
@@ -62,8 +63,8 @@ public class SdkLocator : PathLocator
 			Path.Combine("Developer", "Android", "android-sdk-macosx"),
 			
 			// Linux possibilities
-			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android", "sdk"),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".android"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android", "sdk"),
 			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Android", "Sdk"),
