@@ -207,6 +207,12 @@ namespace AndroidSdk
 
 		public SdkManagerList List()
 		{
+			if (FindToolPath(AndroidSdkHome) is null)
+			{
+				// sdkmanager not available — fall back to scanning package.xml files
+				return ListFromScanner();
+			}
+
 			CheckSdkManagerVersion();
 
 			var builder = new ProcessArgumentBuilder();
@@ -219,6 +225,25 @@ namespace AndroidSdk
 			var p = Run(builder, includeStdOut: true, includeStdErr: false);
 
 			return ParseListOutput(p);
+		}
+
+		SdkManagerList ListFromScanner()
+		{
+			var scanner = new SdkComponentScanner();
+			var inventory = scanner.Scan(AndroidSdkHome);
+
+			var result = new SdkManagerList();
+			foreach (var component in inventory.Components)
+			{
+				result.InstalledPackages.Add(new InstalledSdkPackage
+				{
+					Path = component.Path,
+					Version = component.Version?.ToString() ?? string.Empty,
+					Description = component.DisplayName ?? string.Empty,
+					Location = component.Location?.FullName ?? string.Empty,
+				});
+			}
+			return result;
 		}
 
 		internal SdkManagerList ParseListOutput(IEnumerable<string> lines)
@@ -568,7 +593,7 @@ namespace AndroidSdk
 
 			var sdkManager = FindToolPath(AndroidSdkHome);
 			if (sdkManager is null)
-				throw new InvalidOperationException("Unable to find the Android SDK Manager. Ensure the Android SDK is installed and ANDROID_HOME is set.");
+				throw new SdkManagerToolNotFoundException(AndroidSdkHome);
 
 			var libPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, "..", "lib"));
 			var toolPath = Path.GetFullPath(Path.Combine(sdkManager.DirectoryName, ".."));

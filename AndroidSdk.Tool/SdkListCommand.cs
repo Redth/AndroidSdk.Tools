@@ -39,6 +39,7 @@ namespace AndroidSdk.Tool
 			{
 				var m = new AndroidSdk.SdkManager(settings?.Home);
 
+				var hasCmdlineTools = m.FindToolPath(m.AndroidSdkHome) is not null;
 				var sdkList = m.List();
 
 				if (settings.Available || settings.Installed)
@@ -51,6 +52,13 @@ namespace AndroidSdk.Tool
 
 				if (settings.Format == OutputFormat.None)
 				{
+					if (!hasCmdlineTools && m.AndroidSdkHome is not null)
+					{
+						AnsiConsole.MarkupLine("[yellow]⚠ cmdline-tools not found — showing installed packages from local scan only.[/]");
+						AnsiConsole.MarkupLine($"[yellow]  Available packages require cmdline-tools. To install, run: android sdk download --home \"{m.AndroidSdkHome.FullName}\"[/]");
+						AnsiConsole.WriteLine();
+					}
+
 					if (sdkList.AvailablePackages.Any())
 					{
 						var rule = new Rule("Available Packages:");
