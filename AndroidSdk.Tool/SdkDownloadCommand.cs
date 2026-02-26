@@ -15,7 +15,7 @@ namespace AndroidSdk.Tool
 		[CommandOption("-h|--home")]
 		public string Home { get; set; }
 
-		[Description("Forces install even if directory already exists and is not empty")]
+		[Description("Forces re-download of cmdline-tools even if already installed")]
 		[CommandOption("-f|--force")]
 		public bool Force { get; set; }
 
@@ -73,12 +73,16 @@ namespace AndroidSdk.Tool
 
 				if (settings.Force)
 				{
-					if (dir.Exists)
-						dir.Delete(true);
+					// Only delete cmdline-tools, not the entire SDK
+					var cmdlineToolsDir = new DirectoryInfo(Path.Combine(dir.FullName, "cmdline-tools"));
+					if (cmdlineToolsDir.Exists)
+						cmdlineToolsDir.Delete(true);
 				}
-
-				if (dir.Exists && ((dir.GetDirectories()?.Any() ?? false) || (dir.GetFiles()?.Any() ?? false)))
-					throw new InvalidOperationException("Directory already exists and is not empty!");
+				else if (dir.Exists && SdkLocator.HasCmdlineTools(dir.FullName))
+				{
+					throw new InvalidOperationException(
+						"cmdline-tools is already installed. Use --force to re-download.");
+				}
 
 				if (!dir.Exists)
 					dir.Create();
@@ -91,7 +95,7 @@ namespace AndroidSdk.Tool
 				var progress = 0;
 
 				var downloader = new SdkDownloader();
-				downloader.DownloadAsync(dir, specificVersionToFind, false, settings.OS, settings.Architecture, progressHandler: (p) =>
+				downloader.DownloadAsync(dir, specificVersionToFind, settings.AllowPreviews, settings.OS, settings.Architecture, progressHandler: (p) =>
 				{
 					progress = p;
 				}).ContinueWith(t =>
@@ -114,7 +118,7 @@ namespace AndroidSdk.Tool
 				.Start(ctx =>
 				{
 					// Define tasks
-					dlTask = ctx.AddTask("Downloading Android SDK...");
+					dlTask = ctx.AddTask("Downloading cmdline-tools...");
 
 					while (!ctx.IsFinished)
 					{

@@ -47,9 +47,6 @@ namespace AndroidSdk.Tool
                 
                 var result = new SdkInfoResult();
                 result.Path = m.AndroidSdkHome?.FullName;
-                result.Version = m.GetVersion()?.ToString();
-                result.IsUpToDate= m.IsUpToDate();
-                result.Channel = m.Channel.ToString();
                 result.DotNetPreferred = OperatingSystem.IsWindows()
 					? m.AndroidSdkHome?.FullName.TrimEnd(sep).Equals(dotnetPreferredPaths.AndroidSdkPath?.TrimEnd(sep)) ?? false
 					: m.AndroidSdkHome?.FullName.ToLower().TrimEnd(sep).Equals(dotnetPreferredPaths.AndroidSdkPath?.ToLower()?.TrimEnd(sep)) ?? false;
@@ -59,7 +56,25 @@ namespace AndroidSdk.Tool
 					result.WriteAccess = m.CanModify();
 				} catch { }
 
+                // Check if cmdline-tools is available for version/update info
+                var hasCmdlineTools = m.FindToolPath(m.AndroidSdkHome) is not null;
+                
+                if (hasCmdlineTools)
+                {
+                    result.Version = m.GetVersion()?.ToString();
+                    result.IsUpToDate = m.IsUpToDate();
+                    result.Channel = m.Channel.ToString();
+                }
+                else
+                {
+                    result.Channel = m.Channel.ToString();
+                }
+
                 var jdks = m.Jdks;
+
+                // Scan for installed components (works even without cmdline-tools)
+                var scanner = new SdkComponentScanner();
+                var inventory = scanner.Scan(m.AndroidSdkHome);
 
                 if (settings.Format == OutputFormat.None)
                 {
@@ -70,8 +85,27 @@ namespace AndroidSdk.Tool
                     OutputHelper.OutputObject<SdkInfoResult>(
                         result,
                         new[] { "Path", "Version", "IsUpToDate", "Channel", "DotNetPreferred", "WriteAccess" },
-                        i => new[] { i.Path, i.Version, i.IsUpToDate.ToString(), i.Channel, i.DotNetPreferred.ToString(), i.WriteAccess.ToString() });
+                        i => new[] { i.Path, i.Version ?? "(unknown)", i.IsUpToDate.ToString(), i.Channel, i.DotNetPreferred.ToString(), i.WriteAccess.ToString() });
 
+                    if (!hasCmdlineTools && m.AndroidSdkHome is not null)
+                    {
+                        AnsiConsole.WriteLine();
+                        AnsiConsole.MarkupLine("[yellow]⚠ cmdline-tools not found — sdkmanager and avdmanager are unavailable.[/]");
+                        AnsiConsole.MarkupLine($"[yellow]  To install, run: android sdk download --home \"{m.AndroidSdkHome.FullName}\"[/]");
+                    }
+
+                    if (inventory.Components.Count > 0)
+                    {
+                        AnsiConsole.WriteLine();
+                        rule = new Rule("Installed Components:");
+                        rule.Centered();
+                        AnsiConsole.Write(rule);
+
+                        OutputHelper.OutputTable(
+                            inventory.Components,
+                            new[] { "Package", "Version", "Name" },
+                            i => new[] { i.Path, i.Version?.ToString() ?? "", i.DisplayName ?? "" });
+                    }
 
                     if (jdks is not null && jdks.Length > 0)
                     {
@@ -88,7 +122,16 @@ namespace AndroidSdk.Tool
                 }
                 else
                 {
-                    var objr = new { SdkInfo = result, Jdks = (jdks ?? []).Select(j => new
+                    var objr = new { SdkInfo = result, 
+                        InstalledComponents = inventory.Components.Select(c => new
+                        {
+                            Path = c.Path,
+                            Version = c.Version?.ToString(),
+                            DisplayName = c.DisplayName,
+                            Location = c.Location?.FullName,
+                        }),
+                        HasCmdlineTools = hasCmdlineTools,
+                        Jdks = (jdks ?? []).Select(j => new
                     {
 	                    Version = j.Version.ToString(),
 	                    Path = j.Home.FullName,
