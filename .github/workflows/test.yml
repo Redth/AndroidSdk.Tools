@@ -11,7 +11,6 @@ concurrency:
 
 permissions:
   checks: write
-  pull-requests: write
 
 jobs:
 
@@ -54,23 +53,10 @@ jobs:
         name: Test Results (${{ matrix.os }})
         path: ./*.Tests/TestResults/*.trx
 
-  publish-test-results:
-    name: "Publish Test Results"
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      pull-requests: write
-    if: (always() && !cancelled())
-    steps:
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: "artifacts/**/*.trx"
-          check_run: false
+    - name: Test Report
+      uses: dorny/test-reporter@v2
+      if: (always() && !cancelled())
+      with:
+        name: Test Results (${{ matrix.os }})
+        path: ./*.Tests/TestResults/*.trx
+        reporter: dotnet-trx
