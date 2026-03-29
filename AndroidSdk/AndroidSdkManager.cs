@@ -28,7 +28,8 @@ namespace AndroidSdk
 
 		public AndroidSdkManager(DirectoryInfo home = null)
 		{
-			Home = new SdkLocator().Locate(home?.FullName)?.FirstOrDefault();
+			Home = home
+				?? new SdkLocator().Locate()?.FirstOrDefault();
 
 			SdkManager = new SdkManager(new SdkManagerToolOptions { AndroidSdkHome = Home });
 			AvdManager = new AvdManager(Home);

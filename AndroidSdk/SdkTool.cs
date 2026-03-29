@@ -24,14 +24,16 @@ namespace AndroidSdk
 		public SdkTool(DirectoryInfo? androidSdkHome)
 			: this(new SdkToolOptions { AndroidSdkHome = androidSdkHome })
 		{
-			AndroidSdkHome = new SdkLocator().Locate(androidSdkHome?.FullName)?.FirstOrDefault();
-			Jdks = new JdkLocator().LocateJdk()?.ToArray() ?? new JdkInfo[0];
 		}
 
 		public SdkTool(SdkToolOptions? options)
 		{
 			options ??= new();
-			AndroidSdkHome = new SdkLocator().Locate(options.AndroidSdkHome?.FullName)?.FirstOrDefault();
+			// When a path is explicitly provided, always honor it — the caller
+			// may intend to download/create the SDK there.  Only auto-discover
+			// when no path is specified.
+			AndroidSdkHome = options.AndroidSdkHome
+				?? new SdkLocator().Locate()?.FirstOrDefault();
 			Jdks = new JdkLocator().LocateJdk()?.ToArray() ?? new JdkInfo[0];
 		}
 
