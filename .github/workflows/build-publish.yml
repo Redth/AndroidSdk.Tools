@@ -53,6 +53,10 @@ jobs:
     needs: build
     runs-on: windows-latest
     if: github.event_name == 'release'
+    environment: release
+    permissions:
+      id-token: write     # Required for OIDC token (NuGet trusted publishing)
+      contents: read
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -64,6 +68,11 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: NuGet login (OIDC)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
       - name: Push NuGet
         run: |
-          dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}
+          dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --skip-duplicate
