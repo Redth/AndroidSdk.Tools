@@ -30,7 +30,7 @@ namespace AndroidSdk.Tool
 
 				OutputHelper.Output(targets, settings?.Format,
 					new[] { "Name", "Id", "Numeric Id", "API Level", "Type", "Revision" },
-					i => new[] { i.Name, i.Id, i.NumericId?.ToString() ?? string.Empty, i.ApiLevel.ToString(), i.Type, i.Revision.ToString() });
+					i => new[] { i.Name, i.Id, i.NumericId?.ToString() ?? string.Empty, i.ApiLevelDisplay, i.Type, i.Revision.ToString() });
 			}
 			catch (SdkToolFailedExitException sdkEx)
 			{

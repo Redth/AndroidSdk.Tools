@@ -121,6 +121,9 @@ sdk.Adb.ScreenCapture(new FileInfo("/local/place/to/save/screen.png"), serial);
 
 ## AVD Manager
 
+`avd targets` supports minor API levels such as `37.1`. JSON retains the integer
+`apiLevel` field and includes `apiLevelMinor` only when a minor level is specified.
+
 Create an emulator (AVD) definition:
 
 ```csharp

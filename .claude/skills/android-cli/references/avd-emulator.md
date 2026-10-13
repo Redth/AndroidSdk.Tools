@@ -68,7 +68,8 @@ android avd targets [options]
 - **Name**: Target name
 - **Id**: Target identifier
 - **Numeric Id**: Numeric identifier
-- **API Level**: Android API level
+- **API Level**: Full Android API level, including a minor level (for example, `37.1`).
+  JSON keeps integer `apiLevel` and adds optional `apiLevelMinor` for minor targets.
 - **Type**: Platform type
 - **Revision**: Target revision
 
@@ -137,7 +138,6 @@ android avd create --name <name> --sdk <sdk-id> [options]
 | Option | Description |
 |--------|-------------|
 | `-d\|--device <id>` | Hardware device profile |
-| `-t\|--target <id>` | Target ID |
 | `-p\|--path <path>` | Custom AVD directory |
 | `-a\|--abi <abi>` | ABI (auto-selected if only one) |
 | `--skin <name>` | Skin name |

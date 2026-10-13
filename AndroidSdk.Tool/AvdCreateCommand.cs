@@ -24,10 +24,6 @@ namespace AndroidSdk.Tool
 		[CommandOption("-d|--device")]
 		public string DeviceId { get; set; }
 
-		[Description("Target Id or NumericId (Possible options from: `avd targets`)")]
-		[CommandOption("-t|--target")]
-		public string TargetId { get; set; }
-
 		[Description("Path to create the AVD")]
 		[CommandOption("-p|--path")]
 		public string Path { get; set; }
