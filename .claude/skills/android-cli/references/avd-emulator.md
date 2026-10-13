@@ -138,7 +138,6 @@ android avd create --name <name> --sdk <sdk-id> [options]
 | Option | Description |
 |--------|-------------|
 | `-d\|--device <id>` | Hardware device profile |
-| `-t\|--target <id>` | Legacy unused option; `--sdk` determines the target |
 | `-p\|--path <path>` | Custom AVD directory |
 | `-a\|--abi <abi>` | ABI (auto-selected if only one) |
 | `--skin <name>` | Skin name |
@@ -148,10 +147,6 @@ android avd create --name <name> --sdk <sdk-id> [options]
 | `-h\|--home <path>` | Android SDK home path |
 
 ### Examples
-
-The exact system image package passed to `--sdk` determines the target and image
-architecture, including minor API levels. Use command-line tools recent enough to
-support that image; AVD management selects the newest installed tools revision.
 
 ```bash
 # Create basic emulator
