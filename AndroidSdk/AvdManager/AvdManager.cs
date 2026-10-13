@@ -41,7 +41,7 @@ namespace AndroidSdk
 
 			if (cmdlineToolsPath.Exists)
 			{
-				foreach (var dir in cmdlineToolsPath.GetDirectories())
+				foreach (var dir in SdkManager.CmdLineToolsVersionComparer.Default.GetSortedDirectories(cmdlineToolsPath))
 				{
 					var toolPath = new FileInfo(Path.Combine(dir.FullName, "bin", "avdmanager" + ext));
 					if (toolPath.Exists)
@@ -145,10 +145,11 @@ namespace AndroidSdk
 		static Regex rxListTargets = new Regex(@"id:\s+(?<id>[^\n]+)\s+Name:\s+(?<name>[^\n]+)\s+Type\s?:\s+(?<type>[^\n]+)\s+API level\s?:\s+(?<api>[^\n]+)\s+Revision\s?:\s+(?<revision>[^\n]+)", RegexOptions.Multiline | RegexOptions.Compiled);
 
 		public IEnumerable<AvdTarget> ListTargets()
+			=> ParseListTargetsOutput(run("list", "target"));
+
+		internal static IEnumerable<AvdTarget> ParseListTargetsOutput(IEnumerable<string> lines)
 		{
 			var r = new List<AvdTarget>();
-
-			var lines = run("list", "target");
 
 			var str = string.Join("\n", lines);
 
@@ -177,8 +178,10 @@ namespace AndroidSdk
 						Type = m.Groups?["type"]?.Value
 					};
 
-					if (int.TryParse(m.Groups?["api"]?.Value, out var api))
-						a.ApiLevel = api;
+					if (!AndroidApiLevel.TryParse(m.Groups?["api"]?.Value, out var api, out var minor))
+						continue;
+					a.ApiLevel = api;
+					a.ApiLevelMinor = minor;
 					if (int.TryParse(m.Groups?["revision"]?.Value, out var rev))
 						a.Revision = rev;
 

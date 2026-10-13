@@ -24,7 +24,7 @@ namespace AndroidSdk.Tool
 		[CommandOption("-d|--device")]
 		public string DeviceId { get; set; }
 
-		[Description("Target Id or NumericId (Possible options from: `avd targets`)")]
+		[Description("Legacy option (unused); the --sdk system image determines the target")]
 		[CommandOption("-t|--target")]
 		public string TargetId { get; set; }
 

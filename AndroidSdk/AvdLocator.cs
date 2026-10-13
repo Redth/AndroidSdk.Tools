@@ -106,11 +106,11 @@ namespace AndroidSdk
 		{
 			get
 			{
-				// Target is the format `platform-#` where # is the api level (ie: 21, 22, 30, 31, 32, 33)
-				var targetLastPart = Target?.Split(new[] { '-' }, 2, StringSplitOptions.RemoveEmptyEntries)?.LastOrDefault();
+				// Targets use android- or platform- followed by a major[.minor] API level.
+				var targetLastPart = Target?.Split(new[] { '-' }, 2)?.LastOrDefault();
 
-				if (!string.IsNullOrEmpty(targetLastPart) && int.TryParse(targetLastPart, out var v) && v >= 0)
-					return v.ToString();
+				if (AndroidApiLevel.TryParse(targetLastPart, out var major, out var minor))
+					return AndroidApiLevel.Format(major, minor);
 				
 				return null;
 			}

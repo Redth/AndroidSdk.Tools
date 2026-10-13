@@ -1,4 +1,5 @@
 ﻿using System.Runtime.Serialization;
+using System.Xml.Serialization;
 
 namespace AndroidSdk
 {
@@ -29,12 +30,23 @@ namespace AndroidSdk
 			[DataMember(Name = "apiLevel")]
 			public int ApiLevel { get; set; }
 
+			/// <summary>
+			/// The minor API level, or null when the target specifies only a major level.
+			/// </summary>
+			[DataMember(Name = "apiLevelMinor", EmitDefaultValue = false)]
+			public int? ApiLevelMinor { get; set; }
+
+			[XmlIgnore]
+			public string ApiLevelDisplay => AndroidApiLevel.Format(ApiLevel, ApiLevelMinor);
+
+			public bool ShouldSerializeApiLevelMinor() => ApiLevelMinor.HasValue;
+
 			[DataMember(Name = "revision")]
 			public int Revision { get; set; }
 
 			public override string ToString()
 			{
-				return $"{Id} | {Name} | {Type} | {ApiLevel} | {Revision}";
+				return $"{Id} | {Name} | {Type} | {ApiLevelDisplay} | {Revision}";
 			}
 		}
 	}

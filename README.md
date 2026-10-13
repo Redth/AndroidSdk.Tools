@@ -121,6 +121,15 @@ sdk.Adb.ScreenCapture(new FileInfo("/local/place/to/save/screen.png"), serial);
 
 ## AVD Manager
 
+The selected system image package determines the AVD's Android target, including minor
+API levels such as `37.1`. Pass its exact package ID to `android avd create --sdk`;
+the legacy `--target` option is accepted for compatibility but is unused.
+The newest installed command-line tools revision is selected for AVD management.
+
+`avd targets` displays the full API level. JSON retains the integer `apiLevel`
+field and includes `apiLevelMinor` only when a minor level is specified; library
+consumers can use `AvdTarget.ApiLevelDisplay` for the full version.
+
 Create an emulator (AVD) definition:
 
 ```csharp
