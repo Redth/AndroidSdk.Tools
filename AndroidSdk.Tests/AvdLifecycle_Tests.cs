@@ -86,6 +86,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		Assert.Equal("5580", arguments[Array.IndexOf(arguments, "-port") + 1]);
 		Assert.Equal("2", arguments[Array.IndexOf(arguments, "-cores") + 1]);
 		Assert.DoesNotContain("-s emulator-5582", File.ReadAllText(Path.Combine(root, "adb.calls")));
+		Assert.DoesNotContain("ro.boot.qemu.avd_name", File.ReadAllText(Path.Combine(root, "adb.calls")));
 
 		var inventory = await Cli("device", "list", "--home", root, "--format", "json");
 		Success(inventory);
@@ -118,6 +119,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[InlineData("hung-devices")]
 	[InlineData("hung-output-drain")]
 	[InlineData("hung-name")]
+	[InlineData("hung-identity")]
 	[InlineData("hung-boot")]
 	[InlineData("hung-launcher")]
 	[InlineData("hung-animation")]
@@ -160,6 +162,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 				"hung-devices" => "devices -l",
 				"hung-output-drain" => "devices -l",
 				"hung-name" => "emu avd name",
+				"hung-identity" => "getprop ro.boot.qemu.avd_name",
 				"hung-boot" => "getprop dev.bootcomplete",
 				"hung-launcher" => "dumpsys window displays",
 				"hung-animation" => "settings put global",
@@ -190,15 +193,22 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	}
 
 	[UnixTheory]
-	[InlineData(false)]
-	[InlineData(true)]
-	public async Task CancellationOrCallerDeathBeforeDiscoveryCleansOwnedProcess(bool abrupt)
+	[InlineData("no-report", false)]
+	[InlineData("no-report", true)]
+	[InlineData("hung-identity", false)]
+	[InlineData("hung-identity", true)]
+	public async Task CancellationOrCallerDeathDuringIdentityDiscoveryCleansOwnedProcess(string mode, bool abrupt)
 	{
-		File.WriteAllText(Path.Combine(root, "mode"), "no-report");
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
 		using var cli = Launch(StartArguments("--timeout", "30"));
 		var output = cli.StandardOutput.ReadToEndAsync();
 		var errors = cli.StandardError.ReadToEndAsync();
 		await TrackChildren();
+		if (mode == "hung-identity")
+		{
+			await Until(() => File.Exists(Path.Combine(root, "descendant.pid")));
+			await TrackChildren();
+		}
 		if (abrupt)
 			cli.Kill();
 		else
@@ -208,6 +218,58 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		await Until(() => children.All(p => p.HasExited));
 		Assert.NotEqual(0, cli.ExitCode);
 		await Task.WhenAll(output, errors);
+		Assert.Equal("", await output);
+		Assert.DoesNotContain("Unhandled exception.", await errors);
+	}
+
+	[UnixTheory]
+	[InlineData("empty-name")]
+	[InlineData("whitespace-name")]
+	public async Task EmptyConsoleNameUsesExactGuestIdentityBeforeDetachedSuccess(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var result = await Start("--port", "5580");
+		Success(result);
+		using var json = JsonDocument.Parse(result.Stdout);
+		Assert.Equal(name, json.RootElement.GetProperty("name").GetString());
+		Assert.Equal("emulator-5580", json.RootElement.GetProperty("serial").GetString());
+		Assert.Equal(5580, json.RootElement.GetProperty("port").GetInt32());
+		await TrackChildren();
+		Assert.False(children.First(p => p.Id == Pid("emulator")).HasExited);
+		var calls = File.ReadAllText(Path.Combine(root, "adb.calls"));
+		Assert.Contains("-s emulator-5580 emu avd name", calls);
+		Assert.Contains("-s emulator-5580 shell getprop ro.boot.qemu.avd_name", calls);
+		Assert.DoesNotContain("-s emulator-5582", calls);
+		Success(await Cli("avd", "stop", "--home", root, "--name", name, "--serial", "emulator-5580", "--timeout", "5"));
+		await Until(() => children.All(p => p.HasExited));
+	}
+
+	[UnixTheory]
+	[InlineData("identity-mismatch")]
+	[InlineData("identity-empty")]
+	[InlineData("identity-fail")]
+	[InlineData("console-mismatch")]
+	public async Task MissingOrMismatchedIdentityCannotBecomeReady(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var running = Start("--port", "5580", "--timeout", "4");
+		await TrackChildren();
+		var result = await running;
+		Assert.NotEqual(0, result.ExitCode);
+		Assert.Equal("", result.Stdout);
+		Assert.All(children, p => Assert.True(p.HasExited));
+		var calls = File.ReadAllText(Path.Combine(root, "adb.calls"));
+		Assert.DoesNotContain("-s emulator-5582", calls);
+		Assert.DoesNotContain("getprop dev.bootcomplete", calls);
+		if (mode == "console-mismatch")
+			Assert.DoesNotContain("ro.boot.qemu.avd_name", calls);
+		else
+			Assert.Contains("-s emulator-5580 shell getprop ro.boot.qemu.avd_name", calls);
+		if (mode == "identity-fail")
+			Assert.Contains("fake-identity-failure", result.Stderr);
+		else
+			Assert.Contains("expected '" + name + "'", result.Stderr);
+		Assert.DoesNotContain("Unhandled exception.", result.Stderr);
 	}
 
 	[UnixFact]
@@ -313,6 +375,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[UnixTheory]
 	[InlineData("transient-devices")]
 	[InlineData("transient-name")]
+	[InlineData("identity-transient")]
 	[InlineData("transient-launcher")]
 	[InlineData("transient-response")]
 	public async Task TransientDiscoveryLauncherAndResponseFailuresCanRecoverWithinTheBudget(string mode)
@@ -542,14 +605,14 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		    sleep 60 &
 		    echo $! > "$root/descendant.pid"
 		    exit 0 ;;
-		  hung-devices:*devices*|hung-name:*avd*name*|hung-boot:*dev.bootcomplete*|hung-launcher:*dumpsys*|hung-animation:*settings*|hung-cpu:*loadavg*|hung-response:*ro.build.display.id*)
+		  hung-devices:*devices*|hung-name:*avd*name*|hung-identity:*ro.boot.qemu.avd_name*|hung-boot:*dev.bootcomplete*|hung-launcher:*dumpsys*|hung-animation:*settings*|hung-cpu:*loadavg*|hung-response:*ro.build.display.id*)
 		    sleep 60 &
 		    echo $! > "$root/descendant.pid"
 		    wait $! ;;
 		  probe-fail:*getprop*) echo fake-probe-failure >&2; exit 7 ;;
 		esac
 		case "$mode:$probe" in
-		  transient-devices:*devices*|transient-name:*avd*name*|transient-launcher:*dumpsys*)
+		  transient-devices:*devices*|transient-name:*avd*name*|identity-transient:*ro.boot.qemu.avd_name*|transient-launcher:*dumpsys*)
 		    if [ ! -f "$root/transient-failure" ]; then
 		      touch "$root/transient-failure"
 		      echo fake-transient-failure >&2
@@ -568,7 +631,20 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		case "$probe" in
 		  "devices -l")
 		    printf 'List of devices attached\nemulator-5582 device model:Unrelated\nemulator-5580 device model:Owned\n' ;;
-		  *"emu avd name") cat "$root/name"; echo OK ;;
+		  *"emu avd name")
+		    case "$mode" in
+		      empty-name|identity-*|hung-identity) ;;
+		      whitespace-name) printf ' \t\n' ;;
+		      console-mismatch) echo unrelated-avd; echo OK ;;
+		      *) cat "$root/name"; echo OK ;;
+		    esac ;;
+		  *"getprop ro.boot.qemu.avd_name")
+		    case "$mode" in
+		      identity-mismatch) echo unrelated-avd ;;
+		      identity-empty) echo ;;
+		      identity-fail) echo fake-identity-failure >&2; exit 7 ;;
+		      *) cat "$root/name" ;;
+		    esac ;;
 		  *"getprop dev.bootcomplete") if [ "$mode" = fallback-anr ]; then echo 0; else echo 1; fi ;;
 		  *"getprop sys.boot_completed") echo 1 ;;
 		  *"dumpsys window displays")

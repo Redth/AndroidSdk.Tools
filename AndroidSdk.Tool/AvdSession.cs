@@ -515,7 +515,8 @@ internal static class AvdSession
 			bySerial?.Dispose();
 			serialLock?.Dispose();
 			nameLock?.Dispose();
-			writer?.Dispose();
+			try { writer?.Dispose(); }
+			catch (IOException ex) { failure = failure == null ? ex : new AggregateException(failure, ex); }
 			bootstrap.Dispose();
 			if (parentMonitor != null)
 				await parentMonitor;
@@ -524,7 +525,7 @@ internal static class AvdSession
 		}
 		if (failure != null)
 		{
-			Console.Error.WriteLine(failure);
+			Console.Error.WriteLine(Describe(failure));
 			return 1;
 		}
 		return 0;

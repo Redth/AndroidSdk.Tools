@@ -381,11 +381,20 @@ namespace AndroidSdk
 					{
 						foreach (var device in adb.GetDevices(token).Where(d => d.IsEmulator && (expectedSerial == null || d.Serial == expectedSerial)))
 						{
-							if (string.Equals(adb.EmuAvdName(device.Serial, token), AvdName, StringComparison.Ordinal))
+							var actualName = adb.EmuAvdName(device.Serial, token);
+							if (string.IsNullOrWhiteSpace(actualName))
+							{
+								// Some emulator/ADB versions return no console name even after boot.
+								var names = adb.Shell("getprop ro.boot.qemu.avd_name", device.Serial, token);
+								actualName = names.Count == 1 ? names[0].Trim() : null;
+							}
+							if (string.Equals(actualName, AvdName, StringComparison.Ordinal))
 							{
 								Serial = device.Serial;
 								break;
 							}
+							LastReadinessError = new InvalidDataException(
+								$"Emulator '{device.Serial}' reported AVD name '{actualName ?? "<empty>"}'; expected '{AvdName}'.");
 						}
 					}
 					catch (SdkToolFailedExitException ex)

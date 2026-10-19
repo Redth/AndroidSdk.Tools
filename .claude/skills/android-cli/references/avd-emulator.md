@@ -210,7 +210,8 @@ strict teardown.
 
 ## avd delete
 
-Delete an existing AVD.
+Delete an existing AVD's files. This does not stop a running emulator; use
+[avd stop](#avd-stop) first.
 
 ```bash
 android avd delete --name <name> [options]
