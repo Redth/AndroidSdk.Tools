@@ -247,7 +247,7 @@ namespace AndroidSdk
 				}
 			}
 			cancellationToken.ThrowIfCancellationRequested();
-			return WaitForExit();
+			return CompleteOutput(cancellationToken);
 		}
 
 		public void StandardInputWrite(string input)
@@ -295,7 +295,12 @@ namespace AndroidSdk
 		public ProcessResult WaitForExit()
 		{
 			while (!process.WaitForExit(1000)) { }
-			if (!Task.WaitAll(new[] { standardOutputClosed.Task, standardErrorClosed.Task }, TimeSpan.FromSeconds(5)))
+			return CompleteOutput(CancellationToken.None);
+		}
+
+		ProcessResult CompleteOutput(CancellationToken cancellationToken)
+		{
+			if (!Task.WaitAll(new[] { standardOutputClosed.Task, standardErrorClosed.Task }, 5000, cancellationToken))
 				throw new TimeoutException("Child process stdout/stderr did not close within 5 seconds.");
 
 			lock (outputLock)

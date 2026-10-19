@@ -75,8 +75,8 @@ internal static class AvdSession
 		return "av" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).Substring(0, 32);
 	}
 
-	static string SdkHome(string? home) => new Emulator(home).AndroidSdkHome?.FullName ??
-		throw new DirectoryNotFoundException("Could not locate the Android SDK. Specify --home.");
+	static string SdkHome(string? home) => Path.TrimEndingDirectorySeparator(new Emulator(home).AndroidSdkHome?.FullName ??
+		throw new DirectoryNotFoundException("Could not locate the Android SDK. Specify --home."));
 
 	static FileStream LockOwner(string endpoint)
 	{
@@ -322,23 +322,31 @@ internal static class AvdSession
 		ExtraArgs = report == null ? null : ["-report-console", $"tcp:{((IPEndPoint)report.LocalEndpoint).Port},max=5"]
 	};
 
-	static Exception? Cleanup(Emulator.AndroidEmulatorProcess? process, bool kill, Exception? failure)
+	static Exception? Cleanup(Emulator.AndroidEmulatorProcess? process, AvdProcessContainment? containment, bool kill, Exception? failure)
 	{
-		if (process == null)
-			return failure;
-		try
+		void Attempt(Action action)
 		{
-			if (kill)
+			try { action(); }
+			catch (Exception ex)
 			{
-				process.Runner.KillAndWait();
-				process.Runner.WaitForExit();
+				failure = failure == null ? ex : new AggregateException(failure, ex);
 			}
-			else
-				process.WaitForExit();
 		}
-		catch (Exception ex)
+		if (kill && process != null)
+			Attempt(process.Runner.KillAndWait);
+		if (containment != null)
+			Attempt(containment.StopAndWait);
+		if (process != null)
 		{
-			return failure == null ? ex : new AggregateException(failure, ex);
+			Attempt(() =>
+			{
+				if (!process.HasExited)
+					throw new IOException("The exact emulator process remains alive after cleanup.");
+				if (kill)
+					process.Runner.WaitForExit();
+				else
+					process.WaitForExit();
+			});
 		}
 		return failure;
 	}
@@ -354,6 +362,7 @@ internal static class AvdSession
 		using var bootstrap = Client(startupPipe);
 		using var connect = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 		Emulator.AndroidEmulatorProcess? process = null;
+		AvdProcessContainment? containment = null;
 		Exception? failure = null;
 		var cleaned = false;
 		Task<string>? control = null;
@@ -378,6 +387,7 @@ internal static class AvdSession
 			using var reader = Reader(bootstrap);
 			writer = Writer(bootstrap);
 			var settings = await ReceiveAsync<AvdStartCommandSettings>(reader, connect.Token);
+			containment = new AvdProcessContainment();
 			using var startup = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, stop.Token);
 			startup.CancelAfter(TimeSpan.FromSeconds(settings.Timeout ?? 300));
 			var identity = new AvdStartedIdentity { Name = settings.Name };
@@ -453,13 +463,13 @@ internal static class AvdSession
 						process.Runner.ThrowIfLogFailed();
 						if (process.HasExited)
 						{
-							failure = Cleanup(process, false, null);
+							failure = Cleanup(process, containment, false, null);
 							cleaned = true;
 						}
 					}
 					catch (Exception ex)
 					{
-						failure = Cleanup(process, true, ex);
+						failure = Cleanup(process, containment, true, ex);
 						cleaned = true;
 					}
 				}
@@ -470,13 +480,13 @@ internal static class AvdSession
 		}
 		catch (Exception ex)
 		{
-			failure = ex;
+			failure = process?.LastReadinessError == null ? ex : new AggregateException(ex, process.LastReadinessError);
 		}
 		finally
 		{
 			report?.Stop();
 			if (!cleaned)
-				failure = Cleanup(process, true, failure);
+				failure = Cleanup(process, containment, true, failure);
 			var reply = new Reply { Error = failure == null ? null : Describe(failure) };
 			completion.TrySetResult(reply);
 			if (writer != null && (!handedOff || attached))
@@ -510,6 +520,7 @@ internal static class AvdSession
 			if (parentMonitor != null)
 				await parentMonitor;
 			process?.Runner.NativeProcess.Dispose();
+			containment?.Dispose();
 		}
 		if (failure != null)
 		{

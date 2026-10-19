@@ -298,6 +298,7 @@ namespace AndroidSdk
 
 			readonly ProcessRunner process;
 			internal ProcessRunner Runner => process;
+			internal Exception LastReadinessError { get; private set; }
 			readonly DirectoryInfo androidSdkHome;
 			ProcessResult result;
 
@@ -364,24 +365,32 @@ namespace AndroidSdk
 			public bool WaitForBootComplete(CancellationToken token)
 				=> WaitForBootComplete(token, null);
 
-			internal bool WaitForBootComplete(CancellationToken token, string expectedSerial)
+			internal bool WaitForBootComplete(CancellationToken token, string expectedSerial, TimeSpan? launcherTimeout = null)
 			{
 				var adb = new Adb(androidSdkHome);
 
 				Serial = null;
+				LastReadinessError = null;
 
 				while (string.IsNullOrEmpty(Serial) && !token.IsCancellationRequested)
 				{
 					if (process.HasExited)
 						return false;
 
-					foreach (var device in adb.GetDevices(token).Where(d => d.IsEmulator && (expectedSerial == null || d.Serial == expectedSerial)))
+					try
 					{
-						if (string.Equals(adb.EmuAvdName(device.Serial, token), AvdName, StringComparison.Ordinal))
+						foreach (var device in adb.GetDevices(token).Where(d => d.IsEmulator && (expectedSerial == null || d.Serial == expectedSerial)))
 						{
-							Serial = device.Serial;
-							break;
+							if (string.Equals(adb.EmuAvdName(device.Serial, token), AvdName, StringComparison.Ordinal))
+							{
+								Serial = device.Serial;
+								break;
+							}
 						}
+					}
+					catch (SdkToolFailedExitException ex)
+					{
+						LastReadinessError = ex;
 					}
 					if (!string.IsNullOrEmpty(Serial))
 						break;
@@ -417,16 +426,17 @@ namespace AndroidSdk
 				// doesn't appear, proceed anyway since boot IS complete.
 				if (booted && !token.IsCancellationRequested)
 				{
-					var launcherTimeout = TimeSpan.FromSeconds(120);
-					var launcherSw = System.Diagnostics.Stopwatch.StartNew();
+					using var launcher = CancellationTokenSource.CreateLinkedTokenSource(token);
+					launcher.CancelAfter(launcherTimeout ?? TimeSpan.FromSeconds(120));
 
-					while (launcherSw.Elapsed < launcherTimeout && !token.IsCancellationRequested)
+					while (!launcher.IsCancellationRequested)
 					{
 						if (process.HasExited)
 							break;
 
+						try
 						{
-							var output = adb.Shell("dumpsys window displays", Serial, token);
+							var output = adb.Shell("dumpsys window displays", Serial, launcher.Token);
 
 							if (output.Any(l =>
 								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
@@ -441,11 +451,19 @@ namespace AndroidSdk
 								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
 								l.Contains("Application Not Responding", StringComparison.OrdinalIgnoreCase)))
 							{
-								adb.Shell("input keyevent KEYCODE_BACK", Serial, token);
+								adb.Shell("input keyevent KEYCODE_BACK", Serial, launcher.Token);
 							}
 						}
+						catch (SdkToolFailedExitException ex)
+						{
+							LastReadinessError = ex;
+						}
+						catch (OperationCanceledException) when (launcher.IsCancellationRequested && !token.IsCancellationRequested)
+						{
+							break;
+						}
 
-						if (token.WaitHandle.WaitOne(2000))
+						if (launcher.Token.WaitHandle.WaitOne(2000))
 							break;
 					}
 				}
@@ -522,6 +540,7 @@ namespace AndroidSdk
 						return false;
 
 					var sw = System.Diagnostics.Stopwatch.StartNew();
+					try
 					{
 						process.ThrowIfLogFailed();
 						var result = adb.Shell("getprop ro.build.display.id", Serial, cts.Token)?.FirstOrDefault();
@@ -538,6 +557,13 @@ namespace AndroidSdk
 						{
 							consecutiveCount = 0;
 						}
+					}
+					catch (SdkToolFailedExitException ex)
+					{
+						LastReadinessError = ex;
+						sw.Stop();
+						lastResponseTime = sw.Elapsed.TotalSeconds;
+						consecutiveCount = 0;
 					}
 
 					if (cts.Token.WaitHandle.WaitOne(5000))

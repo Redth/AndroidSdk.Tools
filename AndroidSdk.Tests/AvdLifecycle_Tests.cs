@@ -116,6 +116,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[UnixTheory]
 	[InlineData("no-report")]
 	[InlineData("hung-devices")]
+	[InlineData("hung-output-drain")]
 	[InlineData("hung-name")]
 	[InlineData("hung-boot")]
 	[InlineData("hung-launcher")]
@@ -126,7 +127,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	{
 		File.WriteAllText(Path.Combine(root, "mode"), mode);
 		var clock = Stopwatch.StartNew();
-		var options = new List<string> { "--port", "5580", "--timeout", "4" };
+		var options = new List<string> { "--port", "5580", "--timeout", mode == "hung-output-drain" ? "2" : "4" };
 		if (mode == "hung-animation")
 			options.Add("--no-animations");
 		if (mode == "hung-cpu")
@@ -135,11 +136,18 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 			options.AddRange(["--response-threshold", "1"]);
 		var running = Start(options.ToArray());
 		await TrackChildren();
+		if (mode != "no-report")
+		{
+			await Until(() => File.Exists(Path.Combine(root, "descendant.pid")));
+			await TrackChildren();
+		}
 		var result = await running;
 		await TrackChildren();
 		Assert.NotEqual(0, result.ExitCode);
 		Assert.Equal("", result.Stdout);
 		Assert.True(clock.Elapsed < TimeSpan.FromSeconds(15), result.Stderr);
+		if (mode == "hung-output-drain")
+			Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), result.Stderr);
 		Assert.Contains("AVD start failed", result.Stderr);
 		Assert.True(children.First(p => p.Id == Pid("emulator")).HasExited, result.Stderr);
 		Assert.All(children.Where(p => p.Id != Pid("owner")), p => Assert.True(p.HasExited));
@@ -150,6 +158,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 			var expectedProbe = mode switch
 			{
 				"hung-devices" => "devices -l",
+				"hung-output-drain" => "devices -l",
 				"hung-name" => "emu avd name",
 				"hung-boot" => "getprop dev.bootcomplete",
 				"hung-launcher" => "dumpsys window displays",
@@ -286,6 +295,72 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	}
 
 	[UnixFact]
+	public async Task ExitedLauncherCannotLeaveItsNativeChildRunning()
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), "launcher-child");
+		var running = Start("--timeout", "10");
+		await Until(() => File.Exists(Path.Combine(root, "descendant.pid")));
+		await TrackChildren();
+		var descendant = children.First(p => p.Id == Pid("descendant"));
+		Assert.False(descendant.HasExited);
+		File.WriteAllText(Path.Combine(root, "release-launcher"), "");
+		var result = await running;
+		Assert.NotEqual(0, result.ExitCode);
+		Assert.True(descendant.HasExited, result.Stderr);
+		Assert.All(children, p => Assert.True(p.HasExited));
+	}
+
+	[UnixTheory]
+	[InlineData("transient-devices")]
+	[InlineData("transient-name")]
+	[InlineData("transient-launcher")]
+	[InlineData("transient-response")]
+	public async Task TransientDiscoveryLauncherAndResponseFailuresCanRecoverWithinTheBudget(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var result = mode == "transient-response"
+			? await Start("--timeout", "30", "--response-threshold", "1")
+			: await Start("--timeout", "10");
+		Success(result);
+		await TrackChildren();
+		Assert.True(File.Exists(Path.Combine(root, "transient-failure")));
+		if (mode == "transient-response")
+			Assert.Equal(5, File.ReadAllLines(Path.Combine(root, "adb.calls")).Count(l => l.Contains("getprop ro.build.display.id")));
+		Success(await Cli("avd", "stop", "--home", root, "--name", name, "--timeout", "5"));
+	}
+
+	[UnixFact]
+	public void LauncherPhaseDeadlineIsBestEffortAndCancelsTheHungProbe()
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), "hung-launcher");
+		var process = new Emulator(root).Start(name);
+		try
+		{
+			using var global = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			var clock = Stopwatch.StartNew();
+			Assert.True(process.WaitForBootComplete(global.Token, "emulator-5580", TimeSpan.FromSeconds(1)));
+			Assert.True(clock.Elapsed < TimeSpan.FromSeconds(7));
+			Assert.False(global.IsCancellationRequested);
+			Assert.False(process.HasExited);
+			foreach (var kind in new[] { "adb", "descendant" })
+			{
+				try
+				{
+					using var child = Process.GetProcessById(Pid(kind));
+					Assert.True(child.HasExited);
+				}
+				catch (ArgumentException) { }
+			}
+		}
+		finally
+		{
+			process.Runner.KillAndWait();
+			process.Runner.WaitForExit();
+			process.Runner.Dispose();
+		}
+	}
+
+	[UnixFact]
 	public async Task RequestedCpuAndResponseSettlingCompleteBeforeDetachedSuccess()
 	{
 		Success(await Start("--timeout", "30", "--cpu-threshold", "1", "--response-threshold", "1"));
@@ -369,7 +444,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	{
 		await Until(() => new[] { "owner", "emulator" }.All(kind =>
 			File.Exists(Path.Combine(root, kind + ".pid")) && int.TryParse(File.ReadAllText(Path.Combine(root, kind + ".pid")), out _)));
-		foreach (var kind in new[] { "owner", "emulator", "adb" })
+		foreach (var kind in new[] { "owner", "emulator", "adb", "descendant" })
 		{
 			var path = Path.Combine(root, kind + ".pid");
 			if (!File.Exists(path))
@@ -428,6 +503,11 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		case "$mode" in
 		  exit0) exit 0 ;;
 		  exit1) exit 1 ;;
+		  launcher-child)
+		    sleep 60 &
+		    echo $! > "$root/descendant.pid"
+		    while [ ! -f "$root/release-launcher" ]; do sleep 0.1; done
+		    exit 0 ;;
 		esac
 		port=5580
 		report=
@@ -458,9 +538,32 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		printf '%s\n' "$*" >> "$root/adb.calls"
 		probe="$*"
 		case "$mode:$probe" in
+		  hung-output-drain:*devices*)
+		    sleep 60 &
+		    echo $! > "$root/descendant.pid"
+		    exit 0 ;;
 		  hung-devices:*devices*|hung-name:*avd*name*|hung-boot:*dev.bootcomplete*|hung-launcher:*dumpsys*|hung-animation:*settings*|hung-cpu:*loadavg*|hung-response:*ro.build.display.id*)
-		    exec sleep 60 ;;
+		    sleep 60 &
+		    echo $! > "$root/descendant.pid"
+		    wait $! ;;
 		  probe-fail:*getprop*) echo fake-probe-failure >&2; exit 7 ;;
+		esac
+		case "$mode:$probe" in
+		  transient-devices:*devices*|transient-name:*avd*name*|transient-launcher:*dumpsys*)
+		    if [ ! -f "$root/transient-failure" ]; then
+		      touch "$root/transient-failure"
+		      echo fake-transient-failure >&2
+		      exit 7
+		    fi ;;
+		  transient-response:*ro.build.display.id*)
+		    count="$(cat "$root/response-count" 2>/dev/null)"
+		    count=$((count + 1))
+		    echo "$count" > "$root/response-count"
+		    if [ "$count" -eq 2 ]; then
+		      touch "$root/transient-failure"
+		      echo fake-transient-failure >&2
+		      exit 7
+		    fi ;;
 		esac
 		case "$probe" in
 		  "devices -l")
