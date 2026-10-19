@@ -8,12 +8,17 @@ using System.Threading.Tasks;
 
 namespace AndroidSdk
 {
-	internal class ProcessRunner
+	internal class ProcessRunner : IDisposable
 	{
 		readonly List<string> standardOutput;
 		readonly List<string> standardError;
 		readonly List<string> output;
 		readonly Process process;
+		readonly object outputLock = new();
+		readonly StreamWriter durableOutput;
+		readonly StreamWriter durableError;
+		Exception logError;
+		bool logsClosed;
 		readonly TaskCompletionSource<bool> standardOutputClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		readonly TaskCompletionSource<bool> standardErrorClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -77,7 +82,25 @@ namespace AndroidSdk
 		AndroidToolProcessRunnerLogTypes logTypes = AndroidToolProcessRunnerLogTypes.Stdout | AndroidToolProcessRunnerLogTypes.Stderr | AndroidToolProcessRunnerLogTypes.Stdin;
 
 		public ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput = false)
+			: this(executable, builder, cancelToken, redirectStandardInput, null, null)
 		{
+		}
+
+		internal ProcessRunner(FileInfo executable, ProcessArgumentBuilder builder, CancellationToken cancelToken, bool redirectStandardInput, string stdoutPath, string stderrPath)
+		{
+			if (stdoutPath != null)
+			{
+				durableOutput = new StreamWriter(new FileStream(stdoutPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
+				try
+				{
+					durableError = new StreamWriter(new FileStream(stderrPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
+				}
+				catch
+				{
+					durableOutput.Dispose();
+					throw;
+				}
+			}
 			logPath = Environment.GetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH");
 			logTypes = ParseLogTypes(Environment.GetEnvironmentVariable("ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES"));
 
@@ -106,8 +129,7 @@ namespace AndroidSdk
 			{
 				if (e.Data != null)
 				{
-					standardOutput.Add(e.Data);
-					output.Add(e.Data);
+					Capture(e.Data, standardOutput, durableOutput);
 
 					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stdout) != 0)
 						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stdout);
@@ -121,8 +143,7 @@ namespace AndroidSdk
 			{
 				if (e.Data != null)
 				{
-					standardError.Add(e.Data);
-					output.Add(e.Data);
+					Capture(e.Data, standardError, durableError);
 
 					if ((logTypes & AndroidToolProcessRunnerLogTypes.Stderr) != 0)
 						Log(e.Data + Environment.NewLine, logPath, AndroidToolProcessRunnerLogTypes.Stderr);
@@ -132,7 +153,17 @@ namespace AndroidSdk
 					standardErrorClosed.TrySetResult(true);
 				}
 			};
-			process.Start();
+			try
+			{
+				process.Start();
+			}
+			catch
+			{
+				durableOutput?.Dispose();
+				durableError?.Dispose();
+				process.Dispose();
+				throw;
+			}
 			process.BeginOutputReadLine();
 			process.BeginErrorReadLine();
 
@@ -154,6 +185,70 @@ namespace AndroidSdk
 
 		public void Kill()
 			=> process?.Kill();
+
+		internal Process NativeProcess => process;
+
+		public void Dispose() => process.Dispose();
+
+		void Capture(string line, List<string> target, StreamWriter writer)
+		{
+			lock (outputLock)
+			{
+				target.Add(line);
+				output.Add(line);
+				if (durableOutput != null)
+				{
+					if (target.Count > 200)
+						target.RemoveAt(0);
+					if (output.Count > 200)
+						output.RemoveAt(0);
+				}
+				if (logError == null && writer != null)
+				{
+					try { writer.WriteLine(line); }
+					catch (Exception ex) { logError = ex; }
+				}
+			}
+		}
+
+		internal void ThrowIfLogFailed()
+		{
+			lock (outputLock)
+				if (logError != null)
+					throw new IOException("Writing emulator stdout/stderr failed.", logError);
+		}
+
+		internal void KillAndWait()
+		{
+			if (!process.HasExited)
+			{
+				try
+				{
+#if NETSTANDARD2_0
+					process.Kill();
+#else
+					process.Kill(entireProcessTree: true);
+#endif
+				}
+				catch (InvalidOperationException) when (process.HasExited) { }
+			}
+			if (!process.WaitForExit(10000))
+				throw new TimeoutException("The exact child process did not terminate within 10 seconds.");
+		}
+
+		public ProcessResult WaitForExit(CancellationToken cancellationToken)
+		{
+			while (!process.WaitForExit(100))
+			{
+				if (cancellationToken.IsCancellationRequested)
+				{
+					KillAndWait();
+					cancellationToken.ThrowIfCancellationRequested();
+				}
+			}
+			cancellationToken.ThrowIfCancellationRequested();
+			return WaitForExit();
+		}
 
 		public void StandardInputWrite(string input)
 		{
@@ -185,11 +280,11 @@ namespace AndroidSdk
 			process.StandardInput.Flush();
 		}
 
-		public List<string> StandardOutput => standardOutput;
+		public List<string> StandardOutput { get { lock (outputLock) return new List<string>(standardOutput); } }
 
-		public List<string> StandardError => standardError;
+		public List<string> StandardError { get { lock (outputLock) return new List<string>(standardError); } }
 
-		public List<string> Output => output;
+		public List<string> Output { get { lock (outputLock) return new List<string>(output); } }
 
 		public bool HasStandardOutput => standardOutput.Count > 0;
 
@@ -199,13 +294,35 @@ namespace AndroidSdk
 
 		public ProcessResult WaitForExit()
 		{
-			process.WaitForExit();
-			Task.WaitAll(new[] { standardOutputClosed.Task, standardErrorClosed.Task }, TimeSpan.FromSeconds(5));
+			while (!process.WaitForExit(1000)) { }
+			if (!Task.WaitAll(new[] { standardOutputClosed.Task, standardErrorClosed.Task }, TimeSpan.FromSeconds(5)))
+				throw new TimeoutException("Child process stdout/stderr did not close within 5 seconds.");
+
+			lock (outputLock)
+			{
+				if (!logsClosed)
+				{
+					logsClosed = true;
+					try
+					{
+						durableOutput?.Flush();
+						durableError?.Flush();
+						(durableOutput?.BaseStream as FileStream)?.Flush(true);
+						(durableError?.BaseStream as FileStream)?.Flush(true);
+					}
+					finally
+					{
+						try { durableOutput?.Dispose(); }
+						finally { durableError?.Dispose(); }
+					}
+				}
+			}
+			ThrowIfLogFailed();
 
 			if (standardError?.Any(l => l?.Contains("error: more than one device/emulator") ?? false) ?? false)
 				throw new InvalidOperationException("More than one Device/Emulator detected, you must specify which Serial to target.");
 
-			return new ProcessResult(standardOutput, standardError, output, process.ExitCode);
+			return new ProcessResult(StandardOutput, StandardError, Output, process.ExitCode);
 		}
 
 		public Task<ProcessResult> WaitForExitAsync()

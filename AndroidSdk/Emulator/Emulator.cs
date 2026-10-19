@@ -125,13 +125,17 @@ namespace AndroidSdk
 		}
 
 		public AndroidEmulatorProcess Start(string avdName, EmulatorStartOptions options = null)
+			=> Start(avdName, options, null, null);
+
+		internal AndroidEmulatorProcess Start(string avdName, EmulatorStartOptions options, string stdoutPath, string stderrPath)
 		{
 			if (options == null)
 				options = new EmulatorStartOptions();
 
 			var builder = new ProcessArgumentBuilder();
 
-			builder.Append($"-avd {avdName}");
+			builder.Append("-avd");
+			builder.AppendQuoted(avdName);
 
 			if (options.NoSnapshotLoad)
 				builder.Append("-no-snapshot-load");
@@ -252,7 +256,10 @@ namespace AndroidSdk
 					builder.Append(arg);
 			}
 
-			return new AndroidEmulatorProcess(Start(builder), avdName, AndroidSdkHome);
+			var tool = FindToolPath(AndroidSdkHome);
+			if (tool == null || !tool.Exists)
+				throw new FileNotFoundException("Could not find emulator", tool?.FullName);
+			return new AndroidEmulatorProcess(new ProcessRunner(tool, builder, CancellationToken.None, false, stdoutPath, stderrPath), avdName, AndroidSdkHome);
 		}
 
 		IEnumerable<string> Run(ProcessArgumentBuilder builder, params string[] args)
@@ -290,6 +297,7 @@ namespace AndroidSdk
 			}
 
 			readonly ProcessRunner process;
+			internal ProcessRunner Runner => process;
 			readonly DirectoryInfo androidSdkHome;
 			ProcessResult result;
 
@@ -354,6 +362,9 @@ namespace AndroidSdk
 			}
 
 			public bool WaitForBootComplete(CancellationToken token)
+				=> WaitForBootComplete(token, null);
+
+			internal bool WaitForBootComplete(CancellationToken token, string expectedSerial)
 			{
 				var adb = new Adb(androidSdkHome);
 
@@ -364,7 +375,14 @@ namespace AndroidSdk
 					if (process.HasExited)
 						return false;
 
-					Serial = FindRunningEmulatorSerialByAvdName(adb, AvdName);
+					foreach (var device in adb.GetDevices(token).Where(d => d.IsEmulator && (expectedSerial == null || d.Serial == expectedSerial)))
+					{
+						if (string.Equals(adb.EmuAvdName(device.Serial, token), AvdName, StringComparison.Ordinal))
+						{
+							Serial = device.Serial;
+							break;
+						}
+					}
 					if (!string.IsNullOrEmpty(Serial))
 						break;
 
@@ -379,8 +397,9 @@ namespace AndroidSdk
 					if (process.HasExited)
 						return false;
 
-					if (adb.Shell("getprop dev.bootcomplete", Serial).Any(l => l.Contains("1")) ||
-						adb.Shell("getprop sys.boot_completed", Serial).Any(l => l.Contains("1")))
+					process.ThrowIfLogFailed();
+					if (adb.Shell("getprop dev.bootcomplete", Serial, token).Any(l => l.Trim() == "1") ||
+						adb.Shell("getprop sys.boot_completed", Serial, token).Any(l => l.Trim() == "1"))
 					{
 						booted = true;
 						break;
@@ -406,9 +425,8 @@ namespace AndroidSdk
 						if (process.HasExited)
 							break;
 
-						try
 						{
-							var output = adb.Shell("dumpsys window displays", Serial);
+							var output = adb.Shell("dumpsys window displays", Serial, token);
 
 							if (output.Any(l =>
 								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
@@ -423,13 +441,8 @@ namespace AndroidSdk
 								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
 								l.Contains("Application Not Responding", StringComparison.OrdinalIgnoreCase)))
 							{
-								try { adb.Shell("input keyevent KEYCODE_BACK", Serial); }
-								catch (SdkToolFailedExitException) { }
+								adb.Shell("input keyevent KEYCODE_BACK", Serial, token);
 							}
-						}
-						catch (SdkToolFailedExitException)
-						{
-							// adb can transiently fail; retry on next iteration.
 						}
 
 						if (token.WaitHandle.WaitOne(2000))
@@ -437,7 +450,7 @@ namespace AndroidSdk
 					}
 				}
 
-				return booted;
+				return booted && !token.IsCancellationRequested && !process.HasExited;
 			}
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
@@ -461,7 +474,8 @@ namespace AndroidSdk
 					if (process.HasExited)
 						return false;
 
-					var line = adb.Shell("cat /proc/loadavg", Serial)?.FirstOrDefault();
+					process.ThrowIfLogFailed();
+					var line = adb.Shell("cat /proc/loadavg", Serial, cts.Token)?.FirstOrDefault();
 					if (!string.IsNullOrWhiteSpace(line))
 					{
 						var first = line.Split([' '], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
@@ -508,9 +522,9 @@ namespace AndroidSdk
 						return false;
 
 					var sw = System.Diagnostics.Stopwatch.StartNew();
-					try
 					{
-						var result = adb.Shell("getprop ro.build.display.id", Serial)?.FirstOrDefault();
+						process.ThrowIfLogFailed();
+						var result = adb.Shell("getprop ro.build.display.id", Serial, cts.Token)?.FirstOrDefault();
 						sw.Stop();
 						lastResponseTime = sw.Elapsed.TotalSeconds;
 
@@ -525,12 +539,6 @@ namespace AndroidSdk
 							consecutiveCount = 0;
 						}
 					}
-					catch (SdkToolFailedExitException)
-					{
-						sw.Stop();
-						lastResponseTime = sw.Elapsed.TotalSeconds;
-						consecutiveCount = 0;
-					}
 
 					if (cts.Token.WaitHandle.WaitOne(5000))
 						return false;
@@ -540,14 +548,17 @@ namespace AndroidSdk
 			}
 
 			public void DisableAnimations()
+				=> DisableAnimations(CancellationToken.None);
+
+			public void DisableAnimations(CancellationToken cancellationToken)
 			{
 				if (string.IsNullOrWhiteSpace(Serial))
 					return;
 
 				var adb = new Adb(androidSdkHome);
-				adb.Shell("settings put global window_animation_scale 0", Serial);
-				adb.Shell("settings put global transition_animation_scale 0", Serial);
-				adb.Shell("settings put global animator_duration_scale 0", Serial);
+				adb.Shell("settings put global window_animation_scale 0", Serial, cancellationToken);
+				adb.Shell("settings put global transition_animation_scale 0", Serial, cancellationToken);
+				adb.Shell("settings put global animator_duration_scale 0", Serial, cancellationToken);
 			}
 		}
 	}

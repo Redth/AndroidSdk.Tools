@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace AndroidSdk
 {
@@ -42,6 +43,9 @@ namespace AndroidSdk
 		}
 
 		public List<AdbDevice> GetDevices()
+			=> GetDevices(CancellationToken.None);
+
+		public List<AdbDevice> GetDevices(CancellationToken cancellationToken)
 		{
 			var devices = new List<AdbDevice>();
 
@@ -51,7 +55,7 @@ namespace AndroidSdk
 			builder.Append("devices");
 			builder.Append("-l");
 
-			var r = runner.RunAdb(AndroidSdkHome, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder, cancellationToken);
 
 			if (r.StandardOutput.Count > 1)
 			{
@@ -248,6 +252,9 @@ namespace AndroidSdk
 		}
 
 		public string EmuAvdName(string adbSerial = null)
+			=> EmuAvdName(adbSerial, CancellationToken.None);
+
+		public string EmuAvdName(string adbSerial, CancellationToken cancellationToken)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
@@ -259,7 +266,7 @@ namespace AndroidSdk
 			builder.Append("avd");
 			builder.Append("name");
 
-			var r = runner.RunAdb(AndroidSdkHome, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder, cancellationToken);
 
 			return r?.StandardOutput?.FirstOrDefault()?.Trim();
 		}
@@ -475,6 +482,9 @@ namespace AndroidSdk
 		}
 
 		public List<string> Shell(string shellCommand, string adbSerial = null)
+			=> Shell(shellCommand, adbSerial, CancellationToken.None);
+
+		public List<string> Shell(string shellCommand, string adbSerial, CancellationToken cancellationToken)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
@@ -487,7 +497,7 @@ namespace AndroidSdk
 
 			var output = new List<string>();
 			
-			var r = runner.RunAdb(AndroidSdkHome, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder, cancellationToken);
 
 			return r.StandardOutput;
 		}
