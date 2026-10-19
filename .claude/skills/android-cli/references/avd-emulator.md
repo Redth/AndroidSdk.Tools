@@ -279,11 +279,8 @@ android avd start --name <name> [options]
 | `--show-kernel` | Enable kernel debugging messages (`-show-kernel`) |
 | `-h\|--home <path>` | Android SDK home path |
 
-`--wait`/`--wait-boot` waits for boot only and leaves the emulator running.
-`--wait-exit` keeps the CLI attached until the emulator exits. A boot timeout does
-not guarantee cleanup. `--show-kernel` and `--verbose` enable emulator diagnostics,
-but do not stream them to the CLI console; use
-`ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH` to save output to a file.
+Emulator diagnostics are captured rather than streamed to the CLI; see
+[Logging](../../../../README.md#logging) to save them to a file.
 
 ### Examples
 

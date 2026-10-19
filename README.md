@@ -30,20 +30,8 @@ android avd create --name MyEmulator --sdk "system-images;android-31;google_apis
 android avd start --name MyEmulator --wait-boot
 ```
 
-The CLI returns the command's exit code to the operating system. Invalid commands,
-validation failures, and command failures return a nonzero status. In particular,
-`avd create` and `avd delete` failures can be detected by CI scripts. The existing
-`avd delete --force` cleanup mode still suppresses errors and returns success.
-
-`avd start --show-kernel` forwards `-show-kernel` to the emulator. Like `--verbose`,
-this enables emulator diagnostics; it does not stream them to the CLI console.
-Use the process logging environment variables below to save output to a file.
-
-`avd start --wait` (also `--wait-boot`) waits for boot, not emulator termination;
-`--wait-exit` keeps the CLI attached until the emulator exits. A successful boot
-wait leaves the emulator running. A boot timeout does not guarantee emulator
-cleanup, and combining these flags does not provide a bounded startup/teardown
-contract or return a process handle to the caller.
+The CLI returns command exit codes to the operating system, so scripts can detect
+validation failures and nonzero command results.
 
 ## Logging
 
