@@ -11,7 +11,7 @@ namespace AndroidSdk.Tool
 {
 	class Program
 	{
-		public static void Main(string[] args)
+		public static int Main(string[] args)
 		{
 			var app = new CommandApp();
 			app.Configure(config =>
@@ -149,11 +149,12 @@ namespace AndroidSdk.Tool
 
 			try
 			{
-				app.Run(args);
+				return app.Run(args);
 			}
 			catch (Exception ex)
 			{
 				AnsiConsole.WriteException(ex);
+				return 1;
 			}
 		}
 

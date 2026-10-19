@@ -198,6 +198,7 @@ android avd delete --name <name> [options]
 |--------|-------------|
 | `-n\|--name <name>` | **Required.** AVD name to delete |
 | `-h\|--home <path>` | Android SDK home path |
+| `--force` | Best-effort cleanup: stop the running emulator before deletion and suppress errors |
 
 ### Examples
 
@@ -275,7 +276,14 @@ android avd start --name <name> [options]
 | `--grpc <port>` | gRPC port number |
 | `--grpc-use-jwt` | Use JWT with gRPC |
 | `-v\|--verbose` | Print initialization messages |
+| `--show-kernel` | Enable kernel debugging messages (`-show-kernel`) |
 | `-h\|--home <path>` | Android SDK home path |
+
+`--wait`/`--wait-boot` waits for boot only and leaves the emulator running.
+`--wait-exit` keeps the CLI attached until the emulator exits. A boot timeout does
+not guarantee cleanup. `--show-kernel` and `--verbose` enable emulator diagnostics,
+but do not stream them to the CLI console; use
+`ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH` to save output to a file.
 
 ### Examples
 

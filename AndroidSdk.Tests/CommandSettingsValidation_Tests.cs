@@ -134,6 +134,26 @@ public class CommandSettingsValidation_Tests
 		Assert.True(result.Successful);
 	}
 
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void AvdStartCommandParsesShowKernel(bool showKernel)
+	{
+		var app = new CommandApp<NoOpAvdStartCommand>();
+		app.Configure(config => config.PropagateExceptions());
+		var args = showKernel
+			? new[] { "--name", "TestDevice", "--show-kernel" }
+			: new[] { "--name", "TestDevice" };
+
+		Assert.Equal(showKernel ? 1 : 0, app.Run(args));
+	}
+
+	public sealed class NoOpAvdStartCommand : Command<AvdStartCommandSettings>
+	{
+		public override int Execute(CommandContext context, AvdStartCommandSettings settings)
+			=> settings.ShowKernel ? 1 : 0;
+	}
+
 	[Fact]
 	public void OutputFormatTypeConverterSupportsJsonPretty()
 	{

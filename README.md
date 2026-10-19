@@ -30,11 +30,26 @@ android avd create --name MyEmulator --sdk "system-images;android-31;google_apis
 android avd start --name MyEmulator --wait-boot
 ```
 
+The CLI returns the command's exit code to the operating system. Invalid commands,
+validation failures, and command failures return a nonzero status. In particular,
+`avd create` and `avd delete` failures can be detected by CI scripts. The existing
+`avd delete --force` cleanup mode still suppresses errors and returns success.
+
+`avd start --show-kernel` forwards `-show-kernel` to the emulator. Like `--verbose`,
+this enables emulator diagnostics; it does not stream them to the CLI console.
+Use the process logging environment variables below to save output to a file.
+
+`avd start --wait` (also `--wait-boot`) waits for boot, not emulator termination;
+`--wait-exit` keeps the CLI attached until the emulator exits. A successful boot
+wait leaves the emulator running. A boot timeout does not guarantee emulator
+cleanup, and combining these flags does not provide a bounded startup/teardown
+contract or return a process handle to the caller.
+
 ## Logging
 
 Sometimes it's helpful to see the direct output of the underlying tool calls that are being made.  To do this, you can set some environment variables:
  - `ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH` - Path to a file to write the logs to
- - `ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES` - A `|` delimited list of one or more of `stdio`, `stdin`, `stderr`.  Default is all of them.
+ - `ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES` - A `|` delimited list of one or more of `stdout`, `stdin`, `stderr`.  Default is all of them.
 
 
 ## Library API Usage
@@ -212,4 +227,3 @@ sdk.Adb.LaunchApp(APP_PACKAGE_NAME, emulatorProcess.Serial);
 // Clean up the emulator
 emulatorProcess.Shutdown();
 ```
-

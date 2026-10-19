@@ -127,6 +127,11 @@ namespace AndroidSdk.Tool
 		[DefaultValue(false)]
 		public bool Verbose { get; set; }
 
+		[Description("Print kernel debugging messages")]
+		[CommandOption("--show-kernel")]
+		[DefaultValue(false)]
+		public bool ShowKernel { get; set; }
+
 		[Description("gRPC port number")]
 		[CommandOption("--grpc")]
 		[DefaultValue(null)]
@@ -215,6 +220,7 @@ namespace AndroidSdk.Tool
 						NoSnapshotLoad = settings.NoSnapshotLoad,
 						NoSnapshotSave = settings.NoSnapshotSave,
 						Verbose = settings.Verbose,
+						ShowKernel = settings.ShowKernel,
 						Screen = settings.ScreenMode,
 						MemoryMegabytes = (int?)settings.Memory,
 						Cores = settings.Cores,
