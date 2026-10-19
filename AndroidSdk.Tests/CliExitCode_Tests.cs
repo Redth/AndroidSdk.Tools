@@ -10,8 +10,13 @@ using Xunit;
 
 namespace AndroidSdk.Tests;
 
-public class CliExitCode_Tests
+public class CliExitCode_Tests : IDisposable
 {
+	private readonly DirectoryInfo root = Directory.CreateDirectory(
+		Path.Combine(AppContext.BaseDirectory, "CliExitCodeTests", Guid.NewGuid().ToString()));
+
+	public void Dispose() => root.Delete(true);
+
 	[Fact]
 	public async Task UnknownCommandReturnsFailure()
 	{
@@ -48,7 +53,7 @@ public class CliExitCode_Tests
 	[Fact]
 	public async Task NonzeroHandlerStatusReachesProcessExitCode()
 	{
-		var missingHome = Path.Combine(AppContext.BaseDirectory, $"missing-jdk-{Guid.NewGuid():N}");
+		var missingHome = Path.Combine(root.FullName, "missing-jdk");
 		Assert.False(Directory.Exists(missingHome));
 		var app = new CommandApp<JdkDotNetPreferCommand>();
 		var args = new[] { "--home", missingHome };
@@ -63,24 +68,15 @@ public class CliExitCode_Tests
 	[Fact]
 	public async Task UnexpectedCommandExceptionReturnsFailure()
 	{
-		var directory = Path.Combine(AppContext.BaseDirectory, $"cli-exit-code-{Guid.NewGuid():N}");
-		Directory.CreateDirectory(directory);
-		try
-		{
-			var package = Path.Combine(directory, "invalid.apk");
-			await File.WriteAllTextAsync(package, "Not an APK archive");
-			Assert.Throws<InvalidDataException>(() => new ApkManifestInfoCommand().Execute(
-				null!, new ApkManifestInfoCommandSettings { Package = package }));
+		var package = Path.Combine(root.FullName, "invalid.apk");
+		await File.WriteAllTextAsync(package, "Not an APK archive");
+		Assert.Throws<InvalidDataException>(() => new ApkManifestInfoCommand().Execute(
+			null!, new ApkManifestInfoCommandSettings { Package = package }));
 
-			var result = await RunCli("apk", "manifest", "info", "--package", package);
+		var result = await RunCli("apk", "manifest", "info", "--package", package);
 
-			AssertFailure(result);
-			Assert.Contains("Error:", result.Output);
-		}
-		finally
-		{
-			Directory.Delete(directory, recursive: true);
-		}
+		AssertFailure(result);
+		Assert.Contains("Error:", result.Output);
 	}
 
 	[UnixAvdFailureTheory]
@@ -91,39 +87,31 @@ public class CliExitCode_Tests
 		if (OperatingSystem.IsWindows())
 			throw new PlatformNotSupportedException();
 
-		var directory = Path.Combine(AppContext.BaseDirectory, $"avd-exit-code-{Guid.NewGuid():N}");
-		var jdk = Path.Combine(directory, "jdk");
-		var sdk = Path.Combine(directory, "sdk");
+		var jdk = Path.Combine(root.FullName, "jdk");
+		var sdk = Path.Combine(root.FullName, "sdk");
 		var javaBin = Path.Combine(jdk, "bin");
 		var tools = Path.Combine(sdk, "cmdline-tools", "latest");
 		var marker = $"fake-avd-failure-{Guid.NewGuid():N}";
 		Directory.CreateDirectory(javaBin);
-		try
-		{
-			Directory.CreateDirectory(Path.Combine(tools, "bin"));
-			Directory.CreateDirectory(Path.Combine(tools, "lib"));
-			await File.WriteAllTextAsync(Path.Combine(tools, "bin", "avdmanager"), "");
-			var javac = Path.Combine(javaBin, "javac");
-			var java = Path.Combine(javaBin, "java");
-			await File.WriteAllTextAsync(javac, "#!/bin/sh\necho 'javac 99.0.0'\n");
-			await File.WriteAllTextAsync(java, $"#!/bin/sh\necho '{marker}' >&2\nexit 7\n");
-			var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
-			File.SetUnixFileMode(javac, mode);
-			File.SetUnixFileMode(java, mode);
-			var args = command == "create"
-				? new[] { "avd", command, "--home", sdk, "--name", "ExitCodeTest", "--sdk", "fake-system-image" }
-				: new[] { "avd", command, "--home", sdk, "--name", "ExitCodeTest" };
+		Directory.CreateDirectory(Path.Combine(tools, "bin"));
+		Directory.CreateDirectory(Path.Combine(tools, "lib"));
+		await File.WriteAllTextAsync(Path.Combine(tools, "bin", "avdmanager"), "");
+		var javac = Path.Combine(javaBin, "javac");
+		var java = Path.Combine(javaBin, "java");
+		await File.WriteAllTextAsync(javac, "#!/bin/sh\necho 'javac 99.0.0'\n");
+		await File.WriteAllTextAsync(java, $"#!/bin/sh\necho '{marker}' >&2\nexit 7\n");
+		var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+		File.SetUnixFileMode(javac, mode);
+		File.SetUnixFileMode(java, mode);
+		var args = command == "create"
+			? new[] { "avd", command, "--home", sdk, "--name", "ExitCodeTest", "--sdk", "fake-system-image" }
+			: new[] { "avd", command, "--home", sdk, "--name", "ExitCodeTest" };
 
-			var result = await RunCli(args, jdk);
+		var result = await RunCli(args, jdk);
 
-			Assert.Contains(marker, result.Output);
-			Assert.Contains(nameof(SdkToolFailedExitException), result.Output);
-			Assert.True(result.ExitCode == 1, result.Output);
-		}
-		finally
-		{
-			Directory.Delete(directory, recursive: true);
-		}
+		Assert.Contains(marker, result.Output);
+		Assert.Contains(nameof(SdkToolFailedExitException), result.Output);
+		Assert.True(result.ExitCode == 1, result.Output);
 	}
 
 	public sealed class UnixAvdFailureTheoryAttribute : TheoryAttribute
