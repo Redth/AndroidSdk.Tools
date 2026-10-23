@@ -576,6 +576,53 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task DiagnosticDisposalCannotWaitForAReadThatIgnoresCancellation()
+	{
+		using var reader = new BlockingDiagnosticReader();
+		var diagnostics = new AvdSession.OwnerDiagnostics(reader);
+		try
+		{
+			var clock = Stopwatch.StartNew();
+			diagnostics.Dispose();
+			Assert.True(clock.Elapsed < TimeSpan.FromSeconds(1));
+			Assert.False(reader.IsDisposed);
+		}
+		finally
+		{
+			reader.EndRead.TrySetResult(0);
+			await Until(() => reader.IsDisposed);
+		}
+	}
+
+	[Fact]
+	public async Task OwnerDiagnosticsRetainsOnlyABoundedTailWithoutNewlines()
+	{
+		using var reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(new string('x', 131072) + "diagnostic-end")));
+		using var diagnostics = new AvdSession.OwnerDiagnostics(reader);
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		var tail = await diagnostics.CompleteAsync(timeout.Token);
+		Assert.Equal(16384, tail.Length);
+		Assert.EndsWith("diagnostic-end", tail);
+	}
+
+	sealed class BlockingDiagnosticReader : StreamReader
+	{
+		internal readonly TaskCompletionSource<int> EndRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		internal volatile bool IsDisposed;
+
+		internal BlockingDiagnosticReader() : base(Stream.Null) { }
+
+		public override ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken cancellationToken = default) =>
+			new(EndRead.Task);
+
+		protected override void Dispose(bool disposing)
+		{
+			IsDisposed = true;
+			base.Dispose(disposing);
+		}
+	}
+
+	[Fact]
 	public void LifecycleOptionsRejectUnboundedOrAmbiguousInputs()
 	{
 		Assert.False(new AvdStartCommandSettings { Name = name, Timeout = 0 }.Validate().Successful);

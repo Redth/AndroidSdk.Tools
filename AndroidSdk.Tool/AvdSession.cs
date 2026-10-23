@@ -49,7 +49,7 @@ internal static class AvdSession
 		public string? Generation { get; set; }
 	}
 
-	sealed class OwnerDiagnostics : IAsyncDisposable
+	internal sealed class OwnerDiagnostics : IDisposable
 	{
 		const int Capacity = 16384;
 		readonly StringBuilder tail = new();
@@ -75,6 +75,7 @@ internal static class AvdSession
 				}
 			}
 			catch (OperationCanceledException) when (cancelled.IsCancellationRequested) { }
+			finally { reader.Dispose(); }
 		}
 
 		internal async Task<string> CompleteAsync(CancellationToken token)
@@ -84,11 +85,23 @@ internal static class AvdSession
 				return tail.ToString();
 		}
 
-		public async ValueTask DisposeAsync()
+		internal void ThrowIfFailed()
+		{
+			if (drain.IsFaulted)
+				drain.GetAwaiter().GetResult();
+		}
+
+		public void Dispose()
 		{
 			cancelled.Cancel();
-			try { await drain; }
-			finally { cancelled.Dispose(); }
+			// Windows redirected pipes can have an in-flight synchronous read that ignores cancellation.
+			// Never turn detached handoff or a cleanup timeout into an unbounded read wait.
+			_ = drain.ContinueWith(completed =>
+			{
+				if (completed.IsFaulted)
+					Console.Error.WriteLine("AVD owner diagnostic capture failed: " + completed.Exception);
+				cancelled.Dispose();
+			}, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 		}
 	}
 
@@ -180,7 +193,7 @@ internal static class AvdSession
 		using var pipe = Server("as" + generation);
 		using var host = new Process { StartInfo = HostStartInfo("as" + generation) };
 		host.Start();
-		await using var diagnostics = new OwnerDiagnostics(host.StandardError);
+		using var diagnostics = new OwnerDiagnostics(host.StandardError);
 		var detaching = false;
 		try
 		{
@@ -196,6 +209,7 @@ internal static class AvdSession
 			if (reply.Error != null)
 				throw new InvalidOperationException(reply.Error);
 			var identity = reply.Identity ?? throw new InvalidDataException("AVD owner did not return an identity.");
+			diagnostics.ThrowIfFailed();
 			detaching = !settings.WaitForExit;
 			await SendAsync(writer, settings.WaitForExit ? "attach" : "detach", startup.Token);
 			var acknowledgement = await ReceiveAsync<Reply>(reader, startup.Token);
@@ -212,6 +226,7 @@ internal static class AvdSession
 				if (host.ExitCode != 0)
 					throw new InvalidOperationException($"AVD owner exited with code {host.ExitCode}.");
 			}
+			diagnostics.ThrowIfFailed();
 			return identity;
 		}
 		catch (Exception failure)
