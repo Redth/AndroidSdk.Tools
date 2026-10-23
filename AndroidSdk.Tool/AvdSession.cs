@@ -49,6 +49,49 @@ internal static class AvdSession
 		public string? Generation { get; set; }
 	}
 
+	sealed class OwnerDiagnostics : IAsyncDisposable
+	{
+		const int Capacity = 16384;
+		readonly StringBuilder tail = new();
+		readonly CancellationTokenSource cancelled = new();
+		readonly Task drain;
+
+		internal OwnerDiagnostics(StreamReader reader) => drain = DrainAsync(reader);
+
+		async Task DrainAsync(StreamReader reader)
+		{
+			var buffer = new char[4096];
+			try
+			{
+				int count;
+				while ((count = await reader.ReadAsync(buffer.AsMemory(), cancelled.Token)) != 0)
+				{
+					lock (tail)
+					{
+						tail.Append(buffer, 0, count);
+						if (tail.Length > Capacity)
+							tail.Remove(0, tail.Length - Capacity);
+					}
+				}
+			}
+			catch (OperationCanceledException) when (cancelled.IsCancellationRequested) { }
+		}
+
+		internal async Task<string> CompleteAsync(CancellationToken token)
+		{
+			await drain.WaitAsync(token);
+			lock (tail)
+				return tail.ToString();
+		}
+
+		public async ValueTask DisposeAsync()
+		{
+			cancelled.Cancel();
+			try { await drain; }
+			finally { cancelled.Dispose(); }
+		}
+	}
+
 	static NamedPipeServerStream Server(string name) =>
 		new(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
@@ -137,13 +180,14 @@ internal static class AvdSession
 		using var pipe = Server("as" + generation);
 		using var host = new Process { StartInfo = HostStartInfo("as" + generation) };
 		host.Start();
+		await using var diagnostics = new OwnerDiagnostics(host.StandardError);
 		var detaching = false;
 		try
 		{
 			var connection = pipe.WaitForConnectionAsync(startup.Token);
 			await Task.WhenAny(connection, host.WaitForExitAsync(startup.Token));
 			if (!connection.IsCompleted)
-				throw new InvalidOperationException("AVD owner exited before connecting: " + await host.StandardError.ReadToEndAsync());
+				throw new InvalidOperationException("AVD owner exited before connecting.");
 			await connection;
 			using var reader = Reader(pipe);
 			using var writer = Writer(pipe);
@@ -164,6 +208,7 @@ internal static class AvdSession
 					throw new InvalidOperationException(completed.Error);
 				using var exit = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 				await host.WaitForExitAsync(exit.Token);
+				await diagnostics.CompleteAsync(exit.Token);
 				if (host.ExitCode != 0)
 					throw new InvalidOperationException($"AVD owner exited with code {host.ExitCode}.");
 			}
@@ -173,6 +218,7 @@ internal static class AvdSession
 		{
 			// EOF cancels startup/attached ownership. Never kill the owner and orphan its emulator.
 			pipe.Dispose();
+			string details;
 			try
 			{
 				using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -180,13 +226,13 @@ internal static class AvdSession
 				if (detaching && await Task.WhenAny(exited, Task.Delay(1000, cleanup.Token)) != exited)
 					await StopAsync(settings.Home, settings.Name, null, generation, cleanup.Token);
 				await exited;
+				details = await diagnostics.CompleteAsync(cleanup.Token);
 			}
 			catch (Exception cleanupFailure)
 			{
 				throw new AggregateException("AVD start failed and exact-process cleanup could not be confirmed.", failure, cleanupFailure);
 			}
-			var diagnostics = await host.StandardError.ReadToEndAsync();
-			throw new InvalidOperationException($"AVD start failed. Emulator logs: {settings.LogDirectory}\n{diagnostics}", failure);
+			throw new InvalidOperationException($"AVD start failed. Emulator logs: {settings.LogDirectory}\n{details}", failure);
 		}
 	}
 
@@ -231,7 +277,7 @@ internal static class AvdSession
 					return;
 				}
 			}
-			catch (Exception ex) when (ex is IOException || ex is OperationCanceledException || ex is JsonException)
+			catch (Exception ex) when (ex is IOException || ex is InvalidDataException || ex is OperationCanceledException || ex is JsonException)
 			{
 				if (requested.IsCancellationRequested)
 					throw;
@@ -410,8 +456,9 @@ internal static class AvdSession
 				report.Start();
 				portReport = ReportPortAsync(report, reporting.Token);
 			}
+			var emulator = new Emulator(settings.Home);
 			startup.Token.ThrowIfCancellationRequested();
-			process = new Emulator(settings.Home).Start(settings.Name, Options(settings, report),
+			process = emulator.Start(settings.Name, Options(settings, report),
 				identity.StandardOutputPath, identity.StandardErrorPath);
 			try
 			{
@@ -463,7 +510,7 @@ internal static class AvdSession
 						process.Runner.ThrowIfLogFailed();
 						if (process.HasExited)
 						{
-							failure = Cleanup(process, containment, false, null);
+							failure = Cleanup(process, containment, false, attached ? null : UnexpectedExit(process));
 							cleaned = true;
 						}
 					}
@@ -486,7 +533,11 @@ internal static class AvdSession
 		{
 			report?.Stop();
 			if (!cleaned)
+			{
+				if (handedOff && !attached && process?.HasExited == true && failure == null)
+					failure = UnexpectedExit(process);
 				failure = Cleanup(process, containment, true, failure);
+			}
 			var reply = new Reply { Error = failure == null ? null : Describe(failure) };
 			completion.TrySetResult(reply);
 			if (writer != null && (!handedOff || attached))
@@ -506,7 +557,8 @@ internal static class AvdSession
 				try
 				{
 					using var responseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-					await Task.WhenAny(nameServer ?? Task.CompletedTask, serialServer ?? Task.Delay(Timeout.Infinite)).WaitAsync(responseTimeout.Token);
+					var responded = await Task.WhenAny(nameServer ?? Task.CompletedTask, serialServer ?? Task.Delay(Timeout.Infinite)).WaitAsync(responseTimeout.Token);
+					await responded;
 				}
 				catch (Exception ex) { failure = failure == null ? ex : new AggregateException(failure, ex); }
 			}
@@ -530,6 +582,9 @@ internal static class AvdSession
 		}
 		return 0;
 	}
+
+	static Exception UnexpectedExit(Emulator.AndroidEmulatorProcess process) =>
+		new InvalidOperationException($"Managed emulator exited unexpectedly with code {process.Runner.ExitCode} before avd stop.");
 
 	static string Describe(Exception failure)
 	{

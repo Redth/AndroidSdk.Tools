@@ -390,6 +390,7 @@ namespace AndroidSdk
 							}
 							if (string.Equals(actualName, AvdName, StringComparison.Ordinal))
 							{
+								LastReadinessError = null;
 								Serial = device.Serial;
 								break;
 							}
@@ -451,6 +452,7 @@ namespace AndroidSdk
 								l.Contains("mCurrentFocus", StringComparison.OrdinalIgnoreCase) &&
 								l.Contains("launcher", StringComparison.OrdinalIgnoreCase)))
 							{
+								LastReadinessError = null;
 								break;
 							}
 
@@ -477,7 +479,10 @@ namespace AndroidSdk
 					}
 				}
 
-				return booted && !token.IsCancellationRequested && !process.HasExited;
+				var ready = booted && !token.IsCancellationRequested && !process.HasExited;
+				if (ready)
+					LastReadinessError = null;
+				return ready;
 			}
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token)
@@ -485,6 +490,7 @@ namespace AndroidSdk
 
 			internal bool WaitForCpuLoadBelow(double threshold, TimeSpan timeout, TimeSpan settleDelay, CancellationToken token, out double lastLoad)
 			{
+				LastReadinessError = null;
 				lastLoad = -1;
 
 				if (string.IsNullOrWhiteSpace(Serial))
@@ -531,6 +537,7 @@ namespace AndroidSdk
 
 			internal bool WaitForStableResponses(int requiredConsecutive, int maxResponseTimeSeconds, TimeSpan timeout, CancellationToken token, out int consecutiveCount, out double lastResponseTime)
 			{
+				LastReadinessError = null;
 				consecutiveCount = 0;
 				lastResponseTime = -1;
 
@@ -560,7 +567,10 @@ namespace AndroidSdk
 						{
 							consecutiveCount++;
 							if (consecutiveCount >= requiredConsecutive)
+							{
+								LastReadinessError = null;
 								return true;
+							}
 						}
 						else
 						{
@@ -587,6 +597,7 @@ namespace AndroidSdk
 
 			public void DisableAnimations(CancellationToken cancellationToken)
 			{
+				LastReadinessError = null;
 				if (string.IsNullOrWhiteSpace(Serial))
 					return;
 

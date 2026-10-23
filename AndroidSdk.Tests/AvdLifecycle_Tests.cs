@@ -3,8 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -112,6 +115,77 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		Assert.Equal(pid, Pid("emulator"));
 		Assert.False(children.First(p => p.Id == pid).HasExited);
 		Success(await Cli("avd", "stop", "--home", root, "--name", name, "--timeout", "5"));
+	}
+
+	[UnixTheory]
+	[InlineData("null")]
+	[InlineData("")]
+	[InlineData(" \t")]
+	[InlineData("{")]
+	public async Task InvalidStopDataCannotTerminateTheOwnerOrPreventAValidStop(string request)
+	{
+		Success(await Start("--port", "5580"));
+		await TrackChildren();
+		var key = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\n" +
+			Path.TrimEndingDirectorySeparator(root) + "\nname\n" + name;
+		var endpoint = "av" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).Substring(0, 32);
+		using (var pipe = new NamedPipeClientStream(".", endpoint, PipeDirection.InOut, PipeOptions.Asynchronous))
+		{
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+			await pipe.ConnectAsync(timeout.Token);
+			using var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
+			await writer.WriteLineAsync(request).WaitAsync(timeout.Token);
+			using var reader = new StreamReader(pipe, Encoding.UTF8, leaveOpen: true);
+			Assert.Null(await reader.ReadLineAsync().WaitAsync(timeout.Token));
+		}
+		Assert.All(children.Where(p => p.Id == Pid("owner") || p.Id == Pid("emulator")), p => Assert.False(p.HasExited));
+		Success(await Cli("avd", "stop", "--home", root, "--name", name, "--serial", "emulator-5580", "--timeout", "5"));
+		await Until(() => children.All(p => p.HasExited));
+	}
+
+	[UnixTheory]
+	[InlineData("large-probe-fail")]
+	[InlineData("large-identity-fail")]
+	public async Task LargeOwnerDiagnosticsCannotBlockFailureCleanup(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var clock = Stopwatch.StartNew();
+		var running = Start("--port", "5580", "--timeout", "4");
+		await TrackChildren();
+		var result = await running;
+		Assert.NotEqual(0, result.ExitCode);
+		Assert.Equal("", result.Stdout);
+		Assert.Contains("large-probe-end", result.Stderr);
+		Assert.DoesNotContain("cleanup could not be confirmed", result.Stderr);
+		Assert.True(clock.Elapsed < TimeSpan.FromSeconds(15), result.Stderr);
+		Assert.All(children, p => Assert.True(p.HasExited));
+	}
+
+	[UnixTheory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task NativeLifecycleNeverRunsAnUnneededHungJdkProbe(bool startupTimeout)
+	{
+		WriteExecutable("jdk/bin", """
+			#!/bin/bash
+			root="$(cd "$(dirname "$0")/../.." && pwd)"
+			echo called > "$root/javac.called"
+			sleep 60
+			""", "javac");
+		if (startupTimeout)
+			File.WriteAllText(Path.Combine(root, "mode"), "no-report");
+		var running = Start("--port", "5580", "--timeout", "3");
+		await TrackChildren();
+		var result = await running;
+		if (startupTimeout)
+			Assert.NotEqual(0, result.ExitCode);
+		else
+		{
+			Success(result);
+			Success(await Cli("avd", "stop", "--home", root, "--name", name, "--timeout", "1"));
+		}
+		Assert.False(File.Exists(Path.Combine(root, "javac.called")));
+		await Until(() => children.All(p => p.HasExited));
 	}
 
 	[UnixTheory]
@@ -329,17 +403,55 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		Assert.True(original.HasExited);
 	}
 
-	[UnixFact]
-	public async Task UnexpectedEmulatorExitMakesStrictStopFail()
+	[UnixTheory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(7)]
+	public async Task UnexpectedEmulatorExitMakesStrictStopFail(int exitCode)
 	{
 		Success(await Start("--port", "5580"));
 		await TrackChildren();
 		var emulator = children.First(p => p.Id == Pid("emulator"));
-		File.WriteAllText(Path.Combine(root, "exit-code"), "7");
+		File.WriteAllText(Path.Combine(root, "exit-code"), exitCode.ToString());
 		await Until(() => emulator.HasExited);
 		var result = await Cli("avd", "stop", "--home", root, "--name", name, "--timeout", "5");
 		Assert.NotEqual(0, result.ExitCode);
-		Assert.Contains(nameof(SdkToolFailedExitException), result.Stderr);
+		Assert.Contains("exited unexpectedly with code " + exitCode, result.Stderr);
+	}
+
+	[UnixTheory]
+	[InlineData(0)]
+	[InlineData(1)]
+	public async Task AttachedReadyExitStillAcceptsNormalEmulatorExitCodes(int exitCode)
+	{
+		var startupPipe = "as" + Guid.NewGuid().ToString("N");
+		using var bootstrap = new NamedPipeServerStream(startupPipe, PipeDirection.InOut, 1,
+			PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+		using var owner = Launch(["--avd-session-host", startupPipe]);
+		var output = owner.StandardOutput.ReadToEndAsync();
+		var errors = owner.StandardError.ReadToEndAsync();
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+		await bootstrap.WaitForConnectionAsync(timeout.Token);
+		using var writer = new StreamWriter(bootstrap, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
+		using var reader = new StreamReader(bootstrap, Encoding.UTF8, leaveOpen: true);
+		await writer.WriteLineAsync(JsonSerializer.Serialize(new AvdStartCommandSettings
+		{
+			Name = name, Home = root, Port = 5580, WaitForBoot = true, WaitForExit = true, Timeout = 5, LogDirectory = Logs
+		})).WaitAsync(timeout.Token);
+		using var identity = JsonDocument.Parse((await reader.ReadLineAsync().WaitAsync(timeout.Token))!);
+		Assert.Equal("emulator-5580", identity.RootElement.GetProperty("Identity").GetProperty("serial").GetString());
+		await writer.WriteLineAsync("\"attach\"").WaitAsync(timeout.Token);
+		using var acknowledged = JsonDocument.Parse((await reader.ReadLineAsync().WaitAsync(timeout.Token))!);
+		Assert.Equal(JsonValueKind.Null, acknowledged.RootElement.GetProperty("Error").ValueKind);
+		await TrackChildren();
+		File.WriteAllText(Path.Combine(root, "exit-code"), exitCode.ToString());
+		using var completed = JsonDocument.Parse((await reader.ReadLineAsync().WaitAsync(timeout.Token))!);
+		Assert.Equal(JsonValueKind.Null, completed.RootElement.GetProperty("Error").ValueKind);
+		await owner.WaitForExitAsync(timeout.Token);
+		Assert.Equal(0, owner.ExitCode);
+		Assert.Equal("", await errors);
+		Assert.Equal("", await output);
+		Assert.All(children, p => Assert.True(p.HasExited));
 	}
 
 	[UnixFact]
@@ -423,6 +535,35 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		}
 	}
 
+	[UnixTheory]
+	[InlineData("identity-transient")]
+	[InlineData("transient-launcher")]
+	[InlineData("transient-response")]
+	public void RecoveredReadinessErrorsCannotContaminateLaterFailures(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var process = new Emulator(root).Start(name);
+		try
+		{
+			using var global = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+			Assert.True(process.WaitForBootComplete(global.Token, "emulator-5580"));
+			if (mode == "transient-response")
+				Assert.True(process.WaitForStableResponses(2, 1, TimeSpan.Zero, global.Token));
+			Assert.True(File.Exists(Path.Combine(root, "transient-failure")));
+			Assert.Null(process.LastReadinessError);
+			File.WriteAllText(Path.Combine(root, "mode"), "animation-fail");
+			var failure = Assert.Throws<SdkToolFailedExitException>(() => process.DisableAnimations(global.Token));
+			Assert.Contains("fake-animation-failure", failure.StdErr);
+			Assert.Null(process.LastReadinessError);
+		}
+		finally
+		{
+			process.Runner.KillAndWait();
+			process.Runner.WaitForExit();
+			process.Runner.Dispose();
+		}
+	}
+
 	[UnixFact]
 	public async Task RequestedCpuAndResponseSettlingCompleteBeforeDetachedSuccess()
 	{
@@ -463,13 +604,18 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 
 	sealed record Result(int ExitCode, string Stdout, string Stderr);
 
-	static Process Launch(string[] args)
+	Process Launch(string[] args)
 	{
 		var assembly = typeof(AvdLifecycle_Tests).Assembly.Location;
 		var info = new ProcessStartInfo(Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet")
 		{
 			UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true
 		};
+		if (Directory.Exists(Path.Combine(root, "jdk")))
+		{
+			info.Environment["JAVA_HOME"] = Path.Combine(root, "jdk");
+			info.Environment["JDK_HOME"] = Path.Combine(root, "jdk");
+		}
 		foreach (var arg in new[] { "exec", "--runtimeconfig", Path.ChangeExtension(assembly, ".runtimeconfig.json"),
 			"--depsfile", Path.ChangeExtension(assembly, ".deps.json"), typeof(AvdStartCommand).Assembly.Location }.Concat(args))
 			info.ArgumentList.Add(arg);
@@ -478,7 +624,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		return process;
 	}
 
-	static async Task<Result> Cli(params string[] args)
+	async Task<Result> Cli(params string[] args)
 	{
 		using var process = Launch(args);
 		var stdout = process.StandardOutput.ReadToEndAsync();
@@ -524,10 +670,10 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 			await Task.Delay(50, timeout.Token);
 	}
 
-	void WriteExecutable(string folder, string content)
+	void WriteExecutable(string folder, string content, string? executable = null)
 	{
 		Directory.CreateDirectory(Path.Combine(root, folder));
-		var path = Path.Combine(root, folder, folder == "emulator" ? "emulator" : "adb");
+		var path = Path.Combine(root, folder, executable ?? (folder == "emulator" ? "emulator" : "adb"));
 		File.WriteAllText(path, content);
 		if (!OperatingSystem.IsWindows())
 			File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
@@ -610,6 +756,12 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		    echo $! > "$root/descendant.pid"
 		    wait $! ;;
 		  probe-fail:*getprop*) echo fake-probe-failure >&2; exit 7 ;;
+		  animation-fail:*settings*) echo fake-animation-failure >&2; exit 7 ;;
+		  large-probe-fail:*getprop*|large-identity-fail:*ro.boot.qemu.avd_name*)
+		    printf 'large-probe-start' >&2
+		    head -c 131072 /dev/zero | tr '\000' x >&2
+		    echo large-probe-end >&2
+		    exit 7 ;;
 		esac
 		case "$mode:$probe" in
 		  transient-devices:*devices*|transient-name:*avd*name*|identity-transient:*ro.boot.qemu.avd_name*|transient-launcher:*dumpsys*)
@@ -633,7 +785,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		    printf 'List of devices attached\nemulator-5582 device model:Unrelated\nemulator-5580 device model:Owned\n' ;;
 		  *"emu avd name")
 		    case "$mode" in
-		      empty-name|identity-*|hung-identity) ;;
+		      empty-name|identity-*|hung-identity|large-identity-fail) ;;
 		      whitespace-name) printf ' \t\n' ;;
 		      console-mismatch) echo unrelated-avd; echo OK ;;
 		      *) cat "$root/name"; echo OK ;;
