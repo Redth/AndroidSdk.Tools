@@ -33,6 +33,7 @@ public class AvdStartCommand_Tests : IDisposable
 		{
 			"--home", root.FullName,
 			"--name", "TestDevice",
+			"--log-directory", Path.Combine(root.FullName, "logs"),
 			"--wait-exit"
 		};
 		if (showKernel)

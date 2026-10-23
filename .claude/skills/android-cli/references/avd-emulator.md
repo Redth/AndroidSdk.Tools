@@ -8,6 +8,7 @@ Commands for managing Android Virtual Devices (AVDs) and running the emulator.
 - [avd targets](#avd-targets)
 - [avd devices](#avd-devices)
 - [avd create](#avd-create)
+- [avd stop](#avd-stop)
 - [avd delete](#avd-delete)
 - [avd start](#avd-start)
 
@@ -184,9 +185,33 @@ First install the system image with `android sdk install`:
 
 ---
 
+## avd stop
+
+Stop an emulator started by `android avd start`, await its exact process termination,
+and flush its logs. Missing owners, identity mismatches, timeouts and cleanup errors
+return nonzero. This command does not stop externally started emulators.
+
+```bash
+android avd stop --name MyEmulator --timeout 30
+android avd stop --serial emulator-5556 --timeout 30
+```
+
+| Option | Description |
+|--------|-------------|
+| `-n\|--name <name>` | Exact AVD name; supply this or `--serial` |
+| `--serial <serial>` | Exact returned serial; when combined with `--name`, both must match |
+| `-t\|--timeout <seconds>` | Positive timeout for the entire stop operation (default: 30) |
+| `-h\|--home <path>` | Same SDK home used at start; commands must run as the same user |
+
+Use strict stop before normal `avd delete`; `delete --force` is best-effort, not
+strict teardown.
+
+---
+
 ## avd delete
 
-Delete an existing AVD.
+Delete an existing AVD's files. This does not stop a running emulator; use
+[avd stop](#avd-stop) first.
 
 ```bash
 android avd delete --name <name> [options]
@@ -227,9 +252,11 @@ android avd start --name <name> [options]
 
 | Option | Description |
 |--------|-------------|
-| `-w\|--wait\|--wait-boot` | Wait for emulator to finish booting |
-| `--wait-exit` | Wait for emulator process to exit |
-| `-t\|--timeout <seconds>` | Boot timeout in seconds |
+| `-w\|--wait\|--wait-boot` | Wait for boot and requested readiness checks, then leave the emulator running |
+| `--wait-exit` | Keep the CLI attached until the emulator exits; cancellation stops it |
+| `-t\|--timeout <seconds>` | Positive startup timeout covering all readiness probes (default: 300); not an emulator lifetime limit |
+| `-f\|--format <json\|xml>` | Output the started emulator identity |
+| `--log-directory <path>` | Directory for separate durable stdout/stderr files; defaults to `AndroidSdk/avd-logs` under per-user application data |
 | `--wipe\|--wipe-data` | Wipe user data before starting |
 
 ### Snapshot Options
@@ -255,7 +282,7 @@ android avd start --name <name> [options]
 | `--memory <MB>` | RAM size (1536-8192 MB) |
 | `--partition-size\|--data-partition-size <MB>` | Data partition size |
 | `--cache-size\|--cache-partition-size <MB>` | Cache partition size (default: 66 MB) |
-| `-p\|--port <port>` | Console/ADB port (5554-5682) |
+| `-p\|--port <port>` | Even console port (5554-5682); ADB serial is `emulator-<port>` |
 
 ### Emulation Options
 
@@ -279,8 +306,16 @@ android avd start --name <name> [options]
 | `--show-kernel` | Enable kernel debugging messages (`-show-kernel`) |
 | `-h\|--home <path>` | Android SDK home path |
 
-Emulator diagnostics are captured rather than streamed to the CLI; see
-[Logging](../../../../README.md#logging) to save them to a file.
+With `--wait --format json`, stdout is one object with `name`, `serial`, `port`,
+`standardOutputPath` and `standardErrorPath`. Pass `serial` directly to your test
+runner or compare it with `device list --format json`. Without `--wait`, serial
+and port are not discovered and may be null.
+
+Startup timeout, cancellation or readiness failure returns nonzero after terminating
+and awaiting the started emulator, even before ADB discovery. Cleanup has a separate
+bounded wait and cleanup errors are reported. Successful detached starts keep writing
+both log files until `avd stop`. Combining `--wait` with `--wait-exit` preserves startup
+failure; it does not wait indefinitely for a failed boot.
 
 ### Examples
 
@@ -331,7 +366,13 @@ android avd start \
   --no-snapshot \
   --acceleration auto \
   --wait-boot \
-  --timeout 300
+  --timeout 300 \
+  --format json \
+  --log-directory ./artifacts/emulator > emulator.json
+
+# Run tests using emulator.json's serial, then stop before deleting
+android avd stop --name CI_Device --timeout 30 &&
+  android avd delete --name CI_Device
 ```
 
 ### Troubleshooting

@@ -27,9 +27,17 @@ namespace AndroidSdk.Tool
 		[DefaultValue(false)]
 		public bool WaitForExit { get; set; }
 
-		[Description("Timeout in seconds if waiting for emulator to boot")]
+		[Description("Positive startup timeout in seconds covering all readiness probes (default: 300)")]
 		[CommandOption("-t|--timeout")]
 		public int? Timeout { get; set; }
+
+		[Description("Directory for durable, separate emulator stdout/stderr logs (defaults to per-user application data)")]
+		[CommandOption("--log-directory")]
+		public string LogDirectory { get; set; }
+
+		[Description("Output format for the started emulator identity")]
+		[CommandOption("-f|--format")]
+		public OutputFormat Format { get; set; }
 
 		[Description("Wipe data")]
 		[CommandOption("--wipe|--wipe-data")]
@@ -159,8 +167,18 @@ namespace AndroidSdk.Tool
 
 		public override ValidationResult Validate()
 		{
-			if (string.IsNullOrEmpty(Name))
+			if (string.IsNullOrWhiteSpace(Name))
 				return ValidationResult.Error("Missing --name");
+			if (Name.Contains('"') || Name.Contains('\r') || Name.Contains('\n'))
+				return ValidationResult.Error("Invalid --name");
+			if (Timeout.HasValue && Timeout <= 0)
+				return ValidationResult.Error("--timeout must be positive");
+			if (Port.HasValue && (Port < 5554 || Port > 5682 || Port % 2 != 0))
+				return ValidationResult.Error("--port must be an even console port from 5554 to 5682");
+			if (CpuThreshold.HasValue && (double.IsNaN(CpuThreshold.Value) || double.IsInfinity(CpuThreshold.Value) || CpuThreshold <= 0))
+				return ValidationResult.Error("--cpu-threshold must be positive and finite");
+			if (ResponseThreshold.HasValue && ResponseThreshold <= 0)
+				return ValidationResult.Error("--response-threshold must be positive");
 
 			return ValidationResult.Success();
 		}
@@ -190,132 +208,21 @@ namespace AndroidSdk.Tool
 
 	public class AvdStartCommand : CancellableAsyncCommand<AvdStartCommandSettings>
 	{
-		public override Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] AvdStartCommandSettings settings, CancellationToken cancellationToken)
+		public override async Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] AvdStartCommandSettings settings, CancellationToken cancellationToken)
 		{
-			var ok = true;
-
 			try
 			{
-				var emu = new Emulator(settings?.Home);
-
-				Emulator.AndroidEmulatorProcess process = null;
-
-				AnsiConsole.Status()
-				.Start($"Starting {settings.Name}...", ctx =>
-				{
-					process = emu.Start(settings.Name, new Emulator.EmulatorStartOptions
-					{
-						WipeData = settings.WipeData,
-						NoSnapshot = settings.NoSnapshot,
-						Acceleration = settings.Acceleration,
-						Engine = settings.Engine,
-						NoWindow = settings.NoWindow,
-						NoAudio = settings.NoAudio,
-						NoJni = settings.NoJni,
-						NoBootAnim = settings.NoBootAnimation,
-						Gpu = settings.Gpu,
-						Port = settings.Port,
-						CameraBack = settings.CameraBack,
-						CameraFront = settings.CameraFront,
-						NoSnapshotLoad = settings.NoSnapshotLoad,
-						NoSnapshotSave = settings.NoSnapshotSave,
-						Verbose = settings.Verbose,
-						ShowKernel = settings.ShowKernel,
-						Screen = settings.ScreenMode,
-						MemoryMegabytes = (int?)settings.Memory,
-						Cores = settings.Cores,
-						PartitionSizeMegabytes = (int?)settings.PartitionSize,
-						CacheSizeMegabytes = (int?)settings.CacheSize,
-						GrpcPort = (int?)settings.GrpcPort,
-						GrpcUseJwt = settings.GrpcUseJwt,
-					});
-
-					cancellationToken.Register(() =>
-					{
-						ctx.Status($"Stopping {settings.Name}...");
-						process?.Shutdown();
-					});
-
-					var timeoutBudget = settings.Timeout.HasValue ? TimeSpan.FromSeconds(settings.Timeout.Value) : TimeSpan.Zero;
-
-					using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-					if (timeoutBudget != TimeSpan.Zero)
-						timeoutCts.CancelAfter(timeoutBudget);
-					var timeoutToken = timeoutCts.Token;
-
-					if (settings.WaitForBoot)
-					{
-						ctx.Status($"Waiting for {settings.Name} to finish booting...");
-						var bootSw = System.Diagnostics.Stopwatch.StartNew();
-						ok = process.WaitForBootComplete(timeoutToken);
-						bootSw.Stop();
-						AnsiConsole.MarkupLine($"[grey]Boot wait completed in {bootSw.Elapsed.TotalSeconds:F1}s[/]");
-					}
-
-					if (ok && process?.Serial != null)
-					{
-						if (settings.DisableAnimations)
-						{
-							ctx.Status($"Disabling animations on {settings.Name}...");
-							process.DisableAnimations();
-						}
-
-						if (settings.CpuThreshold.HasValue)
-						{
-							ctx.Status($"Waiting for CPU load to drop below {settings.CpuThreshold.Value} on {settings.Name}...");
-							var cpuSw = System.Diagnostics.Stopwatch.StartNew();
-							var cpuSettled = process.WaitForCpuLoadBelow(settings.CpuThreshold.Value, TimeSpan.Zero, TimeSpan.FromSeconds(10), timeoutToken, out var lastLoad);
-							cpuSw.Stop();
-							if (cpuSettled)
-							{
-								AnsiConsole.MarkupLine($"[grey]CPU settled to {lastLoad:F2} (threshold {settings.CpuThreshold.Value}) in {cpuSw.Elapsed.TotalSeconds:F1}s[/]");
-							}
-							else if (!timeoutToken.IsCancellationRequested)
-							{
-								AnsiConsole.MarkupLine($"[yellow]Warning: CPU load did not settle within {cpuSw.Elapsed.TotalSeconds:F1}s (last load: {lastLoad:F2}, threshold: {settings.CpuThreshold.Value})[/]");
-							}
-						}
-
-						if (settings.ResponseThreshold.HasValue)
-						{
-							var maxTime = settings.ResponseThreshold.Value;
-							const int required = 3;
-							ctx.Status($"Waiting for {required} consecutive fast responses (< {maxTime}s each) on {settings.Name}...");
-							var stabSw = System.Diagnostics.Stopwatch.StartNew();
-							var stable = process.WaitForStableResponses(required, maxTime, TimeSpan.Zero, timeoutToken, out var consecutiveCount, out var lastResponseTime);
-							stabSw.Stop();
-							if (stable)
-							{
-								AnsiConsole.MarkupLine($"[grey]Device stable ({required} consecutive responses < {maxTime}s) in {stabSw.Elapsed.TotalSeconds:F1}s[/]");
-							}
-							else if (!timeoutToken.IsCancellationRequested)
-							{
-								AnsiConsole.MarkupLine($"[yellow]Warning: Device did not stabilize within {stabSw.Elapsed.TotalSeconds:F1}s (got {consecutiveCount}/{required} consecutive, last response: {lastResponseTime:F1}s)[/]");
-							}
-						}
-					}
-
-					if (settings.WaitForExit)
-					{
-						ctx.Status($"Booted, waiting for {settings.Name} to exit...");
-						var exitCode = process.WaitForExit();
-						ok = exitCode == 0 || exitCode == 1;
-					}
-				});
-
-				if (!ok)
-				{
-					AnsiConsole.WriteException(new Exception("Failed to start AVD." + Environment.NewLine + string.Join(Environment.NewLine, process.GetOutput())));
-				}
-
+				var identity = await AvdSession.StartAsync(settings, cancellationToken);
+				OutputHelper.Output(identity, settings.Format,
+					["Name", "Serial", "Port", "StandardOutputPath", "StandardErrorPath"],
+					i => [i.Name, i.Serial, i.Port?.ToString(), i.StandardOutputPath, i.StandardErrorPath]);
+				return 0;
 			}
-			catch (SdkToolFailedExitException sdkEx)
+			catch (Exception ex)
 			{
-				Program.WriteException(sdkEx);
-				return Task.FromResult(1);
+				Console.Error.WriteLine(ex);
+				return 1;
 			}
-
-			return Task.FromResult(ok ? 0 : 1);
 		}
 
 	}

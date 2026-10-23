@@ -35,9 +35,10 @@ namespace AndroidSdk
 			if (adbToolPath == null || !File.Exists(adbToolPath.FullName))
 				throw new FileNotFoundException("Could not find adb", adbToolPath?.FullName);
 
-			var p = new ProcessRunner(adbToolPath, builder, cancelToken);
+			cancelToken.ThrowIfCancellationRequested();
+			using var p = new ProcessRunner(adbToolPath, builder);
 
-			var r = p.WaitForExit();
+			var r = p.WaitForExit(cancelToken);
 
 			if (r.ExitCode != 0)
 			{
