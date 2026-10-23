@@ -30,11 +30,14 @@ android avd create --name MyEmulator --sdk "system-images;android-31;google_apis
 android avd start --name MyEmulator --wait-boot
 ```
 
+The CLI returns command exit codes to the operating system, so scripts can detect
+validation failures and nonzero command results.
+
 ## Logging
 
 Sometimes it's helpful to see the direct output of the underlying tool calls that are being made.  To do this, you can set some environment variables:
  - `ANDROID_TOOL_PROCESS_RUNNER_LOG_PATH` - Path to a file to write the logs to
- - `ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES` - A `|` delimited list of one or more of `stdio`, `stdin`, `stderr`.  Default is all of them.
+ - `ANDROID_TOOL_PROCESS_RUNNER_LOG_TYPES` - A `|` delimited list of one or more of `stdout`, `stdin`, `stderr`.  Default is all of them.
 
 
 ## Library API Usage
@@ -212,4 +215,3 @@ sdk.Adb.LaunchApp(APP_PACKAGE_NAME, emulatorProcess.Serial);
 // Clean up the emulator
 emulatorProcess.Shutdown();
 ```
-
