@@ -34,10 +34,11 @@ namespace AndroidSdk
 			// when no path is specified.
 			AndroidSdkHome = options.AndroidSdkHome
 				?? new SdkLocator().Locate()?.FirstOrDefault();
-			Jdks = new JdkLocator().LocateJdk()?.ToArray() ?? new JdkInfo[0];
 		}
 
-		public JdkInfo[] Jdks { get; }
+		readonly Lazy<JdkInfo[]> jdks = new(() => new JdkLocator().LocateJdk()?.ToArray() ?? Array.Empty<JdkInfo>());
+
+		public JdkInfo[] Jdks => jdks.Value;
 
 		public DirectoryInfo? AndroidSdkHome { get; internal set; }
 

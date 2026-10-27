@@ -13,6 +13,9 @@ namespace AndroidSdk.Tool
 	{
 		public static int Main(string[] args)
 		{
+			if (args.Length == 2 && args[0] == "--avd-session-host")
+				return AvdSession.RunHostAsync(args[1]).GetAwaiter().GetResult();
+
 			var app = new CommandApp();
 			app.Configure(config =>
 			{
@@ -132,6 +135,9 @@ namespace AndroidSdk.Tool
 						.WithExample(new[] { "avd", "start", "--name MyEmulator" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot" })
 						.WithExample(new[] { "avd", "start", "--name MyEmulator", "--wait-boot", "--no-snapshot" });
+					sdkBranch.AddCommand<AvdStopCommand>("stop")
+						.WithDescription("Stops and awaits the exact emulator owned by avd start")
+						.WithExample(new[] { "avd", "stop", "--serial emulator-5554", "--timeout 30" });
 				});
 
 				config.AddBranch("apk", sdkBranch =>

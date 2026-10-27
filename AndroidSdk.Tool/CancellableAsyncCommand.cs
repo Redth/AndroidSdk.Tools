@@ -1,4 +1,5 @@
 ﻿using Spectre.Console.Cli;
+using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,12 +15,24 @@ public abstract class CancellableAsyncCommand<TSettings> : AsyncCommand<TSetting
 	{
 		using var cancellationSource = new CancellationTokenSource();
 
-		using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, onSignal);
-		using var sigQuit = PosixSignalRegistration.Create(PosixSignal.SIGQUIT, onSignal);
-		using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, onSignal);
+		using var sigInt = OperatingSystem.IsWindows() ? null : PosixSignalRegistration.Create(PosixSignal.SIGINT, onSignal);
+		using var sigQuit = OperatingSystem.IsWindows() ? null : PosixSignalRegistration.Create(PosixSignal.SIGQUIT, onSignal);
+		using var sigTerm = OperatingSystem.IsWindows() ? null : PosixSignalRegistration.Create(PosixSignal.SIGTERM, onSignal);
 
-		var cancellable = ExecuteAsync(context, settings, cancellationSource.Token);
-		return await cancellable;
+		ConsoleCancelEventHandler onConsoleCancel = (sender, args) =>
+		{
+			args.Cancel = true;
+			cancellationSource.Cancel();
+		};
+		Console.CancelKeyPress += onConsoleCancel;
+		try
+		{
+			return await ExecuteAsync(context, settings, cancellationSource.Token);
+		}
+		finally
+		{
+			Console.CancelKeyPress -= onConsoleCancel;
+		}
 
 		void onSignal(PosixSignalContext context)
 		{
