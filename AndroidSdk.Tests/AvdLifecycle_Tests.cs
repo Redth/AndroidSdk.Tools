@@ -194,6 +194,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[InlineData("hung-output-drain")]
 	[InlineData("hung-name")]
 	[InlineData("hung-identity")]
+	[InlineData("hung-legacy")]
 	[InlineData("hung-boot")]
 	[InlineData("hung-launcher")]
 	[InlineData("hung-animation")]
@@ -237,6 +238,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 				"hung-output-drain" => "devices -l",
 				"hung-name" => "emu avd name",
 				"hung-identity" => "getprop ro.boot.qemu.avd_name",
+				"hung-legacy" => "getprop ro.kernel.qemu.avd_name",
 				"hung-boot" => "getprop dev.bootcomplete",
 				"hung-launcher" => "dumpsys window displays",
 				"hung-animation" => "settings put global",
@@ -271,6 +273,8 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[InlineData("no-report", true)]
 	[InlineData("hung-identity", false)]
 	[InlineData("hung-identity", true)]
+	[InlineData("hung-legacy", false)]
+	[InlineData("hung-legacy", true)]
 	public async Task CancellationOrCallerDeathDuringIdentityDiscoveryCleansOwnedProcess(string mode, bool abrupt)
 	{
 		File.WriteAllText(Path.Combine(root, "mode"), mode);
@@ -278,7 +282,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		var output = cli.StandardOutput.ReadToEndAsync();
 		var errors = cli.StandardError.ReadToEndAsync();
 		await TrackChildren();
-		if (mode == "hung-identity")
+		if (mode == "hung-identity" || mode == "hung-legacy")
 		{
 			await Until(() => File.Exists(Path.Combine(root, "descendant.pid")));
 			await TrackChildren();
@@ -299,7 +303,11 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[UnixTheory]
 	[InlineData("empty-name")]
 	[InlineData("whitespace-name")]
-	public async Task EmptyConsoleNameUsesExactGuestIdentityBeforeDetachedSuccess(string mode)
+	[InlineData("legacy-only")]
+	[InlineData("legacy-empty-modern")]
+	[InlineData("modern-precedence")]
+	[InlineData("console-precedence")]
+	public async Task ConsoleAndGuestIdentityPrecedencePreservesExactDetachedIdentity(string mode)
 	{
 		File.WriteAllText(Path.Combine(root, "mode"), mode);
 		var result = await Start("--port", "5580");
@@ -312,17 +320,28 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		Assert.False(children.First(p => p.Id == Pid("emulator")).HasExited);
 		var calls = File.ReadAllText(Path.Combine(root, "adb.calls"));
 		Assert.Contains("-s emulator-5580 emu avd name", calls);
-		Assert.Contains("-s emulator-5580 shell getprop ro.boot.qemu.avd_name", calls);
+		Assert.Equal(mode != "console-precedence", calls.Contains("-s emulator-5580 shell getprop ro.boot.qemu.avd_name"));
+		Assert.Equal(mode.StartsWith("legacy-", StringComparison.Ordinal), calls.Contains("-s emulator-5580 shell getprop ro.kernel.qemu.avd_name"));
 		Assert.DoesNotContain("-s emulator-5582", calls);
 		Success(await Cli("avd", "stop", "--home", root, "--name", name, "--serial", "emulator-5580", "--timeout", "5"));
 		await Until(() => children.All(p => p.HasExited));
+		Assert.Equal(calls, File.ReadAllText(Path.Combine(root, "adb.calls")));
 	}
 
 	[UnixTheory]
 	[InlineData("identity-mismatch")]
 	[InlineData("identity-empty")]
 	[InlineData("identity-fail")]
+	[InlineData("identity-multiline")]
+	[InlineData("identity-padded")]
+	[InlineData("identity-case")]
+	[InlineData("legacy-mismatch")]
+	[InlineData("legacy-fail")]
+	[InlineData("legacy-padded")]
+	[InlineData("legacy-case")]
 	[InlineData("console-mismatch")]
+	[InlineData("console-padded")]
+	[InlineData("console-case")]
 	public async Task MissingOrMismatchedIdentityCannotBecomeReady(string mode)
 	{
 		File.WriteAllText(Path.Combine(root, "mode"), mode);
@@ -335,15 +354,169 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		var calls = File.ReadAllText(Path.Combine(root, "adb.calls"));
 		Assert.DoesNotContain("-s emulator-5582", calls);
 		Assert.DoesNotContain("getprop dev.bootcomplete", calls);
-		if (mode == "console-mismatch")
+		if (mode.StartsWith("console-", StringComparison.Ordinal))
 			Assert.DoesNotContain("ro.boot.qemu.avd_name", calls);
 		else
 			Assert.Contains("-s emulator-5580 shell getprop ro.boot.qemu.avd_name", calls);
+		Assert.Equal(mode.StartsWith("legacy-", StringComparison.Ordinal) || mode == "identity-empty",
+			calls.Contains("-s emulator-5580 shell getprop ro.kernel.qemu.avd_name"));
 		if (mode == "identity-fail")
 			Assert.Contains("fake-identity-failure", result.Stderr);
+		else if (mode == "legacy-fail")
+			Assert.Contains("fake-legacy-failure", result.Stderr);
+		else if (mode == "identity-empty")
+			Assert.Contains("did not report an AVD name", result.Stderr);
+		else if (mode == "identity-multiline")
+			Assert.Contains("multiple lines", result.Stderr);
 		else
 			Assert.Contains("expected '" + name + "'", result.Stderr);
 		Assert.DoesNotContain("Unhandled exception.", result.Stderr);
+	}
+
+	[UnixTheory]
+	[InlineData("legacy-only", true)]
+	[InlineData("legacy-empty-modern", true)]
+	[InlineData("modern-precedence", false)]
+	[InlineData("console-precedence", false)]
+	public void PublicNameLookupsUseTheSamePropertyPrecedence(string mode, bool legacy)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var adb = new Adb(root);
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		Assert.Equal(name, adb.GetEmulatorName("emulator-5580", timeout.Token));
+		Assert.Equal(name, adb.GetDeviceName("emulator-5580", timeout.Token));
+		Assert.Equal(name, adb.GetEmulatorName("emulator-5580"));
+		Assert.Equal(name, adb.GetDeviceName("emulator-5580"));
+		var calls = File.ReadAllLines(Path.Combine(root, "adb.calls"));
+		Assert.All(calls, c => Assert.StartsWith("-s emulator-5580 ", c));
+		Assert.Equal(mode == "console-precedence" ? 0 : 4, calls.Count(c => c.Contains("ro.boot.qemu.avd_name")));
+		Assert.Equal(legacy ? 4 : 0, calls.Count(c => c.Contains("ro.kernel.qemu.avd_name")));
+	}
+
+	[UnixTheory]
+	[InlineData("console-padded")]
+	[InlineData("identity-padded")]
+	[InlineData("legacy-padded")]
+	public void PublicNameLookupsDoNotTrimNonemptyIdentities(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var adb = new Adb(root);
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		Assert.Equal(" " + name + " ", adb.GetEmulatorName("emulator-5580", timeout.Token));
+		Assert.Equal(" " + name + " ", adb.GetDeviceName("emulator-5580", timeout.Token));
+		Assert.DoesNotContain("ro.product.", File.ReadAllText(Path.Combine(root, "adb.calls")));
+	}
+
+	[UnixTheory]
+	[InlineData("identity-empty")]
+	[InlineData("identity-multiline")]
+	public void MissingOrMalformedEmulatorIdentityDoesNotBecomeADeviceModel(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var adb = new Adb(root);
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		Assert.Throws<InvalidDataException>(() => adb.GetEmulatorName("emulator-5580", timeout.Token));
+		Assert.Throws<InvalidDataException>(() => adb.GetDeviceName("emulator-5580", timeout.Token));
+		Assert.DoesNotContain("ro.product.", File.ReadAllText(Path.Combine(root, "adb.calls")));
+	}
+
+	[UnixFact]
+	public void ImplicitNameLookupPinsTheOnlySerialAndDoesNotMaskMissingEmulatorIdentity()
+	{
+		File.WriteAllText(Path.Combine(root, "single-device"), "");
+		File.WriteAllText(Path.Combine(root, "mode"), "legacy-only");
+		var adb = new Adb(root);
+		Assert.Equal(name, adb.GetEmulatorName());
+		Assert.Equal(name, adb.GetDeviceName());
+		File.WriteAllText(Path.Combine(root, "mode"), "identity-empty");
+		Assert.Throws<InvalidDataException>(() => adb.GetEmulatorName());
+		Assert.Throws<InvalidDataException>(() => adb.GetDeviceName());
+		var calls = File.ReadAllLines(Path.Combine(root, "adb.calls"));
+		Assert.All(calls.Where(c => c != "devices -l"), c => Assert.StartsWith("-s emulator-5580 ", c));
+		Assert.DoesNotContain(calls, c => c.Contains("ro.product."));
+	}
+
+	[UnixFact]
+	public void PhysicalDeviceNameStillUsesItsModelWithoutEmulatorIdentityProbes()
+	{
+		Assert.Equal("Fake Phone", new Adb(root).GetDeviceName("physical-device"));
+		Assert.Equal("-s physical-device shell getprop ro.product.model",
+			Assert.Single(File.ReadAllLines(Path.Combine(root, "adb.calls"))));
+	}
+
+	[UnixTheory]
+	[InlineData("identity-fail")]
+	[InlineData("legacy-fail")]
+	public void FailedIdentityProbesPropagateWithoutTryingAnotherIdentityOrKilling(string mode)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		var adb = new Adb(root);
+		Assert.Throws<SdkToolFailedExitException>(() => adb.GetEmulatorName("emulator-5580"));
+		Assert.Throws<SdkToolFailedExitException>(() => adb.GetDeviceName("emulator-5580"));
+		Assert.Throws<SdkToolFailedExitException>(() => new Emulator(root).StopAvd(name, TimeSpan.FromSeconds(5)));
+		var calls = File.ReadAllText(Path.Combine(root, "adb.calls"));
+		Assert.DoesNotContain("emu kill", calls);
+		Assert.DoesNotContain("ro.product.", calls);
+		Assert.Equal(mode == "legacy-fail", calls.Contains("ro.kernel.qemu.avd_name"));
+	}
+
+	[UnixTheory]
+	[InlineData("legacy-only", true)]
+	[InlineData("legacy-empty-modern", true)]
+	[InlineData("modern-precedence", true)]
+	[InlineData("console-precedence", true)]
+	[InlineData("legacy-mismatch", false)]
+	[InlineData("identity-mismatch", false)]
+	[InlineData("console-mismatch", false)]
+	[InlineData("legacy-case", false)]
+	[InlineData("identity-case", false)]
+	[InlineData("console-case", false)]
+	public void LegacyStopLookupUsesExactIdentityWithoutOverridingPrecedence(string mode, bool matches)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		Assert.Equal(matches, new Emulator(root).StopAvd(name, TimeSpan.FromSeconds(5)));
+		var calls = File.ReadAllText(Path.Combine(root, "adb.calls"));
+		Assert.Equal(matches, calls.Contains("-s emulator-5580 emu kill"));
+		Assert.DoesNotContain("-s emulator-5582 emu kill", calls);
+		Assert.DoesNotContain("-s physical-device", calls);
+		Assert.Equal(mode.StartsWith("legacy-", StringComparison.Ordinal), calls.Contains("ro.kernel.qemu.avd_name"));
+		if (mode.StartsWith("console-", StringComparison.Ordinal))
+			Assert.DoesNotContain("getprop", calls);
+	}
+
+	[UnixTheory]
+	[InlineData("hung-identity", false)]
+	[InlineData("hung-identity", true)]
+	[InlineData("hung-legacy", false)]
+	[InlineData("hung-legacy", true)]
+	public async Task NameLookupCancellationAndLegacyStopDeadlineTerminateTheirExactProbe(string mode, bool legacyStop)
+	{
+		File.WriteAllText(Path.Combine(root, "mode"), mode);
+		using var cancellation = new CancellationTokenSource();
+		var clock = Stopwatch.StartNew();
+		var running = Task.Run(() =>
+		{
+			if (legacyStop)
+				new Emulator(root).StopAvd(name, TimeSpan.FromSeconds(2));
+			else
+				new Adb(root).GetEmulatorName("emulator-5580", cancellation.Token);
+		});
+		try
+		{
+			await Until(() => File.Exists(Path.Combine(root, "descendant.pid")) &&
+				int.TryParse(File.ReadAllText(Path.Combine(root, "descendant.pid")), out _));
+			children.Add(Process.GetProcessById(Pid("adb")));
+			children.Add(Process.GetProcessById(Pid("descendant")));
+		}
+		finally
+		{
+			cancellation.Cancel();
+		}
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await running.WaitAsync(TimeSpan.FromSeconds(8)));
+		await Until(() => children.All(p => p.HasExited));
+		Assert.All(children, p => Assert.True(p.HasExited));
+		Assert.True(clock.Elapsed < TimeSpan.FromSeconds(8));
+		Assert.DoesNotContain("emu kill", File.ReadAllText(Path.Combine(root, "adb.calls")));
 	}
 
 	[UnixFact]
@@ -488,6 +661,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 	[InlineData("transient-devices")]
 	[InlineData("transient-name")]
 	[InlineData("identity-transient")]
+	[InlineData("legacy-transient")]
 	[InlineData("transient-launcher")]
 	[InlineData("transient-response")]
 	public async Task TransientDiscoveryLauncherAndResponseFailuresCanRecoverWithinTheBudget(string mode)
@@ -798,7 +972,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		    sleep 60 &
 		    echo $! > "$root/descendant.pid"
 		    exit 0 ;;
-		  hung-devices:*devices*|hung-name:*avd*name*|hung-identity:*ro.boot.qemu.avd_name*|hung-boot:*dev.bootcomplete*|hung-launcher:*dumpsys*|hung-animation:*settings*|hung-cpu:*loadavg*|hung-response:*ro.build.display.id*)
+		  hung-devices:*devices*|hung-name:*avd*name*|hung-identity:*ro.boot.qemu.avd_name*|hung-legacy:*ro.kernel.qemu.avd_name*|hung-boot:*dev.bootcomplete*|hung-launcher:*dumpsys*|hung-animation:*settings*|hung-cpu:*loadavg*|hung-response:*ro.build.display.id*)
 		    sleep 60 &
 		    echo $! > "$root/descendant.pid"
 		    wait $! ;;
@@ -811,7 +985,7 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		    exit 7 ;;
 		esac
 		case "$mode:$probe" in
-		  transient-devices:*devices*|transient-name:*avd*name*|identity-transient:*ro.boot.qemu.avd_name*|transient-launcher:*dumpsys*)
+		  transient-devices:*devices*|transient-name:*avd*name*|identity-transient:*ro.boot.qemu.avd_name*|legacy-transient:*ro.kernel.qemu.avd_name*|transient-launcher:*dumpsys*)
 		    if [ ! -f "$root/transient-failure" ]; then
 		      touch "$root/transient-failure"
 		      echo fake-transient-failure >&2
@@ -829,21 +1003,44 @@ public sealed class AvdLifecycle_Tests : IAsyncLifetime
 		esac
 		case "$probe" in
 		  "devices -l")
-		    printf 'List of devices attached\nemulator-5582 device model:Unrelated\nemulator-5580 device model:Owned\n' ;;
+		    printf 'List of devices attached\n'
+		    if [ ! -f "$root/single-device" ]; then
+		      printf 'physical-device device model:Phone\nemulator-5582 device model:Unrelated\n'
+		    fi
+		    if [ ! -f "$root/stop.requested" ]; then echo 'emulator-5580 device model:Owned'; fi ;;
 		  *"emu avd name")
+		    if [[ "$probe" == "-s emulator-5582 "* ]]; then echo unrelated-avd; echo OK; exit 0; fi
 		    case "$mode" in
-		      empty-name|identity-*|hung-identity|large-identity-fail) ;;
+		      empty-name|identity-*|legacy-*|modern-precedence|hung-identity|hung-legacy|large-identity-fail) ;;
 		      whitespace-name) printf ' \t\n' ;;
 		      console-mismatch) echo unrelated-avd; echo OK ;;
+		      console-padded) printf ' %s \nOK\n' "$(cat "$root/name")" ;;
+		      console-case) tr '[:lower:]' '[:upper:]' < "$root/name"; echo OK ;;
 		      *) cat "$root/name"; echo OK ;;
 		    esac ;;
 		  *"getprop ro.boot.qemu.avd_name")
 		    case "$mode" in
-		      identity-mismatch) echo unrelated-avd ;;
+		      identity-mismatch|console-precedence) echo unrelated-avd ;;
 		      identity-empty) echo ;;
 		      identity-fail) echo fake-identity-failure >&2; exit 7 ;;
+		      identity-multiline) cat "$root/name"; echo another-name ;;
+		      identity-padded) printf ' %s \n' "$(cat "$root/name")" ;;
+		      identity-case) tr '[:lower:]' '[:upper:]' < "$root/name" ;;
+		      legacy-empty-modern) echo ;;
+		      legacy-*|hung-legacy) ;;
 		      *) cat "$root/name" ;;
 		    esac ;;
+		  *"getprop ro.kernel.qemu.avd_name")
+		    case "$mode" in
+		      legacy-mismatch|modern-precedence|console-precedence) echo unrelated-avd ;;
+		      identity-empty) echo ;;
+		      legacy-fail) echo fake-legacy-failure >&2; exit 7 ;;
+		      legacy-padded) printf ' %s \n' "$(cat "$root/name")" ;;
+		      legacy-case) tr '[:lower:]' '[:upper:]' < "$root/name" ;;
+		      *) cat "$root/name" ;;
+		    esac ;;
+		  *"emu kill") touch "$root/stop.requested"; echo 'stopping emulator' ;;
+		  *"getprop ro.product.model") echo 'Fake Phone' ;;
 		  *"getprop dev.bootcomplete") if [ "$mode" = fallback-anr ]; then echo 0; else echo 1; fi ;;
 		  *"getprop sys.boot_completed") echo 1 ;;
 		  *"dumpsys window displays")

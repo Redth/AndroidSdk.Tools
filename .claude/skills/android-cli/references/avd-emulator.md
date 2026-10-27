@@ -375,6 +375,10 @@ android avd stop --name CI_Device --timeout 30 &&
   android avd delete --name CI_Device
 ```
 
+Check each command's exit code. The tool handles emulator identity across supported
+guest versions, readiness and exact-instance cleanup; callers do not need separate
+ADB property probes or process-killing loops.
+
 ### Troubleshooting
 
 **Slow startup**: Use `--no-boot-anim` and `--no-snapshot-load` for faster cold boots.

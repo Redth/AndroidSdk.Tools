@@ -47,78 +47,34 @@ namespace AndroidSdk
 		{
 			if (string.IsNullOrWhiteSpace(avdName))
 				throw new ArgumentException("AVD name must be provided", nameof(avdName));
+			if (timeout <= TimeSpan.Zero)
+				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive.");
 
+			using var deadline = new CancellationTokenSource(timeout);
+			var token = deadline.Token;
 			var adb = new Adb(AndroidSdkHome);
-			var serial = FindRunningEmulatorSerialByAvdName(adb, avdName);
+			var serial = FindRunningEmulatorSerialByAvdName(adb, avdName, token);
 			if (string.IsNullOrWhiteSpace(serial))
 				return false;
 
-			adb.EmuKill(serial);
+			adb.EmuKill(serial, token);
 
-			var sw = System.Diagnostics.Stopwatch.StartNew();
-			while (sw.Elapsed < timeout)
+			while (true)
 			{
-				try
-				{
-					var stillRunning = adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
-					if (!stillRunning)
-						return true;
-				}
-				catch (SdkToolFailedExitException)
-				{
-					// adb can transiently fail during shutdown.
-				}
-
-				Thread.Sleep(250);
-			}
-
-			try
-			{
-				return !adb.GetDevices().Any(d => d.Serial.Equals(serial, StringComparison.OrdinalIgnoreCase));
-			}
-			catch (SdkToolFailedExitException)
-			{
-				return false;
+				if (!adb.GetDevices(token).Any(d => d.Serial.Equals(serial, StringComparison.Ordinal)))
+					return true;
+				token.WaitHandle.WaitOne(250);
+				token.ThrowIfCancellationRequested();
 			}
 		}
 
-		static string FindRunningEmulatorSerialByAvdName(Adb adb, string avdName)
+		static string FindRunningEmulatorSerialByAvdName(Adb adb, string avdName, CancellationToken token)
 		{
-			IEnumerable<Adb.AdbDevice> devices;
-			try
+			foreach (var device in adb.GetDevices(token).Where(d => d.IsEmulator))
 			{
-				devices = adb.GetDevices();
-			}
-			catch (SdkToolFailedExitException)
-			{
-				// adb can transiently fail while the server/emulator is still coming up.
-				return null;
-			}
-
-			foreach (var device in devices)
-			{
-				try
-				{
-					var runningName = adb.GetEmulatorName(device.Serial);
-					if (string.Equals(runningName, avdName, StringComparison.OrdinalIgnoreCase))
-						return device.Serial;
-				}
-				catch (InvalidDataException)
-				{
-					// Non-emulator devices are expected here.
-				}
-				catch (SdkToolFailedExitException)
-				{
-					// Some emulator instances may reject emu commands while shutting down.
-				}
-				catch (IOException)
-				{
-					// Emulator instances can transiently reject socket access while booting/shutting down.
-				}
-				catch (System.Net.Sockets.SocketException)
-				{
-					// Emulator instances can transiently reject socket access while booting/shutting down.
-				}
+				var runningName = adb.GetEmulatorName(device.Serial, token);
+				if (string.Equals(runningName, avdName, StringComparison.Ordinal))
+					return device.Serial;
 			}
 
 			return null;
@@ -381,13 +337,7 @@ namespace AndroidSdk
 					{
 						foreach (var device in adb.GetDevices(token).Where(d => d.IsEmulator && (expectedSerial == null || d.Serial == expectedSerial)))
 						{
-							var actualName = adb.EmuAvdName(device.Serial, token);
-							if (string.IsNullOrWhiteSpace(actualName))
-							{
-								// Some emulator/ADB versions return no console name even after boot.
-								var names = adb.Shell("getprop ro.boot.qemu.avd_name", device.Serial, token);
-								actualName = names.Count == 1 ? names[0].Trim() : null;
-							}
+							var actualName = adb.GetEmulatorName(device.Serial, token);
 							if (string.Equals(actualName, AvdName, StringComparison.Ordinal))
 							{
 								LastReadinessError = null;
@@ -399,6 +349,10 @@ namespace AndroidSdk
 						}
 					}
 					catch (SdkToolFailedExitException ex)
+					{
+						LastReadinessError = ex;
+					}
+					catch (InvalidDataException ex)
 					{
 						LastReadinessError = ex;
 					}

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
@@ -236,6 +235,9 @@ namespace AndroidSdk
 		}
 
 		public bool EmuKill(string adbSerial = null)
+			=> EmuKill(adbSerial, CancellationToken.None);
+
+		public bool EmuKill(string adbSerial, CancellationToken cancellationToken)
 		{
 			// adb uninstall -k <package>
 			// -k keeps data & cache dir
@@ -246,7 +248,7 @@ namespace AndroidSdk
 			builder.Append("emu");
 			builder.Append("kill");
 
-			var r = runner.RunAdb(AndroidSdkHome, builder);
+			var r = runner.RunAdb(AndroidSdkHome, builder, cancellationToken);
 
 			return r.StandardOutput.Any(o => o.ToLowerInvariant().Contains("stopping emulator"));
 		}
@@ -268,7 +270,7 @@ namespace AndroidSdk
 
 			var r = runner.RunAdb(AndroidSdkHome, builder, cancellationToken);
 
-			return r?.StandardOutput?.FirstOrDefault()?.Trim();
+			return r.StandardOutput.FirstOrDefault();
 		}
 
 		public bool Pull(FileInfo remoteFileSource, FileInfo localFileDestination, string adbSerial = null)
@@ -569,71 +571,66 @@ namespace AndroidSdk
 
 		public string GetDeviceName(string adbSerial = null)
 		{
-			try
-			{
-				return GetEmulatorName(adbSerial);
-			}
-			catch (InvalidDataException)
-			{
-				// Shell getprop
-				var s = Shell("getprop ro.product.model", adbSerial);
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			return GetDeviceName(adbSerial, timeout.Token);
+		}
 
-				if (s?.Any() ?? false)
-					return s.FirstOrDefault().Trim();
+		public string GetDeviceName(string adbSerial, CancellationToken cancellationToken)
+		{
+			adbSerial = ResolveDeviceSerial(adbSerial, cancellationToken);
+			if (adbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
+				return GetEmulatorName(adbSerial, cancellationToken);
 
-				// Shell getprop
-				s = Shell("getprop ro.product.name", adbSerial);
+			var s = Shell("getprop ro.product.model", adbSerial, cancellationToken);
 
-				if (s?.Any() ?? false)
-					return s.FirstOrDefault().Trim();
-			}
+			if (s?.Any() ?? false)
+				return s.FirstOrDefault().Trim();
+
+			s = Shell("getprop ro.product.name", adbSerial, cancellationToken);
+
+			if (s?.Any() ?? false)
+				return s.FirstOrDefault().Trim();
 
 			return null;
 		}
 
+		string ResolveDeviceSerial(string adbSerial, CancellationToken cancellationToken)
+		{
+			if (!string.IsNullOrEmpty(adbSerial))
+				return adbSerial;
+			var devices = GetDevices(cancellationToken);
+			if (devices.Count != 1)
+				throw new InvalidDataException("An exact serial is required when there is not exactly one connected device.");
+			return devices[0].Serial;
+		}
+
 		public string GetEmulatorName(string adbSerial = null)
 		{
-			var shellName = EmuAvdName(adbSerial);
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+			return GetEmulatorName(adbSerial, timeout.Token);
+		}
+
+		public string GetEmulatorName(string adbSerial, CancellationToken cancellationToken)
+		{
+			adbSerial = ResolveDeviceSerial(adbSerial, cancellationToken);
+			if (!adbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
+				throw new InvalidDataException("Serial must be an emulator starting with `emulator-`");
+
+			var shellName = EmuAvdName(adbSerial, cancellationToken);
 
 			if (!string.IsNullOrWhiteSpace(shellName))
 				return shellName;
 
-			if (string.IsNullOrEmpty(adbSerial) || !adbSerial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase))
-				throw new InvalidDataException("Serial must be an emulator starting with `emulator-`");
-
-			int port = 5554;
-			if (!int.TryParse(adbSerial.Substring(9), out port))
-				return null;
-
-			var tcpClient = new System.Net.Sockets.TcpClient("127.0.0.1", port);
-			var name = string.Empty;
-			using (var s = tcpClient.GetStream())
+			foreach (var property in new[] { "ro.boot.qemu.avd_name", "ro.kernel.qemu.avd_name" })
 			{
-
-				System.Threading.Thread.Sleep(250);
-
-				foreach (var b in Encoding.ASCII.GetBytes("avd name\r\n"))
-					s.WriteByte(b);
-
-				System.Threading.Thread.Sleep(250);
-
-				byte[] data = new byte[1024];
-				using (var memoryStream = new MemoryStream())
-				{
-					do
-					{
-						var len = s.Read(data, 0, data.Length);
-						memoryStream.Write(data, 0, len);
-					} while (s.DataAvailable);
-
-					var txt = Encoding.ASCII.GetString(memoryStream.ToArray(), 0, (int)memoryStream.Length);
-
-					var m = Regex.Match(txt, "OK(?<name>.*?)OK", RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);
-					name = m?.Groups?["name"]?.Value?.Trim();
-				}
+				var lines = Shell("getprop " + property, adbSerial, cancellationToken);
+				if (lines.Count > 1)
+					throw new InvalidDataException($"Emulator '{adbSerial}' returned multiple lines for '{property}'.");
+				if (lines.Count == 1 && !string.IsNullOrEmpty(lines[0]))
+					return lines[0];
 			}
 
-			return name;
+			throw new InvalidDataException($"Emulator '{adbSerial}' did not report an AVD name through its console or guest properties.");
 		}
 
 		public IEnumerable<string> LaunchApp(string packageName, string adbSerial = null)
